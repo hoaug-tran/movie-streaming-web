@@ -5,13 +5,15 @@ import { AuthState, UserInfo, LoginResponse } from "@/modules/auth/types/auth";
 import authService from "@/modules/auth/api/auth-service";
 import { setInLocalStorage, removeFromLocalStorage, getFromLocalStorage } from "@/utils/helpers";
 
-interface AuthContextType extends AuthState {
+interface AuthContextType extends Omit<AuthState, "refreshToken"> {
   login: (email: string, password: string) => Promise<void>;
   register: (fullName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: UserInfo | null) => void;
   refreshToken: () => Promise<void>;
 }
+
+export type { AuthContextType };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -92,7 +94,6 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Restore auth from localStorage on mount
   React.useEffect(() => {
     const storedUser = getFromLocalStorage<UserInfo>("user");
     const storedToken = getFromLocalStorage<string>("accessToken");

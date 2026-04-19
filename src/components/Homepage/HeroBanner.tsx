@@ -1,0 +1,208 @@
+"use client";
+
+import { Box, Typography, Button, Stack, Skeleton } from "@mui/material";
+import Image from "next/image";
+import { useCarouselMovies } from "@/modules/movie/hooks/useClientMovies";
+import { GradientOverlay } from "@/components/UI/GradientOverlay";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import AddIcon from "@mui/icons-material/Add";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+
+export function HeroBanner() {
+  const { data: movies = [], isLoading, isError } = useCarouselMovies();
+  const router = useRouter();
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
+
+  const currentMovie = movies[currentIndex];
+
+  useEffect(() => {
+    if (!autoPlayEnabled || movies.length === 0) return;
+
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % movies.length);
+      setImageLoaded(false);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [autoPlayEnabled, movies.length]);
+
+  const handleCardClick = (index: number) => {
+    setCurrentIndex(index);
+    setImageLoaded(false);
+    setAutoPlayEnabled(false);
+    setTimeout(() => setAutoPlayEnabled(true), 8000);
+  };
+
+  if (isLoading || isError || !movies.length) {
+    return (
+      <Box
+        sx={{
+          height: { xs: "60vh", sm: "70vh", md: "90vh" },
+          position: "relative",
+          overflow: "hidden",
+          backgroundColor: "#1A1A1A",
+        }}
+      >
+        <Skeleton variant="rectangular" width="100%" height="100%" />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ position: "relative", overflow: "hidden" }}>
+      <Box
+        sx={{
+          position: "relative",
+          height: { xs: "60vh", sm: "70vh", md: "90vh" },
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "flex-end",
+        }}
+      >
+        {currentMovie?.bannerUrl && (
+          <Image
+            key={currentMovie.id}
+            src={currentMovie.bannerUrl}
+            alt={currentMovie.title}
+            fill
+            priority
+            sizes="100vw"
+            style={{
+              objectFit: "cover",
+              opacity: imageLoaded ? 1 : 0,
+              transition: "opacity 0.4s ease",
+            }}
+            onLoad={() => setImageLoaded(true)}
+          />
+        )}
+
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "42%",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.92))",
+            zIndex: 1,
+          }}
+        />
+
+        <GradientOverlay intensity="strong" sx={{ zIndex: 1 }} />
+
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 2,
+            pt: { xs: 10, sm: 11, md: 12 },
+            pb: { xs: 3, md: 5 },
+            px: { xs: 2, md: 4 },
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            width: "100%",
+            height: "100%",
+            maxWidth: { xs: "100%", md: "60%" },
+          }}
+        >
+          <Typography
+            variant="h1"
+            sx={{
+              mb: 0.75,
+              fontSize: { xs: "28px", sm: "36px", md: "48px" },
+              maxWidth: "600px",
+              fontWeight: 700,
+            }}
+          >
+            {currentMovie?.title}
+          </Typography>
+
+          {currentMovie?.description && (
+            <Typography
+              variant="body2"
+              sx={{
+                maxWidth: "500px",
+                mb: 2,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                lineHeight: 1.5,
+                fontSize: { xs: "12px", md: "14px" },
+              }}
+            >
+              {currentMovie.description}
+            </Typography>
+          )}
+
+          <Stack direction="row" spacing={1.5} sx={{ mb: 1.5, flexWrap: "wrap" }}>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<PlayArrowIcon />}
+              onClick={() => router.push(`/movies/${currentMovie?.slug}`)}
+              sx={{ px: 2.5, py: 1 }}
+            >
+              Xem Ngay
+            </Button>
+
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddIcon />}
+              sx={{
+                px: 2.5,
+                py: 1,
+                borderColor: "rgba(255,255,255,0.5)",
+                color: "white",
+              }}
+            >
+              Thêm Danh Sách
+            </Button>
+          </Stack>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: { xs: "14px", md: "20px" },
+          right: { xs: 14, md: 22 },
+          zIndex: 10,
+          display: "flex",
+          gap: 1.2,
+        }}
+      >
+        {movies.slice(0, 6).map((movie, index) => (
+          <Box
+            key={movie.id}
+            onClick={() => handleCardClick(index)}
+            sx={{
+              cursor: "pointer",
+              width: { xs: 100, sm: 120, md: 140 },
+              height: { xs: 56, sm: 68, md: 80 },
+              borderRadius: 1,
+              overflow: "hidden",
+              border:
+                currentIndex === index ? "2px solid white" : "1px solid rgba(255,255,255,0.3)",
+              transition: "all 0.25s ease",
+              position: "relative",
+              flexShrink: 0,
+              "&:hover": {
+                borderColor: "white",
+                transform: "scale(1.05)",
+              },
+            }}
+          >
+            {movie.bannerUrl && (
+              <Image src={movie.bannerUrl} alt={movie.title} fill style={{ objectFit: "cover" }} />
+            )}
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}

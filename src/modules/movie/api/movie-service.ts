@@ -1,5 +1,5 @@
 import apiClient from "@/services/api-client";
-import { Movie, MovieDetail, CreateMovieRequest, UpdateMovieRequest } from "@/modules/movie/types/movie";
+import { Movie, MovieDetail, CreateMovieRequest } from "@/modules/movie/types/movie";
 import { ApiResponse, PaginatedResponse, PaginationParams } from "@/types/api";
 
 class MovieService {

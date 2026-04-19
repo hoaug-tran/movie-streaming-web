@@ -1,5 +1,5 @@
 import apiClient from "@/services/api-client";
-import { Watchlist, AddToWatchlistRequest } from "@/modules/watchlist/types/watchlist";
+import { Watchlist } from "@/modules/watchlist/types/watchlist";
 import { ApiResponse, PaginatedResponse, PaginationParams } from "@/types/api";
 
 class WatchlistService {

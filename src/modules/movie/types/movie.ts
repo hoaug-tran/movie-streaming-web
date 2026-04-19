@@ -1,99 +1,69 @@
-/* Movie Domain Types */
-export interface Movie {
-  id: string;
+export interface MovieSummary {
+  id: number;
   title: string;
   originalTitle?: string;
-  description: string;
-  posterUrl?: string;
-  backdropUrl?: string;
-  releaseDate: string;
-  duration?: number;
-  rating?: number;
-  categories: Category[];
-  tags: Tag[];
-  studios: Studio[];
-  persons: Person[];
-  isFavorite?: boolean;
-  createdAt: string;
+  slug: string;
+  description?: string;
+  posterUrl?: string | null;
+  bannerUrl?: string | null;
+  trailerUrl?: string | null;
+  releaseYear?: number;
+  country?: string;
+  language?: string;
+  ageRating?: string;
+  movieType?: string;
+  movieStatus?: string;
+  isPremiumOnly?: boolean;
+  viewCount?: number;
+  favoriteCount?: number;
+  averageRating?: number;
+  totalRatings?: number;
+  totalReviews?: number;
+  createdAt?: string;
   updatedAt?: string;
+  publishedAt?: string;
 }
 
-export interface MovieDetail extends Movie {
+export interface MovieDetail extends MovieSummary {
   episodes: Episode[];
-  reviews: Review[];
-  averageRating: number;
-  totalReviews: number;
+  categories: CategoryItem[];
+  tags: TagItem[];
+  persons: PersonItem[];
+  studios: StudioItem[];
 }
 
 export interface Episode {
-  id: string;
-  name: string;
-  episodeNumber: number;
-  seasonNumber: number;
-  description?: string;
-  duration?: number;
+  id: number;
+  title?: string;
+  episodeNumber?: number;
   videoUrl?: string;
   thumbnailUrl?: string;
-  releaseDate: string;
-  createdAt: string;
+  durationSeconds?: number;
+  isFreePreview?: boolean;
+  status?: string;
 }
 
-export interface Category {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-export interface Tag {
-  id: string;
+export interface CategoryItem {
+  id: number;
   name: string;
 }
 
-export interface Studio {
-  id: string;
+export interface TagItem {
+  id: number;
   name: string;
-  description?: string;
-  logoUrl?: string;
 }
 
-export interface Person {
-  id: string;
+export interface PersonItem {
+  id: number;
   name: string;
-  role: "ACTOR" | "DIRECTOR" | "PRODUCER" | "WRITER";
+  role?: string;
   profileImageUrl?: string;
 }
 
-export interface Review {
-  id: string;
-  userId: string;
-  movieId: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
-  updatedAt?: string;
-  user?: {
-    id: string;
-    fullName: string;
-    avatar?: string;
-  };
-}
-
-export interface CreateMovieRequest {
-  title: string;
-  originalTitle?: string;
-  description: string;
-  posterUrl?: string;
-  backdropUrl?: string;
-  releaseDate: string;
-  duration?: number;
-  categoryIds: string[];
-  tagIds: string[];
-  studioIds: string[];
-  personIds: string[];
-}
-
-export interface UpdateMovieRequest extends Partial<CreateMovieRequest> {
-  id: string;
+export interface StudioItem {
+  id: number;
+  name: string;
+  logoUrl?: string;
 }
 
 export interface MovieFilter {
@@ -105,4 +75,24 @@ export interface MovieFilter {
   maxRating?: number;
   releaseYearFrom?: number;
   releaseYearTo?: number;
+}
+
+export type Movie = MovieSummary;
+
+export interface CreateMovieRequest {
+  title: string;
+  originalTitle?: string;
+  description: string;
+  posterUrl?: string;
+  bannerUrl?: string;
+  releaseDate?: string;
+  duration?: number;
+  categoryIds: number[];
+  tagIds: number[];
+  studioIds: number[];
+  personIds: number[];
+}
+
+export interface UpdateMovieRequest extends Partial<CreateMovieRequest> {
+  id: string;
 }

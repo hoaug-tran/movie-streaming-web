@@ -1,37 +1,11 @@
 import { useCallback, useState } from "react";
-import { useQuery, useMutation, UseQueryOptions, UseMutationOptions } from "react-query";
 
-/* Typed useQuery wrapper */
-export const useGetData = <T,>(
-  key: string | string[] | number[],
-  fetchFn: () => Promise<T>,
-  options?: UseQueryOptions<T>
-) => {
-  return useQuery(key, fetchFn, {
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    ...options,
-  });
-};
-
-/* Typed useMutation wrapper */
-export const usePostData = <TData, TVariables = void>(
-  mutationFn: (variables: TVariables) => Promise<TData>,
-  options?: UseMutationOptions<TData, Error, TVariables>
-) => {
-  return useMutation(mutationFn, options);
-};
-
-/* useAsync hook */
-export const useAsync = <T, E = string>(
-  asyncFunction: () => Promise<T>,
-  immediate = true
-) => {
+export const useAsync = <T, E = string>(asyncFunction: () => Promise<T>) => {
   const [status, setStatus] = useState<"idle" | "pending" | "success" | "error">("idle");
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<E | null>(null);
 
-  const execute = useCallback(async () => {
+  const execute = useCallback(async (): Promise<T | undefined> => {
     setStatus("pending");
     setData(null);
     setError(null);
@@ -40,9 +14,10 @@ export const useAsync = <T, E = string>(
       setData(response);
       setStatus("success");
       return response;
-    } catch (error) {
-      setError(error as E);
+    } catch (err) {
+      setError(err as E);
       setStatus("error");
+      return undefined;
     }
   }, [asyncFunction]);
 
@@ -50,7 +25,7 @@ export const useAsync = <T, E = string>(
 };
 
 /* useLocalStorage hook */
-export const useLocalStorage = <T,>(key: string, initialValue: T) => {
+export const useLocalStorage = <T>(key: string, initialValue: T) => {
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === "undefined") {
       return initialValue;
@@ -80,7 +55,7 @@ export const useLocalStorage = <T,>(key: string, initialValue: T) => {
 };
 
 /* useDebounce hook */
-export const useDebounce = <T,>(value: T, delay: number): T => {
+export const useDebounce = <T>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   React.useEffect(() => {
@@ -95,7 +70,7 @@ export const useDebounce = <T,>(value: T, delay: number): T => {
 };
 
 /* usePrevious hook */
-export const usePrevious = <T,>(value: T): T | undefined => {
+export const usePrevious = <T>(value: T): T | undefined => {
   const ref = React.useRef<T>();
 
   React.useEffect(() => {
