@@ -1,11 +1,7 @@
 "use client";
 
-import { Box, Container, Grid, Typography, Link, Stack, Divider, IconButton } from "@mui/material";
+import { Box, Container, Grid, Typography, Link, Stack, Divider } from "@mui/material";
 import NextLink from "next/link";
-import FacebookIcon from "@mui/icons-material/Facebook";
-import TwitterIcon from "@mui/icons-material/Twitter";
-import InstagramIcon from "@mui/icons-material/Instagram";
-import YouTubeIcon from "@mui/icons-material/YouTube";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -42,9 +38,10 @@ export function Footer() {
   return (
     <Box
       sx={{
-        backgroundColor: "#222222",
-        borderTop: "1px solid #333333",
-        color: "#E0E0E0",
+        backgroundColor: "background.paper",
+        borderTop: "1px solid",
+        borderColor: "divider",
+        color: "text.primary",
         py: { xs: 4, md: 6 },
         mt: { xs: 4, md: 8 },
       }}
@@ -58,7 +55,7 @@ export function Footer() {
                 sx={{
                   display: "block",
                   mb: 2,
-                  color: "#FFFFFF",
+                  color: "text.primary",
                 }}
               >
                 {section.title}
@@ -70,7 +67,7 @@ export function Footer() {
                     component={NextLink}
                     href={link.href}
                     sx={{
-                      color: "#B0B0B0",
+                      color: "text.secondary",
                       textDecoration: "none",
                       fontSize: "14px",
                       transition: "color 0.3s ease",
@@ -92,65 +89,61 @@ export function Footer() {
               sx={{
                 display: "block",
                 mb: 2,
-                color: "#FFFFFF",
+                color: "text.primary",
               }}
             >
               Theo dõi chúng tôi
             </Typography>
-            <Stack direction="row" spacing={1}>
-              <IconButton
-                size="small"
+            <Stack direction="row" spacing={2}>
+              <Link
                 href="#"
                 sx={{
-                  color: "#B0B0B0",
-                  "&:hover": {
-                    color: "primary.main",
-                  },
+                  color: "text.secondary",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  "&:hover": { color: "primary.main" },
                 }}
               >
-                <FacebookIcon />
-              </IconButton>
-              <IconButton
-                size="small"
+                FB
+              </Link>
+              <Link
                 href="#"
                 sx={{
-                  color: "#B0B0B0",
-                  "&:hover": {
-                    color: "primary.main",
-                  },
+                  color: "text.secondary",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  "&:hover": { color: "primary.main" },
                 }}
               >
-                <TwitterIcon />
-              </IconButton>
-              <IconButton
-                size="small"
+                TW
+              </Link>
+              <Link
                 href="#"
                 sx={{
-                  color: "#B0B0B0",
-                  "&:hover": {
-                    color: "primary.main",
-                  },
+                  color: "text.secondary",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  "&:hover": { color: "primary.main" },
                 }}
               >
-                <InstagramIcon />
-              </IconButton>
-              <IconButton
-                size="small"
+                IG
+              </Link>
+              <Link
                 href="#"
                 sx={{
-                  color: "#B0B0B0",
-                  "&:hover": {
-                    color: "primary.main",
-                  },
+                  color: "text.secondary",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  "&:hover": { color: "primary.main" },
                 }}
               >
-                <YouTubeIcon />
-              </IconButton>
+                YT
+              </Link>
             </Stack>
           </Grid>
         </Grid>
 
-        <Divider sx={{ my: 3, borderColor: "#333333" }} />
+        <Divider sx={{ my: 3, borderColor: "divider" }} />
 
         <Box
           sx={{
@@ -162,10 +155,10 @@ export function Footer() {
             textAlign: { xs: "center", sm: "left" },
           }}
         >
-          <Typography variant="caption" sx={{ color: "#707070" }}>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             © {currentYear} Gió phim. All rights reserved.
           </Typography>
-          <Typography variant="caption" sx={{ color: "#707070" }}>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Xem phim trực tuyến chất lượng cao mọi lúc, mọi nơi trên Gió Phim
           </Typography>
         </Box>

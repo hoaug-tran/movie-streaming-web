@@ -11,7 +11,7 @@ export function RecommendedSection() {
   const { data: movies = [], isLoading, isError } = useRecommendedMovies();
   const router = useRouter();
 
-  if (!isLoading && !isError && movies.length === 0) {
+  if (isError || (!isLoading && movies.length === 0)) {
     return null;
   }
 
@@ -30,10 +30,12 @@ export function RecommendedSection() {
                 <MovieCardSkeleton />
               </Box>
             ))
-          : movies.length > 0
-            ? movies.map((movie) => (
+          : movies.map((item: any) => {
+              if (!item.movie) return null;
+              const movie = item.movie;
+              return (
                 <Box
-                  key={movie.id}
+                  key={item.id || movie.id}
                   onClick={() => router.push(`/movies/${movie.slug}`)}
                   sx={{
                     minWidth: 160,
@@ -49,8 +51,8 @@ export function RecommendedSection() {
                     variant="default"
                   />
                 </Box>
-              ))
-            : null}
+              );
+            })}
       </HorizontalScrollGrid>
     </Box>
   );

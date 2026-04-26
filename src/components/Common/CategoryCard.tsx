@@ -5,21 +5,14 @@ interface CategoryCardProps {
 }
 
 export function CategoryCard({ name }: CategoryCardProps) {
-  const stringToColor = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const color = `hsl(${Math.abs(hash) % 360}, 70%, 20%)`;
-    return color;
-  };
-
   return (
     <Box
       sx={{
         height: 120,
-        backgroundColor: stringToColor(name),
-        borderRadius: 2,
+        backgroundColor: "background.paper",
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -39,7 +32,7 @@ export function CategoryCard({ name }: CategoryCardProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          backgroundColor: "action.hover",
           opacity: 0,
           transition: "opacity 0.2s ease",
         },
@@ -48,10 +41,9 @@ export function CategoryCard({ name }: CategoryCardProps) {
       <Typography
         variant="h6"
         sx={{
-          color: "white",
+          color: "text.primary",
           fontWeight: 600,
           textAlign: "center",
-          textShadow: "0 2px 4px rgba(0,0,0,0.5)",
           zIndex: 1,
           px: 2,
         }}

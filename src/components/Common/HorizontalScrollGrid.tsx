@@ -1,6 +1,4 @@
-import { Box, BoxProps, IconButton } from "@mui/material";
-import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import { Box, BoxProps, Button } from "@mui/material";
 import { ReactNode, useRef, useState, useEffect } from "react";
 
 interface HorizontalScrollGridProps extends BoxProps {
@@ -72,57 +70,57 @@ export function HorizontalScrollGrid({
       </Box>
 
       {canScrollLeft && (
-        <IconButton
+        <Button
           onClick={() => handleScroll("left")}
           sx={{
             position: "absolute",
-            left: 8,
+            left: 0,
             top: "50%",
             transform: "translateY(-50%)",
-            width: 40,
-            height: 40,
-            backgroundColor: "rgba(0, 0, 0, 0.72)",
-            color: "white",
-            borderRadius: "50%",
+            minWidth: 40,
+            height: 48,
+            backgroundColor: "background.paper",
+            color: "text.primary",
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 0,
             zIndex: 10,
-            backdropFilter: "blur(6px)",
+            fontWeight: 600,
+            fontSize: "1.2rem",
             "&:hover": {
-              backgroundColor: "rgba(0, 0, 0, 0.88)",
-            },
-            "& .MuiSvgIcon-root": {
-              fontSize: 18,
+              backgroundColor: "action.hover",
             },
           }}
         >
-          <ArrowBackIosNewIcon />
-        </IconButton>
+          {"<"}
+        </Button>
       )}
 
       {canScrollRight && (
-        <IconButton
+        <Button
           onClick={() => handleScroll("right")}
           sx={{
             position: "absolute",
-            right: 8,
+            right: 0,
             top: "50%",
             transform: "translateY(-50%)",
-            width: 40,
-            height: 40,
-            backgroundColor: "rgba(0, 0, 0, 0.72)",
-            color: "white",
-            borderRadius: "50%",
+            minWidth: 40,
+            height: 48,
+            backgroundColor: "background.paper",
+            color: "text.primary",
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 0,
             zIndex: 10,
-            backdropFilter: "blur(6px)",
+            fontWeight: 600,
+            fontSize: "1.2rem",
             "&:hover": {
-              backgroundColor: "rgba(0, 0, 0, 0.88)",
-            },
-            "& .MuiSvgIcon-root": {
-              fontSize: 18,
+              backgroundColor: "action.hover",
             },
           }}
         >
-          <ArrowForwardIosIcon />
-        </IconButton>
+          {">"}
+        </Button>
       )}
     </Box>
   );

@@ -24,7 +24,14 @@ export function SectionHeader({ title, subtitle, actionLink, sx, ...props }: Sec
       {...props}
     >
       <Box>
-        <Typography variant="h2" sx={{ mb: 0 }}>
+        <Typography
+          variant="h2"
+          sx={{
+            mb: 0,
+            fontSize: { xs: "18px", sm: "20px", md: "24px" },
+            fontWeight: 700,
+          }}
+        >
           {title}
         </Typography>
       </Box>

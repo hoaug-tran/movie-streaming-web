@@ -1,7 +1,6 @@
-import { Card, Box, Typography, IconButton, Skeleton } from "@mui/material";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import AddIcon from "@mui/icons-material/Add";
+import { Card, Box, Typography, Button, Skeleton } from "@mui/material";
 import Image from "next/image";
+import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import { useState } from "react";
 
 interface MovieCardProps {
@@ -17,7 +16,6 @@ interface MovieCardProps {
   progress?: number;
   showProgress?: boolean;
 }
-
 
 export function MovieCard({
   id,
@@ -35,6 +33,148 @@ export function MovieCard({
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  if (variant === "ranked") {
+    return (
+      <Box
+        sx={{
+          position: "relative",
+          width: "100%",
+          height: 220,
+          display: "flex",
+          cursor: "pointer",
+          "&:hover .poster-card": {
+            transform: "scale(1.05)",
+            boxShadow: "-12px 10px 25px rgba(0,0,0,0.8)",
+          },
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {ranking && (
+          <Typography
+            sx={{
+              position: "absolute",
+              left: 4,
+              top: 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: "center",
+              fontSize: "200px",
+              fontWeight: 900,
+              lineHeight: 1,
+              color: "background.default",
+              WebkitTextStroke: "4px #555555",
+              fontFamily: "Impact, 'Arial Black', sans-serif",
+              letterSpacing: "-0.08em",
+              zIndex: 1,
+              pointerEvents: "none",
+              userSelect: "none",
+            }}
+          >
+            {ranking}
+          </Typography>
+        )}
+
+        <Card
+          className="poster-card"
+          sx={{
+            position: "absolute",
+            right: 0,
+            bottom: 0,
+            width: "55%",
+            height: "100%",
+            borderRadius: 1,
+            overflow: "hidden",
+            zIndex: 2,
+            transition: "all 0.3s ease",
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: "-8px 0px 20px rgba(0,0,0,0.6)",
+          }}
+        >
+          {!posterUrl || imageError ? (
+            <Skeleton variant="rectangular" width="100%" height="100%" />
+          ) : (
+            <Image
+              src={posterUrl}
+              alt={title}
+              fill
+              sizes="(max-width: 600px) 50vw, (max-width: 960px) 33vw, 25vw"
+              style={{ objectFit: "cover" }}
+              onError={() => setImageError(true)}
+              priority={false}
+            />
+          )}
+
+          {isHovered && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.4)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+                animation: "fadeIn 0.2s ease",
+              }}
+            >
+              <Button
+                size="small"
+                sx={{
+                  backgroundColor: "primary.main",
+                  color: "#ffffff",
+                  minWidth: 40,
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  padding: 0,
+                  "&:hover": { backgroundColor: "primary.dark", transform: "scale(1.1)" },
+                  transition: "all 0.2s",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPlay?.(id);
+                }}
+              >
+                ▶
+              </Button>
+            </Box>
+          )}
+
+          {rating && (
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 8,
+                right: 8,
+                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                color: "#FFD700",
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                fontSize: "12px",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                backdropFilter: "blur(4px)",
+                zIndex: 2,
+              }}
+            >
+              ★ {rating.toFixed(1)}
+            </Box>
+          )}
+        </Card>
+      </Box>
+    );
+  }
+
   return (
     <Card
       sx={{
@@ -42,10 +182,11 @@ export function MovieCard({
         width: "100%",
         aspectRatio: "16 / 9",
         overflow: "hidden",
-        borderRadius: 1,
+        borderRadius: 0,
         cursor: "pointer",
         transition: "all 0.3s ease",
-        border: "1px solid #222222",
+        border: "1px solid",
+        borderColor: "divider",
         "&:hover": {
           transform: "scale(1.05)",
           boxShadow: 6,
@@ -93,56 +234,44 @@ export function MovieCard({
             animation: "fadeIn 0.2s ease",
           }}
         >
-          <IconButton
-            size="large"
+          <Button
+            size="small"
             sx={{
-              backgroundColor: "primary.main",
-              color: "white",
-              "&:hover": { backgroundColor: "primary.dark" },
+              backgroundColor: "text.primary",
+              color: "background.paper",
+              borderRadius: 0,
+              px: 2,
+              fontWeight: 600,
+              letterSpacing: "0.05em",
+              "&:hover": { backgroundColor: "text.secondary" },
             }}
             onClick={(e) => {
               e.stopPropagation();
               onPlay?.(id);
             }}
           >
-            <PlayArrowIcon />
-          </IconButton>
-          <IconButton
-            size="large"
+            PHÁT
+          </Button>
+          <Button
+            size="small"
             sx={{
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-              color: "white",
-              "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.3)" },
+              backgroundColor: "transparent",
+              border: "1px solid",
+              borderColor: "text.primary",
+              color: "text.primary",
+              borderRadius: 0,
+              px: 2,
+              fontWeight: 600,
+              letterSpacing: "0.05em",
+              "&:hover": { backgroundColor: "action.hover" },
             }}
             onClick={(e) => {
               e.stopPropagation();
               onAddToList?.(id);
             }}
           >
-            <AddIcon />
-          </IconButton>
-        </Box>
-      )}
-
-      {ranking && variant === "ranked" && (
-        <Box
-          sx={{
-            position: "absolute",
-            top: 8,
-            left: 8,
-            backgroundColor: "primary.main",
-            color: "white",
-            width: 40,
-            height: 40,
-            borderRadius: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 700,
-            fontSize: "18px",
-          }}
-        >
-          {ranking}
+            + DANH SÁCH
+          </Button>
         </Box>
       )}
 
@@ -152,13 +281,16 @@ export function MovieCard({
             position: "absolute",
             top: 8,
             right: 8,
-            backgroundColor: "info.main",
-            color: "white",
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            color: "#ffffff",
+            border: "1px solid",
+            borderColor: "rgba(255,255,255,0.2)",
             px: 1,
             py: 0.5,
-            borderRadius: 0.5,
-            fontSize: "12px",
+            borderRadius: 1,
+            fontSize: "11px",
             fontWeight: 600,
+            letterSpacing: "0.05em",
           }}
         >
           {new Date(releaseDate).getFullYear()}
@@ -169,18 +301,27 @@ export function MovieCard({
         <Box
           sx={{
             position: "absolute",
-            bottom: 48,
-            left: 8,
-            backgroundColor: "secondary.main",
-            color: "white",
+            bottom: showProgress ? 16 : 8,
+            right: 8,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            color: "#FFD700",
+            border: "1px solid",
+            borderColor: "rgba(255, 215, 0, 0.3)",
             px: 1,
             py: 0.5,
-            borderRadius: 0.5,
-            fontSize: "12px",
-            fontWeight: 600,
+            borderRadius: 1,
+            fontSize: "13px",
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(4px)",
+            zIndex: 2,
           }}
         >
-          ★ {rating.toFixed(1)}
+          <StarRoundedIcon sx={{ fontSize: 16 }} />
+          {rating.toFixed(1)}
         </Box>
       )}
 
@@ -190,8 +331,10 @@ export function MovieCard({
           bottom: 0,
           left: 0,
           right: 0,
-          background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
-          p: 1,
+          background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%)",
+          p: 1.5,
+          pt: 4,
+          pointerEvents: "none",
         }}
       >
         <Typography
@@ -200,6 +343,7 @@ export function MovieCard({
             fontSize: "14px",
             fontWeight: 600,
             lineHeight: 1.3,
+            color: "#ffffff",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -247,8 +391,8 @@ export function MovieCardSkeleton() {
     <Card
       sx={{
         width: "100%",
-        aspectRatio: "2 / 3",
-        borderRadius: 1,
+        aspectRatio: "16 / 9",
+        borderRadius: 0,
       }}
     >
       <Skeleton variant="rectangular" width="100%" height="100%" />

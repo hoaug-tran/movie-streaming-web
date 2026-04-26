@@ -11,17 +11,17 @@ export function ContinueWatchingSection() {
   const router = useRouter();
   const { data: movies = [], isLoading, isError } = useContinueWatchingMovies(true);
 
-  if (isError) {
+  if (isError || (!isLoading && movies.length === 0)) {
     return null;
   }
 
-  if (!isLoading && movies.length === 0) {
+  if (isError) {
     return null;
   }
 
   return (
     <Box sx={{ width: "100%", py: { xs: 0.75, md: 1 }, px: { xs: 2, md: 4 }, mt: 2 }}>
-      <SectionHeader title="Continue Watching" />
+      <SectionHeader title="Tiếp tục xem" />
 
       <HorizontalScrollGrid itemWidth={280}>
         {isLoading || isError
@@ -30,26 +30,35 @@ export function ContinueWatchingSection() {
                 <MovieCardSkeleton />
               </Box>
             ))
-          : movies.map((movie: any) => (
-              <Box
-                key={movie.id}
-                sx={{
-                  minWidth: 280,
-                  cursor: "pointer",
-                  scrollSnapAlign: "start",
-                }}
-                onClick={() => router.push(`/movies/${movie.slug}`)}
-              >
-                <MovieCard
-                  id={movie.id}
-                  title={movie.title}
-                  posterUrl={movie.poster_url}
-                  variant="default"
-                  showProgress
-                  progress={Math.random() * 100}
-                />
-              </Box>
-            ))}
+          : movies.map((item: any) => {
+              if (!item.movie) return null;
+              const movie = item.movie;
+              const progress =
+                item.watchedDurationSeconds && item.watchedDurationSeconds > 0
+                  ? (item.stoppedAtSecond / item.watchedDurationSeconds) * 100
+                  : 0;
+
+              return (
+                <Box
+                  key={item.movieId || movie.id}
+                  sx={{
+                    minWidth: 280,
+                    cursor: "pointer",
+                    scrollSnapAlign: "start",
+                  }}
+                  onClick={() => router.push(`/movies/${movie.slug}`)}
+                >
+                  <MovieCard
+                    id={movie.id}
+                    title={movie.title}
+                    posterUrl={movie.posterUrl || movie.poster_url}
+                    variant="default"
+                    showProgress
+                    progress={progress}
+                  />
+                </Box>
+              );
+            })}
       </HorizontalScrollGrid>
     </Box>
   );
