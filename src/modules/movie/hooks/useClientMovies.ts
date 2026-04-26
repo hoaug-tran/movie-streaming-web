@@ -47,7 +47,10 @@ async function fetchMovies(url: string): Promise<Movie[]> {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, {
+    headers,
+    credentials: "include",
+  });
   if (res.status === 401 || res.status === 403) return [];
   if (!res.ok) throw new Error(`API error ${res.status}: ${url}`);
   const data = await res.json();
@@ -86,6 +89,7 @@ async function searchMovies(params: SearchMovieParams): Promise<Movie[]> {
     method: "POST",
     headers,
     body: JSON.stringify(params),
+    credentials: "include",
   });
   if (res.status === 401 || res.status === 403) return [];
   if (!res.ok) throw new Error(`API error ${res.status}: /movies/search`);
@@ -117,7 +121,11 @@ export function useFeaturedMovie() {
   return useQuery({
     queryKey: ["movies", "featured"],
     queryFn: async () => {
-      const movies = await searchMovies({ sortBy: "averageRating", sortDirection: "DESC", size: 1 });
+      const movies = await searchMovies({
+        sortBy: "averageRating",
+        sortDirection: "DESC",
+        size: 1,
+      });
       return movies.length > 0 ? movies[0] : null;
     },
     staleTime: 10 * 60 * 1000,
@@ -177,4 +185,3 @@ export function useCarouselMovies() {
     retry: 2,
   });
 }
-

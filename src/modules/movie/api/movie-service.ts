@@ -1,15 +1,13 @@
 import apiClient from "@/services/api-client";
 import { Movie, MovieDetail, CreateMovieRequest } from "@/modules/movie/types/movie";
-import { ApiResponse, PaginatedResponse, PaginationParams } from "@/types/api";
+import { PaginatedResponse, PaginationParams } from "@/types/api";
 
 class MovieService {
   async getMovies(params?: PaginationParams): Promise<PaginatedResponse<Movie>> {
     try {
-      const response = await apiClient.get<ApiResponse<PaginatedResponse<Movie>>>(
-        "/movies",
-        { params }
-      );
-      return response.data.data!;
+      return await apiClient.get<PaginatedResponse<Movie>>("/movies", {
+        params,
+      });
     } catch (error) {
       throw this.handleError(error);
     }
@@ -17,8 +15,7 @@ class MovieService {
 
   async getMovieById(id: string): Promise<MovieDetail> {
     try {
-      const response = await apiClient.get<ApiResponse<MovieDetail>>(`/movies/${id}`);
-      return response.data.data!;
+      return await apiClient.get<MovieDetail>(`/movies/${id}`);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -26,10 +23,9 @@ class MovieService {
 
   async searchMovies(query: string, params?: PaginationParams): Promise<PaginatedResponse<Movie>> {
     try {
-      const response = await apiClient.get<ApiResponse<PaginatedResponse<Movie>>>("/movies/search", {
+      return await apiClient.get<PaginatedResponse<Movie>>("/movies/search", {
         params: { query, ...params },
       });
-      return response.data.data!;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -37,8 +33,7 @@ class MovieService {
 
   async createMovie(data: CreateMovieRequest): Promise<Movie> {
     try {
-      const response = await apiClient.post<ApiResponse<Movie>>("/admin/movies", data);
-      return response.data.data!;
+      return await apiClient.post<Movie>("/admin/movies", data);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -46,8 +41,7 @@ class MovieService {
 
   async updateMovie(id: string, data: Partial<CreateMovieRequest>): Promise<Movie> {
     try {
-      const response = await apiClient.put<ApiResponse<Movie>>(`/admin/movies/${id}`, data);
-      return response.data.data!;
+      return await apiClient.put<Movie>(`/admin/movies/${id}`, data);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -61,14 +55,89 @@ class MovieService {
     }
   }
 
+  // Discovery Methods
+  async getTrendingMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/trending", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getWeeklyNewMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/weekly-new", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getUpcomingMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/upcoming", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getTopRatedMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/top-rated", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getTopSeries(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/top-series", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMoviesByRegion(country: string, page: number = 0, size: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/region", {
+        params: { country, page, size },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMostActiveMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/most-active", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   private handleError(error: any): Error {
-    if (error.response?.data?.message) {
-      return new Error(error.response.data.message);
+    if (error.data?.message) {
+      return new Error(error.data.message);
     }
-    if (error.message) {
-      return new Error(error.message);
-    }
-    return new Error("An error occurred");
+    return new Error(error.message || "An error occurred");
   }
 }
 

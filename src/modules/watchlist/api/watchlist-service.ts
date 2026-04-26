@@ -1,15 +1,11 @@
 import apiClient from "@/services/api-client";
 import { Watchlist } from "@/modules/watchlist/types/watchlist";
-import { ApiResponse, PaginatedResponse, PaginationParams } from "@/types/api";
+import { PaginatedResponse, PaginationParams } from "@/types/api";
 
 class WatchlistService {
   async getWatchlist(params?: PaginationParams): Promise<PaginatedResponse<Watchlist>> {
     try {
-      const response = await apiClient.get<ApiResponse<PaginatedResponse<Watchlist>>>(
-        "/watchlist",
-        { params }
-      );
-      return response.data.data!;
+      return await apiClient.get<PaginatedResponse<Watchlist>>("/watchlist", { params });
     } catch (error) {
       throw this.handleError(error);
     }
@@ -17,8 +13,7 @@ class WatchlistService {
 
   async addToWatchlist(movieId: string): Promise<Watchlist> {
     try {
-      const response = await apiClient.post<ApiResponse<Watchlist>>("/watchlist", { movieId });
-      return response.data.data!;
+      return await apiClient.post<Watchlist>("/watchlist", { movieId });
     } catch (error) {
       throw this.handleError(error);
     }
@@ -33,13 +28,10 @@ class WatchlistService {
   }
 
   private handleError(error: any): Error {
-    if (error.response?.data?.message) {
-      return new Error(error.response.data.message);
+    if (error.data?.message) {
+      return new Error(error.data.message);
     }
-    if (error.message) {
-      return new Error(error.message);
-    }
-    return new Error("An error occurred");
+    return new Error(error.message || "An error occurred");
   }
 }
 
