@@ -1,95 +1,116 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from "axios";
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
 
-interface ApiClientConfig extends AxiosRequestConfig {
+interface ApiClientConfig extends RequestInit {
+  params?: Record<string, any>;
   skipAuth?: boolean;
 }
 
 class ApiClient {
-  private instance: AxiosInstance;
+  private async request<T>(url: string, config: ApiClientConfig = {}): Promise<T> {
+    const { params, ...init } = config;
+    let fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+    if (params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        fullUrl += `${fullUrl.includes("?") ? "&" : "?"}${queryString}`;
+      }
+    }
 
-  constructor() {
-    this.instance = axios.create({
-      baseURL: API_BASE_URL,
-      timeout: 30000,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
+    // Default headers
+    const headers = new Headers(init.headers);
+    if (!headers.has("Content-Type") && !(init.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
+    }
+    headers.set("Accept", "application/json");
+
+    // Fallback Authorization header from localStorage
+    if (typeof window !== "undefined" && !headers.has("Authorization")) {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+    }
+
+    const response = await fetch(fullUrl, {
+      ...init,
+      headers,
+      credentials: "include",
     });
 
-    // Request interceptor
-    this.instance.interceptors.request.use(
-      (config) => {
-        const token = this.getAuthToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+    if (!response.ok) {
+      if (response.status === 401) {
+        this.clearAuth();
+        if (typeof window !== "undefined") {
+          window.location.href = "/auth/login";
         }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    // Response interceptor
-    this.instance.interceptors.response.use(
-      (response) => response,
-      async (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          // Handle unauthorized
-          this.clearAuthToken();
-          // Redirect to login if needed
-          if (typeof window !== "undefined") {
-            window.location.href = "/auth/login";
-          }
-        }
-        return Promise.reject(error);
       }
-    );
+
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        errorData = { message: response.statusText };
+      }
+
+      const error = new Error(errorData.message || "An error occurred");
+      (error as any).status = response.status;
+      (error as any).data = errorData;
+      throw error;
+    }
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    return response.json();
   }
 
-  private getAuthToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("accessToken");
-  }
-
-  private clearAuthToken(): void {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-  }
-
-  public get<T>(url: string, config?: ApiClientConfig) {
-    return this.instance.get<T>(url, config);
-  }
-
-  public post<T>(url: string, data?: any, config?: ApiClientConfig) {
-    return this.instance.post<T>(url, data, config);
-  }
-
-  public put<T>(url: string, data?: any, config?: ApiClientConfig) {
-    return this.instance.put<T>(url, data, config);
-  }
-
-  public patch<T>(url: string, data?: any, config?: ApiClientConfig) {
-    return this.instance.patch<T>(url, data, config);
-  }
-
-  public delete<T>(url: string, config?: ApiClientConfig) {
-    return this.instance.delete<T>(url, config);
-  }
-
-  public setAuthToken(token: string): void {
+  private clearAuth(): void {
     if (typeof window !== "undefined") {
-      localStorage.setItem("accessToken", token);
-      this.instance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
     }
   }
 
-  public getClient(): AxiosInstance {
-    return this.instance;
+  public get<T>(url: string, config?: ApiClientConfig) {
+    return this.request<T>(url, { ...config, method: "GET" });
+  }
+
+  public post<T>(url: string, data?: any, config?: ApiClientConfig) {
+    return this.request<T>(url, {
+      ...config,
+      method: "POST",
+      body: data instanceof FormData ? data : JSON.stringify(data),
+    });
+  }
+
+  public put<T>(url: string, data?: any, config?: ApiClientConfig) {
+    return this.request<T>(url, {
+      ...config,
+      method: "PUT",
+      body: data instanceof FormData ? data : JSON.stringify(data),
+    });
+  }
+
+  public patch<T>(url: string, data?: any, config?: ApiClientConfig) {
+    return this.request<T>(url, {
+      ...config,
+      method: "PATCH",
+      body: data instanceof FormData ? data : JSON.stringify(data),
+    });
+  }
+
+  public delete<T>(url: string, config?: ApiClientConfig) {
+    return this.request<T>(url, { ...config, method: "DELETE" });
   }
 }
 
-export default new ApiClient();
+const apiClient = new ApiClient();
+export default apiClient;

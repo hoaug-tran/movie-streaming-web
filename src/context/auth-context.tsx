@@ -1,16 +1,17 @@
 "use client";
 
-import React, { createContext, ReactNode, useReducer, useCallback } from "react";
+import React, { createContext, ReactNode, useCallback, useEffect, useReducer } from "react";
 import { AuthState, UserInfo, LoginResponse } from "@/modules/auth/types/auth";
 import authService from "@/modules/auth/api/auth-service";
-import { setInLocalStorage, removeFromLocalStorage, getFromLocalStorage } from "@/utils/helpers";
+import { getFromLocalStorage, removeFromLocalStorage, setInLocalStorage } from "@/utils/helpers";
 
 interface AuthContextType extends Omit<AuthState, "refreshToken"> {
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   register: (fullName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: UserInfo | null) => void;
   refreshToken: () => Promise<void>;
+  loginWithGoogle: (code: string) => Promise<void>;
 }
 
 export type { AuthContextType };
@@ -18,18 +19,25 @@ export type { AuthContextType };
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 type AuthAction =
-  | { type: "LOGIN_START" }
-  | { type: "LOGIN_SUCCESS"; payload: LoginResponse }
-  | { type: "LOGIN_ERROR"; payload: string }
-  | { type: "REGISTER_START" }
-  | { type: "REGISTER_SUCCESS"; payload: LoginResponse }
-  | { type: "REGISTER_ERROR"; payload: string }
+  | { type: "AUTH_START" }
+  | { type: "AUTH_SUCCESS"; payload: LoginResponse }
+  | { type: "AUTH_ERROR"; payload: string }
+  | { type: "RESTORE_AUTH"; payload: { user: UserInfo; accessToken: string; refreshToken: string } }
+  | { type: "RESTORE_EMPTY" }
   | { type: "LOGOUT" }
   | { type: "SET_USER"; payload: UserInfo | null }
-  | { type: "RESTORE_AUTH"; payload: { user: UserInfo; accessToken: string } }
-  | { type: "SET_ERROR"; payload: string };
+  | { type: "SET_ERROR"; payload: string | null };
 
 const initialState: AuthState = {
+  isAuthenticated: false,
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+  loading: true,
+  error: null,
+};
+
+const unauthenticatedState: AuthState = {
   isAuthenticated: false,
   user: null,
   accessToken: null,
@@ -40,12 +48,14 @@ const initialState: AuthState = {
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
-    case "LOGIN_START":
-    case "REGISTER_START":
-      return { ...state, loading: true, error: null };
+    case "AUTH_START":
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
 
-    case "LOGIN_SUCCESS":
-    case "REGISTER_SUCCESS":
+    case "AUTH_SUCCESS":
       return {
         ...state,
         isAuthenticated: true,
@@ -56,20 +66,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         error: null,
       };
 
-    case "LOGIN_ERROR":
-    case "REGISTER_ERROR":
+    case "AUTH_ERROR":
       return {
-        ...state,
-        loading: false,
+        ...unauthenticatedState,
         error: action.payload,
-        isAuthenticated: false,
       };
-
-    case "LOGOUT":
-      return initialState;
-
-    case "SET_USER":
-      return { ...state, user: action.payload };
 
     case "RESTORE_AUTH":
       return {
@@ -77,10 +78,31 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isAuthenticated: true,
         user: action.payload.user,
         accessToken: action.payload.accessToken,
+        refreshToken: action.payload.refreshToken,
+        loading: false,
+        error: null,
+      };
+
+    case "RESTORE_EMPTY":
+      return unauthenticatedState;
+
+    case "LOGOUT":
+      return unauthenticatedState;
+
+    case "SET_USER":
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: !!action.payload,
+        loading: false,
       };
 
     case "SET_ERROR":
-      return { ...state, error: action.payload };
+      return {
+        ...state,
+        error: action.payload,
+        loading: false,
+      };
 
     default:
       return state;
@@ -91,38 +113,75 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const persistAuthSession = (response: LoginResponse) => {
+  setInLocalStorage("user", response.user);
+};
+
+const clearAuthSession = () => {
+  removeFromLocalStorage("user");
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const storedUser = getFromLocalStorage<UserInfo>("user");
-    const storedToken = getFromLocalStorage<string>("accessToken");
 
-    if (storedUser && storedToken) {
+    if (storedUser) {
       dispatch({
         type: "RESTORE_AUTH",
-        payload: { user: storedUser, accessToken: storedToken },
+        payload: {
+          user: storedUser,
+          accessToken: "", // Không còn lưu ở localStorage
+          refreshToken: "",
+        },
       });
+
+      // Kiểm tra thực tế xem còn session không bằng cách gọi /me
+      authService
+        .getCurrentUser()
+        .then((user) => {
+          dispatch({ type: "SET_USER", payload: user });
+        })
+        .catch(() => {
+          logout();
+        });
+      return;
     }
+
+    clearAuthSession();
+    dispatch({ type: "RESTORE_EMPTY" });
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    dispatch({ type: "LOGIN_START" });
+  const login = useCallback(async (identifier: string, password: string) => {
+    dispatch({ type: "AUTH_START" });
+
     try {
-      const response = await authService.login({ email, password });
-      setInLocalStorage("user", response.user);
-      setInLocalStorage("accessToken", response.accessToken);
-      setInLocalStorage("refreshToken", response.refreshToken);
-      dispatch({ type: "LOGIN_SUCCESS", payload: response });
+      const response = await authService.login({
+        usernameOrEmail: identifier,
+        password,
+      });
+
+      // Lấy thông tin chi tiết từ /auth/me sau khi có token (tự động gửi qua cookie)
+      const fullUser = await authService.getCurrentUser();
+
+      const loginData = {
+        ...response,
+        user: fullUser,
+      };
+
+      persistAuthSession(loginData);
+      dispatch({ type: "AUTH_SUCCESS", payload: loginData });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Login failed";
-      dispatch({ type: "LOGIN_ERROR", payload: errorMessage });
+      const errorMessage = error instanceof Error ? error.message : "Đăng nhập thất bại";
+      dispatch({ type: "AUTH_ERROR", payload: errorMessage });
       throw error;
     }
   }, []);
 
   const register = useCallback(async (fullName: string, email: string, password: string) => {
-    dispatch({ type: "REGISTER_START" });
+    dispatch({ type: "AUTH_START" });
+
     try {
       const response = await authService.register({
         fullName,
@@ -130,13 +189,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password,
         confirmPassword: password,
       });
-      setInLocalStorage("user", response.user);
-      setInLocalStorage("accessToken", response.accessToken);
-      setInLocalStorage("refreshToken", response.refreshToken);
-      dispatch({ type: "REGISTER_SUCCESS", payload: response });
+
+      const fullUser = await authService.getCurrentUser();
+
+      const registerData = {
+        ...response,
+        user: fullUser,
+      };
+
+      persistAuthSession(registerData);
+      dispatch({ type: "AUTH_SUCCESS", payload: registerData });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Registration failed";
-      dispatch({ type: "REGISTER_ERROR", payload: errorMessage });
+      const errorMessage = error instanceof Error ? error.message : "Đăng ký thất bại";
+      dispatch({ type: "AUTH_ERROR", payload: errorMessage });
       throw error;
     }
   }, []);
@@ -144,47 +209,77 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       await authService.logout();
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch {
     } finally {
-      removeFromLocalStorage("user");
-      removeFromLocalStorage("accessToken");
-      removeFromLocalStorage("refreshToken");
+      clearAuthSession();
+      removeFromLocalStorage("rememberMe");
+      removeFromLocalStorage("rememberedEmail");
+      removeFromLocalStorage("rememberedIdentifier");
       dispatch({ type: "LOGOUT" });
+
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
     }
   }, []);
 
   const setUser = useCallback((user: UserInfo | null) => {
     dispatch({ type: "SET_USER", payload: user });
+
     if (user) {
       setInLocalStorage("user", user);
-    } else {
-      removeFromLocalStorage("user");
+      return;
     }
+
+    removeFromLocalStorage("user");
   }, []);
 
   const refreshToken = useCallback(async () => {
-    if (!state.refreshToken) return;
+    const currentRefreshToken = state.refreshToken || getFromLocalStorage<string>("refreshToken");
+
+    if (!currentRefreshToken) {
+      clearAuthSession();
+      dispatch({ type: "LOGOUT" });
+      return;
+    }
+
     try {
-      const response = await authService.refreshToken(state.refreshToken);
-      setInLocalStorage("accessToken", response.accessToken);
-      dispatch({
-        type: "RESTORE_AUTH",
-        payload: { user: response.user, accessToken: response.accessToken },
-      });
+      const response = await authService.refreshToken(currentRefreshToken);
+      persistAuthSession(response);
+      dispatch({ type: "AUTH_SUCCESS", payload: response });
     } catch (error) {
+      clearAuthSession();
       dispatch({ type: "LOGOUT" });
       throw error;
     }
   }, [state.refreshToken]);
 
+  const loginWithGoogle = useCallback(async (code: string) => {
+    dispatch({ type: "AUTH_START" });
+
+    try {
+      const response = await authService.exchangeOAuthCode(code, "google");
+      persistAuthSession(response);
+      dispatch({ type: "AUTH_SUCCESS", payload: response });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Đăng nhập Google thất bại";
+      dispatch({ type: "AUTH_ERROR", payload: errorMessage });
+      throw error;
+    }
+  }, []);
+
   const value: AuthContextType = {
-    ...state,
+    isAuthenticated: state.isAuthenticated,
+    user: state.user,
+    accessToken: state.accessToken,
+    loading: state.loading,
+    error: state.error,
     login,
     register,
     logout,
     setUser,
     refreshToken,
+    loginWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

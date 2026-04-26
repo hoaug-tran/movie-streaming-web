@@ -81,12 +81,18 @@ export const getTimeAgo = (date: Date | string): string => {
 export const getFromLocalStorage = <T>(key: string): T | null => {
   if (typeof window === "undefined") return null;
   const item = localStorage.getItem(key);
-  return item ? JSON.parse(item) : null;
+  if (!item) return null;
+  try {
+    return JSON.parse(item) as T;
+  } catch (error) {
+    return item as unknown as T;
+  }
 };
 
 export const setInLocalStorage = <T>(key: string, value: T): void => {
   if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+  const valueToStore = typeof value === "string" ? value : JSON.stringify(value);
+  localStorage.setItem(key, valueToStore);
 };
 
 export const removeFromLocalStorage = (key: string): void => {

@@ -1,6 +1,5 @@
-/* Auth Domain Types */
 export interface LoginRequest {
-  email: string;
+  usernameOrEmail: string;
   password: string;
 }
 
@@ -25,7 +24,7 @@ export interface UserInfo {
   id: string;
   email: string;
   fullName: string;
-  avatar?: string;
+  avatarUrl?: string;
   role: "ROLE_USER" | "ROLE_ADMIN";
   createdAt: string;
   updatedAt?: string;
@@ -46,8 +45,7 @@ export interface ForgotPasswordRequest {
 
 export interface ResetPasswordRequest {
   token: string;
-  password: string;
-  confirmPassword: string;
+  newPassword: string;
 }
 
 export interface VerifyEmailRequest {
