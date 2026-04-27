@@ -1,89 +1,62 @@
 "use client";
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { AppBar, Toolbar, Typography, Box, Button, useTheme } from "@mui/material";
 import Link from "next/link";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { usePathname } from "next/navigation";
 import { UserProfileDropdown } from "@/components/UI/UserProfileDropdown";
-import { ThemeContext } from "@/app/providers";
-
-import {
-  LightModeOutlined,
-  DarkModeOutlined,
-  SettingsBrightnessOutlined,
-} from "@mui/icons-material";
+import SearchBar from "@/components/Search/SearchBar";
+import { useSearch } from "@/context/search-context";
 
 const Navbar: React.FC = () => {
   const theme = useTheme();
-  const { mode, toggleColorMode } = useContext(ThemeContext);
   const { isAuthenticated, user, logout, loading } = useAuth();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
+  const { searchOpen, setSearchOpen, searchQuery, setSearchQuery } = useSearch();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 8);
-    };
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 12);
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  if (pathname.startsWith("/auth")) {
-    return null;
-  }
+  if (pathname.startsWith("/auth")) return null;
 
   const navLinkSx = {
-    color: "text.primary",
+    color: isScrolled ? "text.primary" : "rgba(255,255,255,0.85)",
     fontWeight: 500,
-    fontSize: "0.95rem",
+    fontSize: "0.875rem",
+    letterSpacing: "0.01em",
     textDecoration: "none",
-    transition: "color 0.25s ease, opacity 0.25s ease",
-    opacity: 0.9,
-    "&:hover": {
-      color: "primary.main",
-      opacity: 1,
-    },
-    "&.active": {
-      color: "primary.main",
-      fontWeight: 600,
-    },
+    transition: "color 0.2s ease, opacity 0.2s ease",
+    "&:hover": { color: isScrolled ? "text.primary" : "#ffffff", opacity: 1 },
+    "&.active": { color: "primary.main", fontWeight: 600 },
   };
 
   const navButtonSx = {
-    color: "text.primary",
-    transition: "all 0.25s ease",
-    borderRadius: 0,
+    color: isScrolled ? "text.primary" : "rgba(255,255,255,0.85)",
+    transition: "all 0.2s ease",
+    borderRadius: 1,
     textTransform: "none",
     fontWeight: 500,
+    fontSize: "0.875rem",
     minWidth: "auto",
     px: 1.5,
-    "&:hover": {
-      backgroundColor: "action.hover",
-    },
+    "&:hover": { backgroundColor: "rgba(255,255,255,0.08)" },
   };
 
-  const renderThemeIcon = () => {
-    switch (mode) {
-      case "light":
-        return <LightModeOutlined fontSize="small" />;
-      case "dark":
-        return <DarkModeOutlined fontSize="small" />;
-      case "system":
-        return <SettingsBrightnessOutlined fontSize="small" />;
-      default:
-        return <SettingsBrightnessOutlined fontSize="small" />;
+  const handleSearchOpen = (open: boolean) => {
+    setSearchOpen(open);
+    if (!open) {
+      setSearchQuery("");
     }
   };
 
-  const handleToggleMode = () => {
-    const modes: ("light" | "dark" | "system")[] = ["light", "dark", "system"];
-    const currentIndex = modes.indexOf(mode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    toggleColorMode(modes[nextIndex]);
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
   };
 
   return (
@@ -91,10 +64,16 @@ const Navbar: React.FC = () => {
       position="fixed"
       elevation={0}
       sx={{
-        backgroundColor: isScrolled ? theme.palette.background.paper : "transparent",
+        backgroundColor: isScrolled
+          ? theme.palette.mode === "dark"
+            ? "rgba(12, 12, 12, 0.94)"
+            : "rgba(255, 255, 255, 0.94)"
+          : "transparent",
+        backdropFilter: isScrolled ? "blur(16px)" : "none",
         backgroundImage: "none",
         borderBottom: isScrolled ? `1px solid ${theme.palette.divider}` : "1px solid transparent",
-        transition: "background-color 0.3s ease, border-color 0.3s ease",
+        transition:
+          "background-color 0.35s ease, border-color 0.35s ease, backdrop-filter 0.35s ease",
         zIndex: 1000,
       }}
     >
@@ -102,23 +81,21 @@ const Navbar: React.FC = () => {
         sx={{
           display: "flex",
           justifyContent: "space-between",
-          minHeight: { xs: 64, md: 72 },
+          minHeight: { xs: 60, md: 68 },
           px: { xs: 2, md: 4 },
         }}
       >
         <Link href="/" style={{ textDecoration: "none" }}>
           <Typography
-            variant="h6"
             sx={{
-              fontWeight: 800,
-              fontSize: { xs: "1.35rem", md: "1.6rem" },
-              letterSpacing: "-0.04em",
-              color: "text.primary",
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 900,
+              fontSize: { xs: "1.3rem", md: "1.5rem" },
+              letterSpacing: "-0.05em",
+              color: isScrolled ? "text.primary" : "#ffffff",
               cursor: "pointer",
-              transition: "opacity 0.25s ease",
-              "&:hover": {
-                opacity: 0.8,
-              },
+              transition: "opacity 0.2s ease",
+              "&:hover": { opacity: 0.8 },
             }}
           >
             Gió Phim
@@ -134,33 +111,32 @@ const Navbar: React.FC = () => {
             ml: 6,
           }}
         >
-          <Box component={Link} href="/movies" sx={navLinkSx}>
+          <Box component={Link} href="/discovery" sx={navLinkSx}>
             Khám phá
           </Box>
-
-          <Box component={Link} href="/movies?type=series" sx={navLinkSx}>
+          <Box component={Link} href="/tv" sx={navLinkSx}>
             Phim bộ
           </Box>
-
-          <Box component={Link} href="/movies?type=single" sx={navLinkSx}>
+          <Box component={Link} href="/movies" sx={navLinkSx}>
             Phim lẻ
           </Box>
-
           <Box component={Link} href="/trending" sx={navLinkSx}>
             Thịnh hành
           </Box>
-
           {isAuthenticated && (
             <Box component={Link} href="/watchlist" sx={navLinkSx}>
-              Danh sách theo dõi
+              Danh sách
             </Box>
           )}
         </Box>
 
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-          <Button onClick={handleToggleMode} sx={navButtonSx} title={`Chế độ: ${mode}`}>
-            {renderThemeIcon()}
-          </Button>
+          <SearchBar
+            isOpen={searchOpen}
+            onOpenChange={handleSearchOpen}
+            onSearch={handleSearch}
+            value={searchQuery}
+          />
 
           {isAuthenticated && !loading ? (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
@@ -176,21 +152,19 @@ const Navbar: React.FC = () => {
               <Link href="/auth/login" style={{ textDecoration: "none" }}>
                 <Button sx={navButtonSx}>Đăng nhập</Button>
               </Link>
-
               <Link href="/auth/register" style={{ textDecoration: "none" }}>
                 <Button
                   variant="contained"
                   sx={{
-                    borderRadius: 0,
+                    borderRadius: 1,
                     textTransform: "none",
                     fontWeight: 600,
+                    fontSize: "0.875rem",
                     boxShadow: "none",
-                    bgcolor: "text.primary",
-                    color: "background.default",
-                    "&:hover": {
-                      bgcolor: "text.secondary",
-                      boxShadow: "none",
-                    },
+                    bgcolor: "primary.main",
+                    color: "#ffffff",
+                    px: 2,
+                    "&:hover": { bgcolor: "primary.dark", boxShadow: "none" },
                   }}
                 >
                   Đăng ký
