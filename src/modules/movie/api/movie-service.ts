@@ -1,5 +1,5 @@
 import apiClient from "@/services/api-client";
-import { Movie, MovieDetail, CreateMovieRequest } from "@/modules/movie/types/movie";
+import { Movie, MovieDetail, CreateMovieRequest, CategoryItem } from "@/modules/movie/types/movie";
 import { PaginatedResponse, PaginationParams } from "@/types/api";
 
 class MovieService {
@@ -23,8 +23,10 @@ class MovieService {
 
   async searchMovies(query: string, params?: PaginationParams): Promise<PaginatedResponse<Movie>> {
     try {
-      return await apiClient.get<PaginatedResponse<Movie>>("/movies/search", {
-        params: { query, ...params },
+      return await apiClient.post<PaginatedResponse<Movie>>("/movies/search", {
+        keyword: query,
+        page: params?.page ?? 0,
+        size: params?.limit ?? 30,
       });
     } catch (error) {
       throw this.handleError(error);
@@ -133,6 +135,106 @@ class MovieService {
     }
   }
 
+  async getSeriesDrama(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/series-drama", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getActionMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/action-movies", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getThrillerMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/thriller-movies", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getAnimeSeries(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/anime-series", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getAnimeMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/anime-movies", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMostCommented(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/most-commented", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getTopSeriesByRegion(country: string, limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/top-series-region", {
+        params: { country, limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getCategories(): Promise<CategoryItem[]> {
+    try {
+      const data = await apiClient.get<CategoryItem[]>("/movies/categories");
+      return data || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async advancedSearch(
+    request: import("./../types/movie").SearchMovieRequest
+  ): Promise<import("./../types/movie").SearchMovieResponse> {
+    try {
+      const data = await apiClient.post<import("./../types/movie").SearchMovieResponse>(
+        "/movies/search/advanced",
+        request
+      );
+      return data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   private handleError(error: any): Error {
     if (error.data?.message) {
       return new Error(error.data.message);
@@ -141,4 +243,5 @@ class MovieService {
   }
 }
 
-export default new MovieService();
+const movieService = new MovieService();
+export default movieService;

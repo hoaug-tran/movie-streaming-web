@@ -96,3 +96,25 @@ export interface CreateMovieRequest {
 export interface UpdateMovieRequest extends Partial<CreateMovieRequest> {
   id: string;
 }
+
+export interface SearchMovieRequest {
+  keyword?: string;
+  categoryId?: number;
+  tagId?: number;
+  fromYear?: number;
+  toYear?: number;
+  minRating?: number;
+  sortBy?: string;
+  sortDirection?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface SearchMovieResponse {
+  content: MovieSummary[];
+  totalElements?: number;
+  totalPages?: number;
+  pageNumber?: number;
+  pageSize?: number;
+  hasNext?: boolean;
+}
