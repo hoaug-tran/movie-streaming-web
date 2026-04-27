@@ -40,6 +40,7 @@ export function LatestReleasesSection() {
                   id={movie.id}
                   title={movie.title}
                   posterUrl={movie.posterUrl ?? undefined}
+                  bannerUrl={movie.bannerUrl ?? undefined}
                   rating={movie.averageRating}
                   releaseDate={
                     movie.publishedAt ||

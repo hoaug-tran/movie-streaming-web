@@ -75,6 +75,7 @@ export function DiscoverySection({
                   id={movie.id}
                   title={movie.title}
                   posterUrl={movie.posterUrl ?? undefined}
+                  bannerUrl={movie.bannerUrl ?? undefined}
                   rating={hideRating ? undefined : movie.averageRating}
                   ranking={variant === "ranked" ? index + 1 : undefined}
                   variant={variant === "ranked" ? "ranked" : "default"}

@@ -203,7 +203,11 @@ export default function RegisterPage() {
                       }}
                     />
                     <Typography variant="caption" sx={{ color: strengthColor, fontWeight: 600 }}>
-                      {passwordStrength < 40 ? "Yếu" : passwordStrength < 70 ? "Trung bình" : "Mạnh"}
+                      {passwordStrength < 40
+                        ? "Yếu"
+                        : passwordStrength < 70
+                          ? "Trung bình"
+                          : "Mạnh"}
                     </Typography>
                   </Box>
                 </Box>
@@ -296,7 +300,11 @@ export default function RegisterPage() {
               }}
             >
               <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255, 255, 255, 0.2)" }} />
-              <Typography sx={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>Hoặc</Typography>
+              <Typography
+                sx={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em" }}
+              >
+                Hoặc
+              </Typography>
               <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255, 255, 255, 0.2)" }} />
             </Box>
 

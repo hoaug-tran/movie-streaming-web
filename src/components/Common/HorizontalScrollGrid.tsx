@@ -1,5 +1,7 @@
-import { Box, BoxProps, Button } from "@mui/material";
+import { Box, BoxProps, IconButton } from "@mui/material";
 import { ReactNode, useRef, useState, useEffect } from "react";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 
 interface HorizontalScrollGridProps extends BoxProps {
   children: ReactNode;
@@ -15,6 +17,7 @@ export function HorizontalScrollGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleScrollCheck = () => {
     if (!scrollRef.current) return;
@@ -38,13 +41,34 @@ export function HorizontalScrollGrid({
     return () => window.removeEventListener("resize", handleScrollCheck);
   }, [children]);
 
+  const arrowSx = (side: "left" | "right") => ({
+    position: "absolute" as const,
+    [side]: -8,
+    top: "50%",
+    transform: "translateY(-50%)",
+    width: 40,
+    height: 64,
+    borderRadius: 1,
+    backgroundColor: "rgba(12, 12, 12, 0.72)",
+    backdropFilter: "blur(10px)",
+    color: "rgba(255,255,255,0.9)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    zIndex: 10,
+    opacity: isHovered ? 1 : 0,
+    pointerEvents: isHovered ? "auto" : ("none" as const),
+    transition: "opacity 0.25s ease, background-color 0.2s ease",
+    "&:hover": {
+      backgroundColor: "rgba(30, 30, 30, 0.88)",
+      color: "#ffffff",
+    },
+    "& svg": { fontSize: 22 },
+  });
+
   return (
     <Box
-      sx={{
-        position: "relative",
-        py: { xs: 1, md: 1.5 },
-        ...sx,
-      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      sx={{ position: "relative", py: { xs: 1, md: 1.5 }, ...sx }}
       {...props}
     >
       <Box
@@ -59,9 +83,7 @@ export function HorizontalScrollGrid({
           scrollSnapType: "x mandatory",
           pt: 1,
           pb: 1.5,
-          "&::-webkit-scrollbar": {
-            display: "none",
-          },
+          "&::-webkit-scrollbar": { display: "none" },
           scrollbarWidth: "none",
           msOverflowStyle: "none",
         }}
@@ -70,57 +92,15 @@ export function HorizontalScrollGrid({
       </Box>
 
       {canScrollLeft && (
-        <Button
-          onClick={() => handleScroll("left")}
-          sx={{
-            position: "absolute",
-            left: 0,
-            top: "50%",
-            transform: "translateY(-50%)",
-            minWidth: 40,
-            height: 48,
-            backgroundColor: "background.paper",
-            color: "text.primary",
-            border: "1px solid",
-            borderColor: "divider",
-            borderRadius: 0,
-            zIndex: 10,
-            fontWeight: 600,
-            fontSize: "1.2rem",
-            "&:hover": {
-              backgroundColor: "action.hover",
-            },
-          }}
-        >
-          {"<"}
-        </Button>
+        <IconButton onClick={() => handleScroll("left")} sx={arrowSx("left")}>
+          <ChevronLeftRoundedIcon />
+        </IconButton>
       )}
 
       {canScrollRight && (
-        <Button
-          onClick={() => handleScroll("right")}
-          sx={{
-            position: "absolute",
-            right: 0,
-            top: "50%",
-            transform: "translateY(-50%)",
-            minWidth: 40,
-            height: 48,
-            backgroundColor: "background.paper",
-            color: "text.primary",
-            border: "1px solid",
-            borderColor: "divider",
-            borderRadius: 0,
-            zIndex: 10,
-            fontWeight: 600,
-            fontSize: "1.2rem",
-            "&:hover": {
-              backgroundColor: "action.hover",
-            },
-          }}
-        >
-          {">"}
-        </Button>
+        <IconButton onClick={() => handleScroll("right")} sx={arrowSx("right")}>
+          <ChevronRightRoundedIcon />
+        </IconButton>
       )}
     </Box>
   );

@@ -16,9 +16,8 @@ export function SectionHeader({ title, subtitle, actionLink, sx, ...props }: Sec
       sx={{
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "baseline",
-        gap: 2,
-        mb: 0.5,
+        alignItems: "center",
+        mb: 2.5,
         ...sx,
       }}
       {...props}
@@ -27,30 +26,45 @@ export function SectionHeader({ title, subtitle, actionLink, sx, ...props }: Sec
         <Typography
           variant="h2"
           sx={{
-            mb: 0,
-            fontSize: { xs: "18px", sm: "20px", md: "24px" },
+            mb: subtitle ? 0.4 : 0,
+            fontSize: { xs: "1.1rem", sm: "1.25rem", md: "1.4rem" },
             fontWeight: 700,
+            letterSpacing: "-0.02em",
+            color: "text.primary",
           }}
         >
           {title}
         </Typography>
+        {subtitle && (
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              fontSize: "0.78rem",
+              fontWeight: 400,
+              letterSpacing: "0.01em",
+            }}
+          >
+            {subtitle}
+          </Typography>
+        )}
       </Box>
       {actionLink && (
         <Link
           component={NextLink}
           href={actionLink.href}
           sx={{
-            color: "primary.main",
-            fontWeight: 600,
+            color: "text.secondary",
+            fontWeight: 500,
             textDecoration: "none",
-            fontSize: "14px",
+            fontSize: "0.8rem",
+            letterSpacing: "0.01em",
             whiteSpace: "nowrap",
-            "&:hover": {
-              textDecoration: "underline",
-            },
+            transition: "color 0.2s ease",
+            "&:hover": { color: "text.primary" },
           }}
         >
-          {actionLink.label}
+          {actionLink.label} →
         </Link>
       )}
     </Box>

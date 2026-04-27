@@ -54,6 +54,7 @@ export function TrendingSection() {
                   id={movie.id}
                   title={movie.title}
                   posterUrl={movie.posterUrl ?? undefined}
+                  bannerUrl={movie.bannerUrl ?? undefined}
                   rating={movie.averageRating}
                   ranking={index + 1}
                   variant="ranked"

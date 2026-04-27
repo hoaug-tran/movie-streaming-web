@@ -10,7 +10,6 @@ import { DiscoverySection } from "@/components/Homepage/DiscoverySection";
 import { RegionalDiscovery } from "@/components/Homepage/RegionalDiscovery";
 import { SocialEngagementSection } from "@/components/Homepage/SocialEngagementSection";
 import { Footer } from "@/components/Layout/Footer";
-
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useDiscovery } from "@/modules/movie/hooks/useDiscovery";
 
@@ -25,9 +24,8 @@ export default function Home() {
         <Box
           sx={{
             position: "relative",
-            mt: { xs: "-180px", sm: "-250px", md: "-320px" },
+            mt: { xs: "-80px", sm: "-120px", md: "-160px" },
             zIndex: 10,
-            background: "transparent",
           }}
         >
           <TrendingSection />
@@ -36,10 +34,10 @@ export default function Home() {
 
       <Box
         sx={{
-          pt: { xs: 8, md: 12 },
+          pt: { xs: 6, md: 10 },
           display: "flex",
           flexDirection: "column",
-          gap: { xs: 8, md: 12 },
+          gap: { xs: 6, md: 10 },
           pb: 12,
         }}
       >

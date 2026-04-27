@@ -51,7 +51,8 @@ export function ContinueWatchingSection() {
                   <MovieCard
                     id={movie.id}
                     title={movie.title}
-                    posterUrl={movie.posterUrl || movie.poster_url}
+                    posterUrl={movie.posterUrl ?? undefined}
+                    bannerUrl={movie.bannerUrl ?? undefined}
                     variant="default"
                     showProgress
                     progress={progress}

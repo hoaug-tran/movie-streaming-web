@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Box, Container, Paper, Typography, useTheme, useMediaQuery, Link as MuiLink } from "@mui/material";
+import { Box, Container, Paper, Typography } from "@mui/material";
 import Link from "next/link";
 import { ArrowBackIosNewOutlined } from "@mui/icons-material";
 
@@ -12,9 +12,6 @@ interface AuthLayoutProps {
 }
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
   return (
     <Box
       sx={{
@@ -75,7 +72,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitl
             }}
           >
             <ArrowBackIosNewOutlined sx={{ fontSize: 14 }} />
-            <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", letterSpacing: "0.02em" }}>VỀ TRANG CHỦ</Typography>
+            <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", letterSpacing: "0.02em" }}>
+              VỀ TRANG CHỦ
+            </Typography>
           </Box>
         </Link>
       </Box>

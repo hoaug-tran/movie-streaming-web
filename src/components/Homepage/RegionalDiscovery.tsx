@@ -60,20 +60,21 @@ export function RegionalDiscovery() {
               label={region.label}
               sx={{
                 minHeight: "auto",
-                py: 1,
-                px: 2,
-                borderRadius: "20px",
-                fontSize: "0.85rem",
-                fontWeight: 600,
+                py: 0.75,
+                px: 1.75,
+                borderRadius: 1,
+                fontSize: "0.8rem",
+                fontWeight: 500,
                 color: alpha(theme.palette.text.primary, 0.5),
-                backgroundColor: alpha(theme.palette.text.primary, 0.05),
+                backgroundColor: alpha(theme.palette.text.primary, 0.04),
                 transition: "all 0.2s ease",
                 "&.Mui-selected": {
                   color: theme.palette.common.white,
                   backgroundColor: theme.palette.primary.main,
                 },
                 "&:hover": {
-                  backgroundColor: alpha(theme.palette.text.primary, 0.1),
+                  backgroundColor: alpha(theme.palette.text.primary, 0.08),
+                  color: alpha(theme.palette.text.primary, 0.8),
                 },
               }}
             />
@@ -102,6 +103,7 @@ export function RegionalDiscovery() {
                   id={movie.id}
                   title={movie.title}
                   posterUrl={movie.posterUrl ?? undefined}
+                  bannerUrl={movie.bannerUrl ?? undefined}
                 />
               </Box>
             ))}
