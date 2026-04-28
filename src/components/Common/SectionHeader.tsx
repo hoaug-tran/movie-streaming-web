@@ -15,9 +15,11 @@ export function SectionHeader({ title, subtitle, actionLink, sx, ...props }: Sec
     <Box
       sx={{
         display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
         justifyContent: "space-between",
-        alignItems: "center",
-        mb: 2.5,
+        alignItems: { xs: "flex-start", sm: "center" },
+        gap: { xs: 1, sm: 0 },
+        mb: 3,
         ...sx,
       }}
       {...props}

@@ -1,367 +1,433 @@
 "use client";
 
-import { Box, Typography, Avatar, Paper, Grid, useTheme } from "@mui/material";
-import { SectionHeader } from "@/components/Common/SectionHeader";
+import { useState } from "react";
+import { Box, Typography, Avatar, useTheme, alpha, Skeleton } from "@mui/material";
 import { useDiscovery } from "@/modules/movie/hooks/useDiscovery";
 import { useRouter } from "next/navigation";
-import { MessageSquare, Star, TrendingUp } from "lucide-react";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import { MessageSquare, Quote } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+
+const ACCENT_COLORS = ["#C8102E", "#E85D04", "#7B2FBE", "#1565C0", "#00897B"];
 
 export function SocialEngagementSection() {
   const { topComments, newComments, mostActiveMovies } = useDiscovery();
   const theme = useTheme();
   const router = useRouter();
+  const isDark = theme.palette.mode === "dark";
+  const [activeComment, setActiveComment] = useState(0);
 
-  const loading = topComments.isLoading || newComments.isLoading || mostActiveMovies.isLoading;
-
-  if (!loading && topComments.data?.length === 0 && newComments.data?.length === 0) {
-    return null;
-  }
-
-  const featuredMovie = mostActiveMovies.data?.[0];
-  const otherActiveMovies = mostActiveMovies.data?.slice(1, 4) || [];
+  const loading = topComments.isLoading || newComments.isLoading;
 
   const allComments = [...(topComments.data || []), ...(newComments.data || [])]
     .filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i)
-    .slice(0, 8);
+    .slice(0, 5);
 
-  const leftColComments = allComments.filter((_, i) => i % 2 === 0);
-  const rightColComments = allComments.filter((_, i) => i % 2 !== 0);
+  const mostActive = mostActiveMovies.data?.slice(0, 4) || [];
+
+  if (!loading && allComments.length === 0) return null;
 
   return (
     <Box sx={{ width: "100%", px: { xs: 2, md: 4 } }}>
-      <SectionHeader title="Thảo luận sôi nổi" subtitle="Cộng đồng đang bàn tán điều gì?" />
-
-      <Grid container spacing={4}>
-        {/* Left Column: Trending Buzz Movies */}
-        <Grid item xs={12} md={5}>
-          <Box
-            sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1, color: "text.secondary" }}
-          >
-            <TrendingUp size={20} color={theme.palette.primary.main} />
-            <Typography variant="h6" fontWeight={700} color="white">
-              Tâm điểm bàn luận
-            </Typography>
-          </Box>
-
-          {featuredMovie && (
-            <Box
-              onClick={() => router.push(`/movies/${featuredMovie.slug}`)}
-              sx={{
-                position: "relative",
-                height: 380,
-                borderRadius: 2,
-                overflow: "hidden",
-                cursor: "pointer",
-                mb: 2,
-                "&:hover .featured-img": { transform: "scale(1.05)" },
-                border: "1px solid rgba(255,255,255,0.05)",
-              }}
-            >
-              <Box
-                className="featured-img"
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  background: `url(${featuredMovie.posterUrl}) center/cover`,
-                  transition: "transform 0.5s ease",
-                }}
-              />
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to top, rgba(15,15,15,1) 0%, rgba(15,15,15,0.3) 50%, transparent 100%)",
-                }}
-              />
-
-              <Box sx={{ position: "absolute", bottom: 0, left: 0, width: "100%", p: 3 }}>
-                <Box
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    px: 1.5,
-                    py: 0.5,
-                    backgroundColor: "primary.main",
-                    color: "white",
-                    borderRadius: 1,
-                    mb: 1.5,
-                  }}
-                >
-                  <MessageSquare size={14} />
-                  <Typography variant="caption" fontWeight={800}>
-                    {featuredMovie.totalReviews || 0} Bình luận
-                  </Typography>
-                </Box>
-                <Typography
-                  variant="h4"
-                  fontWeight={800}
-                  color="white"
-                  sx={{ mb: 1, textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}
-                >
-                  {featuredMovie.title}
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Star size={16} color="#FFD700" fill="#FFD700" />
-                  <Typography fontWeight={700} color="#FFD700">
-                    {featuredMovie.averageRating}
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          )}
-
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            {otherActiveMovies.map((movie: any, idx: number) => (
-              <Box
-                key={movie.id}
-                onClick={() => router.push(`/movies/${movie.slug}`)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  p: 1.5,
-                  borderRadius: 2,
-                  cursor: "pointer",
-                  backgroundColor: "rgba(255,255,255,0.02)",
-                  transition: "all 0.2s",
-                  border: "1px solid rgba(255,255,255,0.02)",
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    borderColor: "rgba(255,255,255,0.08)",
-                  },
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  fontWeight={800}
-                  sx={{ color: "rgba(255,255,255,0.2)", width: 24, textAlign: "center" }}
-                >
-                  {idx + 2}
-                </Typography>
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 64,
-                    borderRadius: 1,
-                    background: `url(${movie.posterUrl}) center/cover`,
-                    flexShrink: 0,
-                  }}
-                />
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="subtitle2" fontWeight={700} color="white" noWrap>
-                    {movie.title}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 0.5, display: "block" }}
-                  >
-                    {movie.totalReviews || 0} lượt bàn luận
-                  </Typography>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        </Grid>
-
-        <Grid item xs={12} md={7}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              mb: 3,
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <MessageSquare size={22} color={theme.palette.secondary.main} />
-              <Typography variant="h6" fontWeight={900} color="white" letterSpacing="-0.02em">
-                Cộng đồng đang nói gì?
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: { xs: "row", md: "column" },
-              gap: 2.5,
-              overflowX: { xs: "auto", md: "visible" },
-              pb: { xs: 3, md: 0 },
-              px: { xs: 0.5, md: 0 },
-              mx: { xs: -1, md: 0 },
-              scrollSnapType: { xs: "x mandatory", md: "none" },
-              "&::-webkit-scrollbar": { display: "none" },
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: { xs: "row", md: "column" },
-                gap: 2.5,
-                flexShrink: 0,
-                width: { xs: "max-content", md: "100%" },
-              }}
-            >
-              {allComments.slice(0, 4).map((comment) => (
-                <Box
-                  key={comment.id}
-                  sx={{
-                    width: { xs: 300, sm: 340, md: "100%" },
-                    scrollSnapAlign: "start",
-                    flexShrink: 0,
-                  }}
-                >
-                  <CommentCard comment={comment} />
-                </Box>
-              ))}
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: { xs: "row", md: "column" },
-                gap: 2.5,
-                flexShrink: 0,
-                width: { xs: "max-content", md: "100%" },
-                mt: { xs: 0, md: 0 },
-              }}
-            >
-              {allComments.slice(4, 8).map((comment) => (
-                <Box
-                  key={comment.id}
-                  sx={{
-                    width: { xs: 300, sm: 340, md: "100%" },
-                    scrollSnapAlign: "start",
-                    flexShrink: 0,
-                  }}
-                >
-                  <CommentCard comment={comment} />
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        </Grid>
-      </Grid>
-    </Box>
-  );
-}
-
-function CommentCard({ comment }: { comment: any }) {
-  const router = useRouter();
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2.5,
-        borderRadius: 2,
-        backgroundColor: "rgba(20, 20, 20, 0.5)",
-        backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255, 255, 255, 0.05)",
-        position: "relative",
-        overflow: "hidden",
-        cursor: "pointer",
-        transition: "all 0.3s ease",
-        "&:hover": {
-          backgroundColor: "rgba(35, 35, 35, 0.8)",
-          borderColor: "rgba(255, 255, 255, 0.15)",
-          transform: "translateY(-4px)",
-          boxShadow: "0 10px 20px rgba(0,0,0,0.4)",
-        },
-      }}
-      onClick={() =>
-        router.push(
-          comment.movieSlug
-            ? `/movies/${comment.movieSlug}`
-            : `/movies/details?id=${comment.movieId}`
-        )
-      }
-    >
       <Box
         sx={{
-          position: "absolute",
-          top: -15,
-          right: -15,
-          opacity: 0.03,
-          transform: "rotate(10deg)",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          mb: { xs: 2.5, md: 3 },
         }}
       >
-        <MessageSquare size={80} fill="currentColor" />
-      </Box>
-
-      <Box sx={{ position: "relative", zIndex: 1 }}>
-        <Box sx={{ display: "flex", gap: 1.5, mb: 1.5, alignItems: "center" }}>
-          <Avatar
-            sx={{ width: 28, height: 28, fontSize: "0.75rem", bgcolor: "#333", color: "white" }}
-          >
-            M
-          </Avatar>
-          <Box>
+        <Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+            <MessageSquare size={14} color={theme.palette.primary.main} />
             <Typography
-              variant="subtitle2"
-              fontWeight={700}
-              sx={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.9)" }}
+              sx={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "primary.main",
+              }}
             >
-              Khán giả Web
+              Cộng Đồng
             </Typography>
-            <Typography
-              variant="caption"
-              sx={{ color: "text.secondary", fontSize: "0.7rem", display: "block", mt: -0.2 }}
-            >
-              {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: vi })}
-            </Typography>
-          </Box>
-        </Box>
-        <Typography
-          variant="body1"
-          sx={{
-            color: "rgba(255,255,255,0.85)",
-            display: "-webkit-box",
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            fontSize: "0.95rem",
-            lineHeight: 1.6,
-            fontWeight: 500,
-            mb: 2,
-          }}
-        >
-          {comment.content}
-        </Typography>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            pt: 1.5,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
-            <MessageSquare size={14} />
-            <Typography variant="caption">{comment.replyCount || 0} Phản hồi</Typography>
           </Box>
           <Typography
-            variant="caption"
+            component="h2"
             sx={{
-              color: "primary.main",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
+              fontSize: { xs: "1.5rem", sm: "1.8rem", md: "2.2rem" },
+              fontWeight: 900,
+              letterSpacing: "-0.04em",
+              lineHeight: 1.05,
+              color: "text.primary",
             }}
           >
-            Tham gia <ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />
+            Khán giả{" "}
+            <Box component="span" sx={{ color: "primary.main", fontStyle: "italic" }}>
+              đang nói gì?
+            </Box>
           </Typography>
         </Box>
       </Box>
-    </Paper>
+
+      {loading ? (
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 2 }}>
+          <Skeleton
+            variant="rounded"
+            sx={{ flex: { md: 1 }, height: { xs: 200, md: 320 }, borderRadius: 2 }}
+          />
+          <Box
+            sx={{
+              flexShrink: 0,
+              width: { md: 260 },
+              display: "flex",
+              flexDirection: "column",
+              gap: 1.5,
+            }}
+          >
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} variant="rounded" height={56} sx={{ borderRadius: 1.5 }} />
+            ))}
+          </Box>
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            gap: { xs: 2, md: 2.5 },
+            alignItems: { md: "stretch" },
+          }}
+        >
+          <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {allComments.slice(0, 4).map((comment, idx) => {
+              const accent = ACCENT_COLORS[idx % ACCENT_COLORS.length];
+              const isHighlighted = idx === activeComment;
+              return (
+                <Box
+                  key={comment.id}
+                  onClick={() =>
+                    router.push(
+                      comment.movieSlug
+                        ? `/movies/${comment.movieSlug}`
+                        : `/movies/details?id=${comment.movieId}`
+                    )
+                  }
+                  onMouseEnter={() => setActiveComment(idx)}
+                  sx={{
+                    position: "relative",
+                    p: { xs: 2, md: 2.25 },
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: isHighlighted ? alpha(accent, 0.45) : "divider",
+                    backgroundColor: isHighlighted
+                      ? isDark
+                        ? alpha(accent, 0.07)
+                        : alpha(accent, 0.04)
+                      : isDark
+                        ? "rgba(255,255,255,0.015)"
+                        : "rgba(0,0,0,0.015)",
+                    cursor: "pointer",
+                    transition: "all 0.25s ease",
+                    overflow: "hidden",
+                    flex: 1,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: -16,
+                      right: -8,
+                      color: accent,
+                      opacity: 0.07,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <Quote size={80} fill="currentColor" />
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      mb: 1,
+                      gap: 1,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Avatar
+                        sx={{
+                          width: 26,
+                          height: 26,
+                          fontSize: "0.7rem",
+                          fontWeight: 800,
+                          backgroundColor: accent,
+                          color: "#fff",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {comment.movieTitle?.[0] || "K"}
+                      </Avatar>
+                      <Box>
+                        <Typography
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: "0.75rem",
+                            color: "text.primary",
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          Khán giả
+                        </Typography>
+                        <Typography sx={{ fontSize: "0.65rem", color: "text.secondary" }}>
+                          {formatDistanceToNow(new Date(comment.createdAt), {
+                            addSuffix: true,
+                            locale: vi,
+                          })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {comment.movieTitle && (
+                      <Box
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: 0.75,
+                          backgroundColor: alpha(accent, isDark ? 0.18 : 0.1),
+                          flexShrink: 0,
+                          maxWidth: 120,
+                        }}
+                      >
+                        <Typography
+                          noWrap
+                          sx={{ fontSize: "0.62rem", fontWeight: 700, color: accent }}
+                        >
+                          {comment.movieTitle}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <Typography
+                    sx={{
+                      fontSize: "0.85rem",
+                      fontWeight: 400,
+                      lineHeight: 1.6,
+                      color: "text.primary",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      fontStyle: "italic",
+                      opacity: isHighlighted ? 1 : 0.72,
+                      transition: "opacity 0.25s",
+                    }}
+                  >
+                    "{comment.content}"
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+
+          <Box
+            sx={{
+              flexShrink: 0,
+              width: { xs: "100%", md: 280 },
+              display: "flex",
+              flexDirection: "column",
+              gap: 0,
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              sx={{
+                px: 2,
+                py: 1.25,
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "text.secondary",
+                }}
+              >
+                Bình luận mới nhất
+              </Typography>
+            </Box>
+
+            {allComments.map((comment, i) => {
+              const isActive = i === activeComment;
+              const accent = ACCENT_COLORS[i % ACCENT_COLORS.length];
+              return (
+                <Box
+                  key={comment.id}
+                  onMouseEnter={() => setActiveComment(i)}
+                  onClick={() =>
+                    router.push(
+                      comment.movieSlug
+                        ? `/movies/${comment.movieSlug}`
+                        : `/movies/details?id=${comment.movieId}`
+                    )
+                  }
+                  sx={{
+                    display: "flex",
+                    gap: 1.5,
+                    px: 2,
+                    py: 1.5,
+                    cursor: "pointer",
+                    position: "relative",
+                    transition: "background-color 0.2s",
+                    backgroundColor: isActive ? alpha(accent, isDark ? 0.08 : 0.05) : "transparent",
+                    borderBottom: i < allComments.length - 1 ? "1px solid" : "none",
+                    borderColor: "divider",
+                    "&::before": isActive
+                      ? {
+                          content: '""',
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 3,
+                          backgroundColor: accent,
+                        }
+                      : {},
+                  }}
+                >
+                  <Avatar
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      fontSize: "0.7rem",
+                      fontWeight: 800,
+                      flexShrink: 0,
+                      backgroundColor: isActive ? accent : alpha(accent, 0.3),
+                      color: "#fff",
+                      transition: "background-color 0.2s",
+                    }}
+                  >
+                    {comment.movieTitle?.[0] || "K"}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    {comment.movieTitle && (
+                      <Typography
+                        noWrap
+                        sx={{
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          color: isActive ? accent : "text.secondary",
+                          mb: 0.2,
+                          transition: "color 0.2s",
+                        }}
+                      >
+                        {comment.movieTitle}
+                      </Typography>
+                    )}
+                    <Typography
+                      noWrap
+                      sx={{
+                        fontSize: "0.75rem",
+                        color: isActive ? "text.primary" : "text.secondary",
+                        fontWeight: isActive ? 500 : 400,
+                        transition: "color 0.2s",
+                      }}
+                    >
+                      {comment.content}
+                    </Typography>
+                  </Box>
+                </Box>
+              );
+            })}
+
+            {mostActive.length > 0 && (
+              <>
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.25,
+                    borderTop: "1px solid",
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                    backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "text.secondary",
+                    }}
+                  >
+                    Đang hot
+                  </Typography>
+                </Box>
+                {mostActive.map((movie: any) => (
+                  <Box
+                    key={movie.id}
+                    onClick={() => router.push(`/movies/${movie.slug}`)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.5,
+                      px: 2,
+                      py: 1.25,
+                      cursor: "pointer",
+                      transition: "background-color 0.2s",
+                      "&:hover": {
+                        backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                      },
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      "&:last-child": { borderBottom: "none" },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 36,
+                        height: 48,
+                        borderRadius: 0.75,
+                        background: `url(${movie.posterUrl}) center/cover`,
+                        flexShrink: 0,
+                        border: "1px solid",
+                        borderColor: "divider",
+                      }}
+                    />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        noWrap
+                        sx={{ fontSize: "0.78rem", fontWeight: 700, color: "text.primary" }}
+                      >
+                        {movie.title}
+                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.25 }}>
+                        <MessageSquare size={10} color={theme.palette.text.secondary as string} />
+                        <Typography sx={{ fontSize: "0.65rem", color: "text.secondary" }}>
+                          {movie.totalReviews || 0} bình luận
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                ))}
+              </>
+            )}
+          </Box>
+        </Box>
+      )}
+    </Box>
   );
 }

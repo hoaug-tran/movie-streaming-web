@@ -8,7 +8,7 @@ export const useDiscovery = () => {
   const trendingMovies = useQuery<Movie[]>({
     queryKey: ["movies", "trending"],
     queryFn: () => movieService.getTrendingMovies(10),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   const weeklyNewMovies = useQuery<Movie[]>({
@@ -32,6 +32,42 @@ export const useDiscovery = () => {
   const topSeries = useQuery<Movie[]>({
     queryKey: ["movies", "top-series"],
     queryFn: () => movieService.getTopSeries(10),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const seriesDrama = useQuery<Movie[]>({
+    queryKey: ["movies", "series-drama"],
+    queryFn: () => movieService.getSeriesDrama(10),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const actionMovies = useQuery<Movie[]>({
+    queryKey: ["movies", "action"],
+    queryFn: () => movieService.getActionMovies(10),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const thrillerMovies = useQuery<Movie[]>({
+    queryKey: ["movies", "thriller"],
+    queryFn: () => movieService.getThrillerMovies(10),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const animeSeries = useQuery<Movie[]>({
+    queryKey: ["movies", "anime-series"],
+    queryFn: () => movieService.getAnimeSeries(10),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const animeMovies = useQuery<Movie[]>({
+    queryKey: ["movies", "anime-movies"],
+    queryFn: () => movieService.getAnimeMovies(10),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const mostCommentedMovies = useQuery<Movie[]>({
+    queryKey: ["movies", "most-commented"],
+    queryFn: () => movieService.getMostCommented(10),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -59,6 +95,12 @@ export const useDiscovery = () => {
     upcomingMovies,
     topRatedMovies,
     topSeries,
+    seriesDrama,
+    actionMovies,
+    thrillerMovies,
+    animeSeries,
+    animeMovies,
+    mostCommentedMovies,
     mostActiveMovies,
     topComments,
     newComments,

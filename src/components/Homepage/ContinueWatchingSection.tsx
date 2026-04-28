@@ -3,6 +3,7 @@
 import { Box } from "@mui/material";
 import { SectionHeader } from "@/components/Common/SectionHeader";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import { HorizontalScrollGrid } from "@/components/Common/HorizontalScrollGrid";
 import { useContinueWatchingMovies } from "@/modules/movie/hooks/useClientMovies";
 import { useRouter } from "next/navigation";
@@ -49,13 +50,11 @@ export function ContinueWatchingSection() {
                   onClick={() => router.push(`/movies/${movie.slug}`)}
                 >
                   <MovieCard
-                    id={movie.id}
-                    title={movie.title}
-                    posterUrl={movie.posterUrl ?? undefined}
-                    bannerUrl={movie.bannerUrl ?? undefined}
-                    variant="default"
-                    showProgress
-                    progress={progress}
+                    {...getMovieCardProps(movie, {
+                      variant: "default",
+                      showProgress: true,
+                      progress,
+                    })}
                   />
                 </Box>
               );

@@ -53,7 +53,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, v
         display: "flex",
         alignItems: "center",
         gap: 0.5,
-        width: isOpen ? { xs: "230px", sm: "220px", md: "280px" } : "40px",
+        width: isOpen ? { xs: "200px", sm: "200px", md: "280px" } : "40px",
         transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease",
         opacity: isOpen ? 1 : 0.8,
         overflow: "hidden",

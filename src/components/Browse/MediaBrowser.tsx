@@ -5,6 +5,7 @@ import { Box, Chip, Grid, Typography, CircularProgress, Stack, Container } from 
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import movieService from "@/modules/movie/api/movie-service";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import { useRouter } from "next/navigation";
 
 interface MediaBrowserProps {
@@ -170,16 +171,7 @@ export default function MediaBrowser({ movieType }: MediaBrowserProps) {
                   }
                   sx={{ cursor: "pointer" }}
                 >
-                  <MovieCard
-                    id={movie.id}
-                    title={movie.title}
-                    posterUrl={movie.posterUrl || ""}
-                    bannerUrl={movie.bannerUrl || undefined}
-                    rating={movie.averageRating}
-                    releaseDate={movie.releaseYear?.toString() || movie.createdAt}
-                    ageRating={movie.ageRating}
-                    movieType={movie.movieType}
-                  />
+                  <MovieCard {...getMovieCardProps(movie)} />
                 </Grid>
               ))}
             </Grid>

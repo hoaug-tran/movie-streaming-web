@@ -3,6 +3,7 @@
 import { Box } from "@mui/material";
 import { SectionHeader } from "@/components/Common/SectionHeader";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import { HorizontalScrollGrid } from "@/components/Common/HorizontalScrollGrid";
 import { useLatestMovies } from "@/modules/movie/hooks/useClientMovies";
 import { useRouter } from "next/navigation";
@@ -37,16 +38,12 @@ export function LatestReleasesSection() {
                 }}
               >
                 <MovieCard
-                  id={movie.id}
-                  title={movie.title}
-                  posterUrl={movie.posterUrl ?? undefined}
-                  bannerUrl={movie.bannerUrl ?? undefined}
-                  rating={movie.averageRating}
-                  releaseDate={
-                    movie.publishedAt ||
-                    (movie.releaseYear ? `${movie.releaseYear}-01-01` : undefined)
-                  }
-                  variant="default"
+                  {...getMovieCardProps(movie, {
+                    releaseDate:
+                      movie.publishedAt ||
+                      (movie.releaseYear ? `${movie.releaseYear}-01-01` : undefined),
+                    variant: "default",
+                  })}
                 />
               </Box>
             ))}

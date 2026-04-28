@@ -22,6 +22,7 @@ export interface MovieSummary {
   createdAt?: string;
   updatedAt?: string;
   publishedAt?: string;
+  categories?: CategoryItem[];
 }
 
 export interface MovieDetail extends MovieSummary {

@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import movieService from "@/modules/movie/api/movie-service";
 import { CategoryItem, MovieSummary } from "@/modules/movie/types/movie";
 
@@ -383,16 +384,7 @@ function MovieGrid({ movies, isLoading }: { movies: MovieSummary[]; isLoading: b
           onClick={() => router.push(makeMovieHref(movie))}
           sx={{ cursor: "pointer" }}
         >
-          <MovieCard
-            id={movie.id}
-            title={movie.title}
-            posterUrl={movie.posterUrl || ""}
-            bannerUrl={movie.bannerUrl || undefined}
-            rating={movie.averageRating}
-            releaseDate={movie.releaseYear?.toString() || movie.createdAt}
-            ageRating={movie.ageRating}
-            movieType={movie.movieType}
-          />
+          <MovieCard {...getMovieCardProps(movie)} />
         </Grid>
       ))}
     </Grid>

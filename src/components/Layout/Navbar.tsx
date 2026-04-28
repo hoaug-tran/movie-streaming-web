@@ -13,6 +13,7 @@ import {
   ListItemButton,
   ListItemText,
   Divider,
+  alpha,
 } from "@mui/material";
 import Link from "next/link";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
@@ -22,6 +23,7 @@ import SearchBar from "@/components/Search/SearchBar";
 import { useSearch } from "@/context/search-context";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { Compass, Tv, Film, Bookmark, ShieldCheck, LogIn } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const theme = useTheme();
@@ -42,12 +44,20 @@ const Navbar: React.FC = () => {
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
-  const navLinks = [
-    { label: "Khám phá", href: "/discovery" },
-    { label: "Phim bộ", href: "/tv" },
-    { label: "Phim lẻ", href: "/movies" },
-    { label: "Thịnh hành", href: "/trending" },
-    ...(isAuthenticated ? [{ label: "Danh sách", href: "/watchlist" }] : []),
+  const desktopNavLinks = [
+    { label: "Khám phá", href: "/discovery", icon: <Compass size={20} /> },
+    { label: "Phim bộ", href: "/tv", icon: <Tv size={20} /> },
+    { label: "Phim lẻ", href: "/movies", icon: <Film size={20} /> },
+    ...(isAuthenticated
+      ? [{ label: "Danh sách", href: "/watchlist", icon: <Bookmark size={20} /> }]
+      : []),
+  ];
+
+  const mobileNavLinks = [
+    ...desktopNavLinks,
+    ...(user?.role === "ROLE_ADMIN"
+      ? [{ label: "Trang quản trị", href: "/admin", icon: <ShieldCheck size={20} /> }]
+      : []),
   ];
 
   const navLinkSx = {
@@ -111,7 +121,7 @@ const Navbar: React.FC = () => {
             px: { xs: 2, md: 4 },
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, md: 0 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, md: 0 }, flexShrink: 0 }}>
             <IconButton
               color="inherit"
               aria-label="open drawer"
@@ -152,7 +162,7 @@ const Navbar: React.FC = () => {
                 ml: 6,
               }}
             >
-              {navLinks.map((link) => (
+              {desktopNavLinks.map((link) => (
                 <Box
                   key={link.href}
                   component={Link}
@@ -168,7 +178,7 @@ const Navbar: React.FC = () => {
             </Box>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexShrink: 0 }}>
             <SearchBar
               isOpen={searchOpen}
               onOpenChange={handleSearchOpen}
@@ -179,9 +189,13 @@ const Navbar: React.FC = () => {
             {isAuthenticated && !loading ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                 {user?.role === "ROLE_ADMIN" && (
-                  <Link href="/admin" style={{ textDecoration: "none" }}>
-                    <Button sx={navButtonSx}>Admin</Button>
-                  </Link>
+                  <Box sx={{ display: { xs: "none", md: "block" } }}>
+                    <Link href="/admin" style={{ textDecoration: "none" }}>
+                      <Button sx={navButtonSx} startIcon={<ShieldCheck size={18} />}>
+                        Trang quản trị
+                      </Button>
+                    </Link>
+                  </Box>
                 )}
                 <UserProfileDropdown onLogout={logout} />
               </Box>
@@ -243,7 +257,7 @@ const Navbar: React.FC = () => {
         </Box>
         <Divider sx={{ opacity: 0.1 }} />
         <List sx={{ pt: 2, px: 1 }}>
-          {navLinks.map((link) => (
+          {mobileNavLinks.map((link) => (
             <ListItem key={link.href} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
                 component={Link}
@@ -251,16 +265,32 @@ const Navbar: React.FC = () => {
                 onClick={handleDrawerToggle}
                 sx={{
                   borderRadius: 1.5,
+                  py: 1.2,
+                  px: 2,
                   backgroundColor:
                     pathname === link.href ? "rgba(200, 16, 46, 0.08)" : "transparent",
                   color: pathname === link.href ? "primary.main" : "text.primary",
+                  gap: 2,
+                  "&:hover": {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                  },
                 }}
               >
+                <Box
+                  sx={{
+                    display: "flex",
+                    color: pathname === link.href ? "primary.main" : "text.secondary",
+                    opacity: pathname === link.href ? 1 : 0.7,
+                  }}
+                >
+                  {link.icon}
+                </Box>
                 <ListItemText
                   primary={link.label}
                   primaryTypographyProps={{
-                    fontWeight: pathname === link.href ? 800 : 500,
-                    fontSize: "1rem",
+                    fontWeight: pathname === link.href ? 800 : 600,
+                    fontSize: "0.95rem",
+                    letterSpacing: "-0.01em",
                   }}
                 />
               </ListItemButton>
@@ -275,12 +305,14 @@ const Navbar: React.FC = () => {
               component={Link}
               href="/auth/login"
               onClick={handleDrawerToggle}
+              startIcon={<LogIn size={20} />}
               sx={{
                 borderRadius: 1.5,
-                py: 1.4,
-                fontWeight: 700,
+                py: 1.5,
+                fontWeight: 800,
                 textTransform: "none",
-                fontSize: "0.95rem",
+                fontSize: "1rem",
+                boxShadow: "0 8px 20px rgba(200, 16, 46, 0.3)",
               }}
             >
               Đăng nhập

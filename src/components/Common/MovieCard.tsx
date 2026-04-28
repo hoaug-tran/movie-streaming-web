@@ -1,15 +1,27 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Card, Box, Typography, Skeleton, IconButton, Portal } from "@mui/material";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import movieService from "@/modules/movie/api/movie-service";
+import {
+  Card,
+  Box,
+  Typography,
+  Skeleton,
+  IconButton,
+  Portal,
+  Stack,
+  Chip,
+  alpha,
+  useTheme,
+} from "@mui/material";
 import Image from "next/image";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import AddIcon from "@mui/icons-material/Add";
-import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
-interface MovieCardProps {
+export interface MovieCardProps {
   id: number;
   title: string;
+  slug?: string;
   posterUrl?: string;
   bannerUrl?: string;
   rating?: number;
@@ -22,11 +34,28 @@ interface MovieCardProps {
   onAddToList?: (id: number) => void;
   progress?: number;
   showProgress?: boolean;
+  description?: string;
+  country?: string;
+  language?: string;
+  viewCount?: number;
+  favoriteCount?: number;
+  movieStatus?: string;
+  isPremiumOnly?: boolean;
+  originalTitle?: string;
+  totalRatings?: number;
+  totalReviews?: number;
+  publishedAt?: string;
+  trailerUrl?: string | null;
+  categories?: Array<string | { name?: string; slug?: string }> | null;
+  matchScore?: number;
+  resolution?: string;
+  sx?: object;
 }
 
 export function MovieCard({
   id,
   title,
+  slug,
   posterUrl,
   bannerUrl,
   rating,
@@ -39,7 +68,24 @@ export function MovieCard({
   onAddToList,
   progress = 0,
   showProgress = false,
+  description,
+  country,
+  language,
+  viewCount,
+  favoriteCount,
+  movieStatus,
+  isPremiumOnly,
+  originalTitle,
+  totalRatings,
+  totalReviews,
+  publishedAt,
+  trailerUrl,
+  categories = [],
+  matchScore,
+  resolution = "4K",
+  sx: sxOverride,
 }: MovieCardProps) {
+  const theme = useTheme();
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
   const hoverTimeout = useRef<NodeJS.Timeout>();
@@ -70,25 +116,143 @@ export function MovieCard({
     leaveTimeout.current = setTimeout(() => setIsHovered(false), 200);
   };
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isHovered) {
+        setIsHovered(false);
+        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [isHovered]);
+
   const handlePortalMouseEnter = () => {
     if (leaveTimeout.current) clearTimeout(leaveTimeout.current);
   };
 
-  const HOVER_WIDTH = 340;
-  const APPROX_METADATA_HEIGHT = 80;
+  const HOVER_WIDTH = 420;
+  const APPROX_METADATA_HEIGHT = 188;
   const HOVER_HEIGHT = HOVER_WIDTH * (9 / 16) + APPROX_METADATA_HEIGHT;
 
   let portalLeft = 0;
   let portalTop = 0;
 
   if (rect && typeof window !== "undefined") {
-    portalLeft = rect.left + window.scrollX - (HOVER_WIDTH - rect.width) / 2;
+    portalLeft = rect.left - (HOVER_WIDTH - rect.width) / 2;
     if (portalLeft < 24) portalLeft = 24;
     else if (portalLeft + HOVER_WIDTH > document.documentElement.clientWidth - 24) {
       portalLeft = document.documentElement.clientWidth - HOVER_WIDTH - 24;
     }
-    portalTop = rect.top + window.scrollY - (HOVER_HEIGHT - rect.height) / 2;
+    portalTop = rect.top - (HOVER_HEIGHT - rect.height) / 2;
+    if (portalTop < 24) portalTop = 24;
+    else if (portalTop + HOVER_HEIGHT > document.documentElement.clientHeight - 24) {
+      portalTop = Math.max(24, document.documentElement.clientHeight - HOVER_HEIGHT - 24);
+    }
   }
+
+  const releaseYear = releaseDate ? new Date(releaseDate).getFullYear() : undefined;
+  const publishedYear = publishedAt ? new Date(publishedAt).getFullYear() : undefined;
+  const safeReleaseYear = Number.isFinite(releaseYear) ? releaseYear : releaseDate;
+  const safePublishedYear = Number.isFinite(publishedYear) ? publishedYear : undefined;
+  const normalizedMovieType = movieType?.toUpperCase();
+  const typeLabel =
+    normalizedMovieType === "SERIES" || normalizedMovieType === "TV"
+      ? "Phim bộ"
+      : normalizedMovieType === "SINGLE" || normalizedMovieType === "MOVIE"
+        ? "Phim lẻ"
+        : undefined;
+  const compactFormatter = new Intl.NumberFormat("vi-VN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+  const personalizedMatchScore =
+    typeof matchScore === "number" ? Math.min(99, Math.max(0, Math.round(matchScore))) : undefined;
+  const releaseLabel = safeReleaseYear
+    ? `${safeReleaseYear}`
+    : safePublishedYear
+      ? `${safePublishedYear}`
+      : undefined;
+  const accessLabel = isPremiumOnly ? "Premium" : "Xem miễn phí";
+  const { data: detailData } = useQuery({
+    queryKey: ["movie-preview", slug || id],
+    queryFn: () => (slug ? movieService.getMovieDetailBySlug(slug) : Promise.reject()),
+    enabled: isHovered && !!slug,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const displayDescription = description || detailData?.movie?.description;
+  const rawCategories = categories?.length ? categories : detailData?.movie?.categories;
+  const safeCategories = Array.isArray(rawCategories) ? rawCategories : [];
+  const displayTrailerUrl = trailerUrl || detailData?.movie?.trailerUrl;
+  const displayBannerUrl = bannerUrl || detailData?.movie?.bannerUrl;
+  const displayMovieType = movieType || detailData?.movie?.movieType;
+  const displayViewCount = viewCount || detailData?.movie?.viewCount;
+  const displayTotalRatings = totalRatings || detailData?.movie?.totalRatings;
+  const displayRating = rating || detailData?.movie?.averageRating;
+  const displayMatchScore =
+    matchScore || (detailData?.movie as any)?.matchScore || personalizedMatchScore;
+  const displayTotalReviews = totalReviews || detailData?.movie?.totalReviews;
+  const displayFavoriteCount = favoriteCount || detailData?.movie?.favoriteCount;
+  const displayLanguage = language || detailData?.movie?.language;
+  const displayCountry = country || detailData?.movie?.country;
+  const displayAgeRating = ageRating || detailData?.movie?.ageRating;
+
+  const categoryLabels = safeCategories.length
+    ? safeCategories
+        .map((category) =>
+          typeof category === "string" ? category : category.name || category.slug
+        )
+        .filter(Boolean)
+        .slice(0, 4)
+    : ([displayCountry, displayLanguage].filter(Boolean).slice(0, 4) as string[]);
+
+  const quickFacts = [
+    typeof displayMatchScore === "number"
+      ? { label: "Phù hợp", value: `${displayMatchScore}%` }
+      : undefined,
+    typeof displayRating === "number"
+      ? { label: "Điểm", value: displayRating.toFixed(1) }
+      : undefined,
+    typeof displayViewCount === "number"
+      ? { label: "Lượt xem", value: compactFormatter.format(displayViewCount) }
+      : undefined,
+    typeof displayTotalRatings === "number"
+      ? { label: "Đánh giá", value: compactFormatter.format(displayTotalRatings) }
+      : undefined,
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  const infoFacts = [
+    releaseLabel,
+    displayAgeRating,
+    displayMovieType === "SERIES" || displayMovieType === "TV"
+      ? "Phim bộ"
+      : displayMovieType === "SINGLE" || displayMovieType === "MOVIE"
+        ? "Phim lẻ"
+        : typeLabel,
+    displayCountry,
+    displayLanguage,
+  ].filter(Boolean) as string[];
+
+  const sideFacts = [
+    displayFavoriteCount
+      ? { label: "Yêu thích", value: compactFormatter.format(displayFavoriteCount) }
+      : undefined,
+    displayTotalReviews
+      ? { label: "Thảo luận", value: compactFormatter.format(displayTotalReviews) }
+      : undefined,
+    movieStatus
+      ? { label: "Trạng thái", value: movieStatus === "PUBLISHED" ? "Đã xuất bản" : movieStatus }
+      : undefined,
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  const hasTrailerPreview = Boolean(displayTrailerUrl);
+
+  const portalCardBg =
+    theme.palette.mode === "dark"
+      ? alpha(theme.palette.background.paper, 0.98)
+      : alpha(theme.palette.background.paper, 0.99);
 
   const renderBaseCard = () => {
     if (variant === "ranked") {
@@ -195,11 +359,11 @@ export function MovieCard({
           },
         }}
       >
-        {!posterUrl || imageError ? (
+        {!(displayBannerUrl || posterUrl) || imageError ? (
           <Skeleton variant="rectangular" width="100%" height="100%" />
         ) : (
           <Image
-            src={posterUrl}
+            src={displayBannerUrl || posterUrl!}
             alt={title}
             fill
             sizes="(max-width: 600px) 50vw, (max-width: 960px) 33vw, 25vw"
@@ -307,6 +471,7 @@ export function MovieCard({
           cursor: "pointer",
           transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
           "&:hover": { transform: "translateY(-4px)" },
+          ...sxOverride,
         }}
       >
         {renderBaseCard()}
@@ -318,14 +483,16 @@ export function MovieCard({
             onMouseEnter={handlePortalMouseEnter}
             onMouseLeave={handleMouseLeave}
             sx={{
-              position: "absolute",
+              position: "fixed",
               top: portalTop,
               left: portalLeft,
               width: HOVER_WIDTH,
               zIndex: isHovered ? 99999 : -1,
               pointerEvents: isHovered ? "auto" : "none",
               opacity: isHovered ? 1 : 0,
-              transition: "opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+              transition: isHovered
+                ? "opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
+                : "opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
             <Card
@@ -333,8 +500,10 @@ export function MovieCard({
                 width: "100%",
                 borderRadius: 1,
                 overflow: "hidden",
-                transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                transform: isHovered ? "scale(1)" : "scale(0.85)",
+                transition: isHovered
+                  ? "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)"
+                  : "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                transform: isHovered ? "scale(1.02) translateY(0)" : "scale(0.8) translateY(24px)",
                 transformOrigin: "center center",
                 boxShadow: isHovered ? "0 10px 40px rgba(0,0,0,0.9)" : "none",
                 bgcolor: "#141414",
@@ -349,18 +518,71 @@ export function MovieCard({
                   bgcolor: "#000",
                 }}
               >
-                {!(bannerUrl || posterUrl) || imageError ? (
+                {hasTrailerPreview ? (
+                  <Box
+                    component="video"
+                    src={displayTrailerUrl || undefined}
+                    poster={displayBannerUrl || posterUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                ) : !(bannerUrl || posterUrl) || imageError ? (
                   <Skeleton variant="rectangular" width="100%" height="100%" />
                 ) : (
                   <Image
-                    src={bannerUrl || posterUrl!}
+                    src={displayBannerUrl || posterUrl!}
                     alt={title}
                     fill
-                    sizes="340px"
+                    sizes="420px"
                     style={{ objectFit: "cover" }}
                     onError={() => setImageError(true)}
                   />
                 )}
+
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    background: `linear-gradient(180deg, ${alpha("#000", 0)} 35%, ${alpha("#000", 0.86)} 100%)`,
+                  }}
+                />
+
+                <Box sx={{ position: "absolute", left: 16, right: 16, bottom: 14 }}>
+                  <Typography
+                    sx={{
+                      color: "common.white",
+                      fontSize: "1.18rem",
+                      fontWeight: 950,
+                      lineHeight: 1.05,
+                      letterSpacing: "-0.04em",
+                      textShadow: "0 4px 18px rgba(0,0,0,0.65)",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {title}
+                  </Typography>
+                  {originalTitle && originalTitle !== title && (
+                    <Typography
+                      sx={{
+                        mt: 0.5,
+                        color: alpha("#fff", 0.76),
+                        fontSize: "0.72rem",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      {originalTitle}
+                    </Typography>
+                  )}
+                </Box>
 
                 {showProgress && progress > 0 && (
                   <Box
@@ -370,7 +592,7 @@ export function MovieCard({
                       left: 0,
                       right: 0,
                       height: 3,
-                      backgroundColor: "rgba(255,255,255,0.2)",
+                      backgroundColor: alpha("#fff", 0.2),
                     }}
                   >
                     <Box
@@ -385,153 +607,264 @@ export function MovieCard({
               </Box>
 
               <Box
-                sx={{ px: 1.5, pt: 1, pb: 1.5, height: isHovered ? "auto" : 0, overflow: "hidden" }}
+                sx={{
+                  px: 2,
+                  pt: 1.75,
+                  pb: 2,
+                  height: isHovered ? "auto" : 0,
+                  overflow: "hidden",
+                  bgcolor: portalCardBg,
+                }}
               >
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1.5 }}>
-                  <Box sx={{ display: "flex", gap: 1 }}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  spacing={1.25}
+                  sx={{ mb: 1.2 }}
+                >
+                  <Stack direction="row" spacing={0.9} alignItems="center">
                     <IconButton
+                      aria-label={`Phát ${title}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onPlay?.(id);
                       }}
                       sx={{
-                        bgcolor: "white",
-                        color: "black",
-                        width: 32,
-                        height: 32,
-                        "&:hover": { bgcolor: "rgba(255,255,255,0.8)" },
+                        bgcolor: "primary.main",
+                        color: "primary.contrastText",
+                        width: 36,
+                        height: 36,
+                        boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.32)}`,
+                        "&:hover": { bgcolor: "primary.dark", transform: "scale(1.04)" },
                       }}
                     >
-                      <PlayArrowIcon fontSize="small" />
+                      <PlayArrowIcon />
                     </IconButton>
                     <IconButton
+                      aria-label={`Thêm ${title} vào danh sách`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onAddToList?.(id);
                       }}
                       sx={{
-                        border: "2px solid rgba(255,255,255,0.5)",
-                        color: "white",
-                        width: 32,
-                        height: 32,
-                        "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,0.1)" },
+                        border: "1px solid",
+                        borderColor: "divider",
+                        color: "text.primary",
+                        bgcolor: alpha(theme.palette.text.primary, 0.05),
+                        width: 36,
+                        height: 36,
+                        "&:hover": {
+                          borderColor: "primary.main",
+                          bgcolor: alpha(theme.palette.primary.main, 0.12),
+                          transform: "scale(1.04)",
+                        },
                       }}
                     >
-                      <AddIcon fontSize="small" />
+                      <AddIcon />
                     </IconButton>
-                    <IconButton
+                  </Stack>
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Box
                       sx={{
-                        border: "2px solid rgba(255,255,255,0.5)",
-                        color: "white",
-                        width: 32,
-                        height: 32,
-                        "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,0.1)" },
+                        px: 0.8,
+                        height: 25,
+                        minWidth: 34,
+                        borderRadius: 0.45,
+                        display: "grid",
+                        placeItems: "center",
+                        border: "1px solid",
+                        borderColor: alpha(theme.palette.text.primary, 0.28),
+                        color: "text.primary",
+                        fontSize: "0.7rem",
+                        fontWeight: 950,
+                        letterSpacing: "0.02em",
                       }}
                     >
-                      <ThumbUpOutlinedIcon sx={{ fontSize: 18 }} />
-                    </IconButton>
-                  </Box>
-                  <IconButton
-                    sx={{
-                      border: "2px solid rgba(255,255,255,0.5)",
-                      color: "white",
-                      width: 32,
-                      height: 32,
-                      "&:hover": { borderColor: "white", bgcolor: "rgba(255,255,255,0.1)" },
-                    }}
-                  >
-                    <KeyboardArrowDownIcon fontSize="small" />
-                  </IconButton>
-                </Box>
+                      {resolution}
+                    </Box>
+                    <Chip
+                      label={accessLabel}
+                      size="small"
+                      sx={{
+                        height: 25,
+                        borderRadius: 0.75,
+                        bgcolor: isPremiumOnly
+                          ? alpha(theme.palette.warning.main, 0.16)
+                          : alpha(theme.palette.success.main, 0.16),
+                        color: isPremiumOnly ? "warning.main" : "success.main",
+                        border: "1px solid",
+                        borderColor: isPremiumOnly
+                          ? alpha(theme.palette.warning.main, 0.32)
+                          : alpha(theme.palette.success.main, 0.32),
+                        fontSize: "0.67rem",
+                        fontWeight: 950,
+                      }}
+                    />
+                  </Stack>
+                </Stack>
 
                 <Box
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mb: 1,
-                    flexWrap: "wrap",
-                    lineHeight: 1,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 0.75,
+                    mb: 1.1,
                   }}
                 >
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 800, color: "#46d369", fontSize: "0.85rem" }}
-                  >
-                    {rating ? `${Math.round(rating * 20)}% Độ phù hợp` : "Top lựa chọn"}
-                  </Typography>
-                  <Box
-                    sx={{
-                      border: "1px solid rgba(255,255,255,0.4)",
-                      px: 0.6,
-                      py: 0.2,
-                      borderRadius: 0.5,
-                      fontSize: "0.65rem",
-                      fontWeight: 700,
-                      color: "white",
-                    }}
-                  >
-                    {ageRating || "T13"}
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 500, color: "white", fontSize: "0.8rem" }}
-                  >
-                    {movieType === "SERIES" ? "Loạt phim Netflix" : "Phim lẻ"}
-                  </Typography>
-                  <Box
-                    sx={{
-                      border: "1px solid rgba(255,255,255,0.4)",
-                      px: 0.6,
-                      py: 0.2,
-                      borderRadius: 0.5,
-                      fontSize: "0.6rem",
-                      fontWeight: 800,
-                      color: "white",
-                    }}
-                  >
-                    HD
-                  </Box>
+                  {detailData || (rating && viewCount) ? (
+                    quickFacts.map((item, index) => (
+                      <Box
+                        key={item.label}
+                        sx={{
+                          minWidth: 0,
+                          py: 0.75,
+                          px: 0.8,
+                          borderRadius: 1,
+                          bgcolor:
+                            index === 0
+                              ? alpha(theme.palette.primary.main, 0.13)
+                              : alpha(theme.palette.text.primary, 0.045),
+                          border: "1px solid",
+                          borderColor:
+                            index === 0 ? alpha(theme.palette.primary.main, 0.28) : "divider",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            color: index === 0 ? "primary.main" : "text.primary",
+                            fontSize: "0.84rem",
+                            fontWeight: 950,
+                            lineHeight: 1,
+                          }}
+                        >
+                          {item.value}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            mt: 0.3,
+                            color: "text.secondary",
+                            fontSize: "0.58rem",
+                            fontWeight: 850,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {item.label}
+                        </Typography>
+                      </Box>
+                    ))
+                  ) : (
+                    <>
+                      <Skeleton variant="rectangular" height={42} sx={{ borderRadius: 1 }} />
+                      <Skeleton variant="rectangular" height={42} sx={{ borderRadius: 1 }} />
+                      <Skeleton variant="rectangular" height={42} sx={{ borderRadius: 1 }} />
+                    </>
+                  )}
                 </Box>
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "white", fontWeight: 600, fontSize: "0.75rem" }}
+                <Stack
+                  direction="row"
+                  spacing={0.7}
+                  alignItems="center"
+                  flexWrap="wrap"
+                  useFlexGap
+                  sx={{ mb: 1 }}
+                >
+                  {infoFacts.map((fact, index) => (
+                    <React.Fragment key={`${fact}-${index}`}>
+                      <Typography
+                        sx={{ color: "text.primary", fontSize: "0.72rem", fontWeight: 850 }}
+                      >
+                        {fact}
+                      </Typography>
+                      {index < infoFacts.length - 1 && (
+                        <Box
+                          sx={{
+                            width: 3.5,
+                            height: 3.5,
+                            borderRadius: "50%",
+                            bgcolor: "text.disabled",
+                          }}
+                        />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </Stack>
+
+                {categories?.length || (detailData && safeCategories.length > 0) ? (
+                  <Stack
+                    direction="row"
+                    spacing={0.6}
+                    alignItems="center"
+                    flexWrap="wrap"
+                    useFlexGap
+                    sx={{ mb: 1.15 }}
                   >
-                    Cưng muốn xỉu
-                  </Typography>
-                  <Box
+                    {categoryLabels.map((item) => (
+                      <Chip
+                        key={item}
+                        label={item}
+                        size="small"
+                        sx={{
+                          height: 23,
+                          borderRadius: 0.85,
+                          bgcolor: alpha(theme.palette.text.primary, 0.06),
+                          color: "text.primary",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          fontSize: "0.65rem",
+                          fontWeight: 850,
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  !detailData &&
+                  !categories?.length && (
+                    <Stack direction="row" spacing={0.6} sx={{ mb: 1.15 }}>
+                      <Skeleton width={60} height={23} sx={{ borderRadius: 0.85 }} />
+                      <Skeleton width={70} height={23} sx={{ borderRadius: 0.85 }} />
+                    </Stack>
+                  )
+                )}
+
+                {displayDescription ? (
+                  <Typography
                     sx={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: "50%",
-                      bgcolor: "rgba(255,255,255,0.4)",
-                      flexShrink: 0,
+                      mb: 1.15,
+                      color: "text.secondary",
+                      fontSize: "0.76rem",
+                      lineHeight: 1.45,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
                     }}
-                  />
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "white", fontWeight: 600, fontSize: "0.75rem" }}
                   >
-                    Lãng mạn
+                    {displayDescription}
                   </Typography>
-                  <Box
-                    sx={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: "50%",
-                      bgcolor: "rgba(255,255,255,0.4)",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "white", fontWeight: 600, fontSize: "0.75rem" }}
-                  >
-                    Kịch tính
-                  </Typography>
-                </Box>
+                ) : (
+                  <Box sx={{ mb: 1.15 }}>
+                    <Skeleton height={15} width="100%" sx={{ mb: 0.5 }} />
+                    <Skeleton height={15} width="70%" />
+                  </Box>
+                )}
+
+                {sideFacts.length > 0 && (
+                  <Stack direction="row" spacing={1.1} flexWrap="wrap" useFlexGap>
+                    {sideFacts.map((item) => (
+                      <Typography
+                        key={item.label}
+                        sx={{ color: "text.secondary", fontSize: "0.68rem", fontWeight: 800 }}
+                      >
+                        <Box component="span" sx={{ color: "text.primary", fontWeight: 950 }}>
+                          {item.value}
+                        </Box>{" "}
+                        {item.label}
+                      </Typography>
+                    ))}
+                  </Stack>
+                )}
               </Box>
             </Card>
           </Box>

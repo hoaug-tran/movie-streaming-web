@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Box, Typography, Container } from "@mui/material";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import movieService from "@/modules/movie/api/movie-service";
 import { Movie } from "@/modules/movie/types/movie";
 import { useRouter } from "next/navigation";
@@ -49,19 +50,20 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
     setError(null);
 
     try {
-      const response = await movieService.searchMovies(searchQuery, {
+      const response = await movieService.advancedSearch({
+        keyword: searchQuery,
         page: pageNum,
-        limit: 30,
+        size: 30,
       });
 
       if (pageNum === 0) {
         setResults(response.content || []);
-        setHasMore(!response.isLast);
+        setHasMore(response.hasNext ?? false);
         setCurrentPage(1);
         setInitialLoadingDone(true);
       } else {
         setResults((prev) => [...prev, ...(response.content || [])]);
-        setHasMore(!response.isLast);
+        setHasMore(response.hasNext ?? false);
         setCurrentPage(pageNum + 1);
       }
     } catch (err) {
@@ -215,42 +217,58 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
               }}
               sx={{ aspectRatio: "16 / 9", cursor: "pointer" }}
             >
-              <MovieCard
-                id={movie.id}
-                title={movie.title}
-                posterUrl={movie.posterUrl || undefined}
-                bannerUrl={movie.bannerUrl || undefined}
-                rating={movie.averageRating}
-                releaseDate={movie.releaseYear ? movie.releaseYear.toString() : undefined}
-                ageRating={movie.ageRating}
-                movieType={movie.movieType}
-                onPlay={() => onClose()}
-              />
+              <MovieCard {...getMovieCardProps(movie, { onPlay: () => onClose() })} />
             </Box>
           ))}
 
-          {/* Pagination Loading - Only show when actively loading MORE results */}
-          {loading && hasMore && (
-            <>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Box key={`load-${i}`} sx={{ aspectRatio: "16 / 9" }}>
-                  <MovieCardSkeleton />
-                </Box>
-              ))}
-            </>
-          )}
-
-          {/* End of Results */}
-          {!hasMore && results.length > 0 && (
-            <Box sx={{ gridColumn: "1 / -1", textAlign: "center", py: 4 }}>
-              <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.875rem" }}>
-                Không còn kết quả
-              </Typography>
-            </Box>
-          )}
-
           <div ref={observerTarget} style={{ gridColumn: "1 / -1", height: "1px" }} />
         </Box>
+
+        {loading && hasMore && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1.5,
+              py: 3,
+            }}
+          >
+            <Box
+              sx={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                backgroundColor: "primary.main",
+                animation: "pulse 1s ease-in-out infinite",
+                "@keyframes pulse": {
+                  "0%, 100%": { opacity: 0.3, transform: "scale(0.8)" },
+                  "50%": { opacity: 1, transform: "scale(1.2)" },
+                },
+              }}
+            />
+            <Typography sx={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>
+              Đang tải thêm...
+            </Typography>
+          </Box>
+        )}
+
+        {!hasMore && results.length > 0 && !loading && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              py: 3,
+            }}
+          >
+            <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.08)" }} />
+            <Typography sx={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.25)", fontWeight: 600 }}>
+              Đã hiển thị tất cả {results.length} kết quả
+            </Typography>
+            <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.08)" }} />
+          </Box>
+        )}
       </Container>
     </Box>
   );

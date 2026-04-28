@@ -468,7 +468,7 @@ function ReviewSection({ reviews }: { reviews: MovieReview[] }) {
             display: "flex",
             gap: 2,
             width: "max-content",
-            animation: "reviewFloat 28s linear infinite",
+            animation: "reviewFloat 5s linear infinite",
             "@keyframes reviewFloat": {
               from: { transform: "translateX(0)" },
               to: { transform: "translateX(-50%)" },

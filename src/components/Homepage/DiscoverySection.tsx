@@ -3,6 +3,7 @@
 import { Box, Typography, Button, Skeleton } from "@mui/material";
 import { SectionHeader } from "@/components/Common/SectionHeader";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import { HorizontalScrollGrid } from "@/components/Common/HorizontalScrollGrid";
 import { Movie } from "@/modules/movie/types/movie";
 import { useRouter } from "next/navigation";
@@ -72,13 +73,14 @@ export function DiscoverySection({
                 }}
               >
                 <MovieCard
-                  id={movie.id}
-                  title={movie.title}
-                  posterUrl={movie.posterUrl ?? undefined}
-                  bannerUrl={movie.bannerUrl ?? undefined}
-                  rating={hideRating ? undefined : movie.averageRating}
-                  ranking={variant === "ranked" ? index + 1 : undefined}
-                  variant={variant === "ranked" ? "ranked" : "default"}
+                  {...getMovieCardProps(movie, {
+                    rating: hideRating ? undefined : movie.averageRating,
+                    ranking: variant === "ranked" ? index + 1 : undefined,
+                    variant: variant === "ranked" ? "ranked" : "default",
+                    releaseDate:
+                      movie.publishedAt ||
+                      (movie.releaseYear ? `${movie.releaseYear}-01-01` : undefined),
+                  })}
                 />
               </Box>
             ))}

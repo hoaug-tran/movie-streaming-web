@@ -282,7 +282,7 @@ export function HeroBanner() {
               boxShadow: currentIndex === index ? "0 10px 30px rgba(0,0,0,0.5)" : "none",
               display: {
                 xs: index >= 3 ? "none" : "block",
-                sm: index >= 2 ? "none" : "block",
+                md: index >= 2 ? "none" : "block",
                 lg: "block",
               },
             }}

@@ -248,6 +248,31 @@ class MovieService {
     }
   }
 
+  async getBrowseMoviesByType(
+    movieType: "SINGLE" | "SERIES",
+    options: Omit<import("./../types/movie").SearchMovieRequest, "movieType"> = {}
+  ): Promise<Movie[]> {
+    const data = await this.advancedSearch({
+      movieType,
+      page: 0,
+      size: 12,
+      ...options,
+    });
+    return data.content || [];
+  }
+
+  async getBrowsePageByType(
+    movieType: "SINGLE" | "SERIES",
+    options: Omit<import("./../types/movie").SearchMovieRequest, "movieType"> = {}
+  ): Promise<import("./../types/movie").SearchMovieResponse> {
+    return this.advancedSearch({
+      movieType,
+      page: 0,
+      size: 24,
+      ...options,
+    });
+  }
+
   private handleError(error: any): Error {
     if (error.data?.message) {
       return new Error(error.data.message);

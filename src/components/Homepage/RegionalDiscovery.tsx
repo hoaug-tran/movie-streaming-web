@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Box, Tabs, Tab, useTheme, alpha } from "@mui/material";
 import { SectionHeader } from "@/components/Common/SectionHeader";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import { HorizontalScrollGrid } from "@/components/Common/HorizontalScrollGrid";
 import { useRegionalMovies } from "@/modules/movie/hooks/useDiscovery";
 import { useRouter } from "next/navigation";
@@ -99,12 +100,7 @@ export function RegionalDiscovery() {
                   scrollSnapAlign: "start",
                 }}
               >
-                <MovieCard
-                  id={movie.id}
-                  title={movie.title}
-                  posterUrl={movie.posterUrl ?? undefined}
-                  bannerUrl={movie.bannerUrl ?? undefined}
-                />
+                <MovieCard {...getMovieCardProps(movie)} />
               </Box>
             ))}
       </HorizontalScrollGrid>
