@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/Common/SectionHeader";
 import { HorizontalScrollGrid } from "@/components/Common/HorizontalScrollGrid";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
 import FilterAltRoundedIcon from "@mui/icons-material/FilterAltRounded";
+import { useRouter } from "next/navigation";
 
 interface TVSeriesBrowserProps {}
 
@@ -80,11 +81,14 @@ const SECTION_CONFIGS = [
   },
 ];
 
-const SectionRenderer: React.FC<{ config: (typeof SECTION_CONFIGS)[0] }> = ({ config }) => {
+const SectionRenderer: React.FC<{
+  config: (typeof SECTION_CONFIGS)[0];
+}> = ({ config }) => {
   const { data: movies = [], isLoading } = useQuery({
     queryKey: ["tv-series", config.id],
     queryFn: config.queryFn,
   });
+  const router = useRouter();
 
   return (
     <Box sx={{ py: 6 }}>
@@ -101,9 +105,13 @@ const SectionRenderer: React.FC<{ config: (typeof SECTION_CONFIGS)[0] }> = ({ co
             : movies.map((movie: any) => (
                 <Box
                   key={movie.id}
+                  onClick={() =>
+                    router.push(`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`)
+                  }
                   sx={{
                     minWidth: 280,
                     scrollSnapAlign: "start",
+                    cursor: "pointer",
                   }}
                 >
                   <MovieCard
@@ -132,7 +140,8 @@ export default function TVSeriesBrowser({}: TVSeriesBrowserProps) {
     queryKey: ["tv-categories"],
     queryFn: async () => {
       const all = await movieService.getCategories();
-      return all.filter((cat: any) => cat.slug === "series" || cat.name.includes("Series"));
+      // Return all categories without filtering
+      return all;
     },
   });
 

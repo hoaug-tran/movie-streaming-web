@@ -23,7 +23,7 @@ export function CategoriesSection() {
         {categories.map((category) => (
           <Box
             key={category.id}
-            onClick={() => router.push(`/movies/category/${category.id}`)}
+            onClick={() => router.push(`/movies/category/${category.slug}`)}
             sx={{
               minWidth: 200,
               cursor: "pointer",

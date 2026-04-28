@@ -16,8 +16,10 @@ import movieService from "@/modules/movie/api/movie-service";
 import { SearchMovieRequest } from "@/modules/movie/types/movie";
 import { CasinoOutlined, TuneOutlined } from "@mui/icons-material";
 import { MovieCard } from "@/components/Common/MovieCard";
+import { useRouter } from "next/navigation";
 
 export default function VibeExplorer() {
+  const router = useRouter();
   const [filters, setFilters] = useState<SearchMovieRequest>({
     categoryId: undefined,
     fromYear: undefined,
@@ -238,7 +240,19 @@ export default function VibeExplorer() {
             {moviesCount > 0 ? (
               <Grid container spacing={3}>
                 {combinedMovies.map((movie, index) => (
-                  <Grid item xs={12} sm={6} lg={4} key={`${movie.id}-${index}`}>
+                  <Grid
+                    item
+                    xs={12}
+                    sm={6}
+                    lg={4}
+                    key={`${movie.id}-${index}`}
+                    onClick={() =>
+                      router.push(
+                        `/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`
+                      )
+                    }
+                    sx={{ cursor: "pointer" }}
+                  >
                     <MovieCard
                       id={movie.id}
                       title={movie.title}

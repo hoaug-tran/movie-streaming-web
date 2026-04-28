@@ -32,6 +32,40 @@ export interface MovieDetail extends MovieSummary {
   studios: StudioItem[];
 }
 
+export interface MovieComment {
+  id: number;
+  userId: number;
+  movieId: number;
+  movieSlug?: string;
+  movieTitle?: string;
+  episodeId?: number | null;
+  parentCommentId?: number | null;
+  content: string;
+  likeCount: number;
+  replyCount: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MovieDetailAggregate {
+  movie: MovieDetail;
+  comments: MovieComment[];
+  reviews: MovieReview[];
+}
+
+export interface MovieReview {
+  id: number;
+  movieId: number;
+  rating: number;
+  title?: string;
+  content?: string;
+  isEdited?: boolean;
+  status?: string;
+  likeCount?: number;
+  createdAt?: string;
+}
+
 export interface Episode {
   id: number;
   title?: string;
@@ -46,6 +80,7 @@ export interface Episode {
 export interface CategoryItem {
   id: number;
   name: string;
+  slug: string;
 }
 
 export interface TagItem {
@@ -106,6 +141,7 @@ export interface SearchMovieRequest {
   minRating?: number;
   sortBy?: string;
   sortDirection?: string;
+  movieType?: string;
   page?: number;
   size?: number;
 }

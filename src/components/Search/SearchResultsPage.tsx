@@ -5,6 +5,7 @@ import { Box, Typography, Container } from "@mui/material";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
 import movieService from "@/modules/movie/api/movie-service";
 import { Movie } from "@/modules/movie/types/movie";
+import { useRouter } from "next/navigation";
 
 interface SearchResultsPageProps {
   query: string;
@@ -18,9 +19,10 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
   const [currentPage, setCurrentPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoadingDone, setInitialLoadingDone] = useState(false);
+  const router = useRouter();
 
   const observerTarget = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const isSearchingRef = useRef(false);
   const lastQueryRef = useRef<string>("");
   const lastPageRef = useRef<number>(-1);
@@ -56,6 +58,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
         setResults(response.content || []);
         setHasMore(!response.isLast);
         setCurrentPage(1);
+        setInitialLoadingDone(true);
       } else {
         setResults((prev) => [...prev, ...(response.content || [])]);
         setHasMore(!response.isLast);
@@ -81,6 +84,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
       setCurrentPage(0);
       setHasMore(true);
       setError(null);
+      setInitialLoadingDone(false);
       isSearchingRef.current = false;
       lastPageRef.current = -1;
 
@@ -184,7 +188,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
           )}
 
           {/* No Results */}
-          {results.length === 0 && !initialLoading && query && !error && (
+          {results.length === 0 && !initialLoading && initialLoadingDone && query && !error && (
             <Box sx={{ gridColumn: "1 / -1", textAlign: "center", py: 8 }}>
               <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "1rem" }}>
                 Không tìm thấy kết quả cho &quot;{query}&quot;
@@ -203,7 +207,14 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
 
           {/* Results */}
           {results.map((movie) => (
-            <Box key={movie.id} sx={{ aspectRatio: "16 / 9" }}>
+            <Box
+              key={movie.id}
+              onClick={() => {
+                onClose();
+                router.push(`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`);
+              }}
+              sx={{ aspectRatio: "16 / 9", cursor: "pointer" }}
+            >
               <MovieCard
                 id={movie.id}
                 title={movie.title}

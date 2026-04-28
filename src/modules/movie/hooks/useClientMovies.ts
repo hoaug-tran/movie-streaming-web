@@ -28,6 +28,7 @@ export interface Movie {
 export interface Category {
   id: number;
   name: string;
+  slug: string;
 }
 
 function extractMovies(data: unknown): Movie[] {

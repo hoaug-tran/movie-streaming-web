@@ -5,6 +5,7 @@ import { Box, Chip, Grid, Typography, CircularProgress, Stack, Container } from 
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import movieService from "@/modules/movie/api/movie-service";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { useRouter } from "next/navigation";
 
 interface MediaBrowserProps {
   movieType: "MOVIE" | "TV";
@@ -13,6 +14,7 @@ interface MediaBrowserProps {
 export default function MediaBrowser({ movieType }: MediaBrowserProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState("createdAt");
+  const router = useRouter();
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -22,13 +24,7 @@ export default function MediaBrowser({ movieType }: MediaBrowserProps) {
     },
   });
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isFetching,
-  } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } = useInfiniteQuery({
     queryKey: ["media", movieType, selectedCategory, sortBy],
     queryFn: async ({ pageParam = 0 }) => {
       const response = await movieService.searchMovies({
@@ -68,9 +64,7 @@ export default function MediaBrowser({ movieType }: MediaBrowserProps) {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const filteredCategories = categories.filter((cat: any) =>
-    movieType === "MOVIE" 
-      ? cat.slug !== "series" 
-      : cat.slug === "series"
+    movieType === "MOVIE" ? cat.slug !== "series" : cat.slug === "series"
   );
 
   return (
@@ -165,7 +159,17 @@ export default function MediaBrowser({ movieType }: MediaBrowserProps) {
           {moviesCount > 0 ? (
             <Grid container spacing={3}>
               {combinedMovies.map((movie: any, index: number) => (
-                <Grid item xs={12} sm={6} lg={4} key={`${movie.id}-${index}`}>
+                <Grid
+                  item
+                  xs={12}
+                  sm={6}
+                  lg={4}
+                  key={`${movie.id}-${index}`}
+                  onClick={() =>
+                    router.push(`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`)
+                  }
+                  sx={{ cursor: "pointer" }}
+                >
                   <MovieCard
                     id={movie.id}
                     title={movie.title}

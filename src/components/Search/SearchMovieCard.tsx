@@ -20,7 +20,10 @@ const SearchMovieCard: React.FC<SearchMovieCardProps> = ({ movie, onClose }) => 
   };
 
   return (
-    <Link href={`/movies/${movie.id}`} onClick={handleClick}>
+    <Link
+      href={`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`}
+      onClick={handleClick}
+    >
       <Card
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

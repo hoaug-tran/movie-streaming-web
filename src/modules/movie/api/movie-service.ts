@@ -1,5 +1,11 @@
 import apiClient from "@/services/api-client";
-import { Movie, MovieDetail, CreateMovieRequest, CategoryItem } from "@/modules/movie/types/movie";
+import {
+  Movie,
+  MovieDetail,
+  MovieDetailAggregate,
+  CreateMovieRequest,
+  CategoryItem,
+} from "@/modules/movie/types/movie";
 import { PaginatedResponse, PaginationParams } from "@/types/api";
 
 class MovieService {
@@ -16,6 +22,14 @@ class MovieService {
   async getMovieById(id: string): Promise<MovieDetail> {
     try {
       return await apiClient.get<MovieDetail>(`/movies/${id}`);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMovieDetailBySlug(slug: string): Promise<MovieDetailAggregate> {
+    try {
+      return await apiClient.get<MovieDetailAggregate>(`/movies/slug/${slug}/detail`);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -57,7 +71,6 @@ class MovieService {
     }
   }
 
-  // Discovery Methods
   async getTrendingMovies(limit: number = 10): Promise<Movie[]> {
     try {
       const data = await apiClient.get<{ movies: Movie[] }>("/discovery/trending", {

@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/Common/SectionHeader";
 import { HorizontalScrollGrid } from "@/components/Common/HorizontalScrollGrid";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
 import FilterAltRoundedIcon from "@mui/icons-material/FilterAltRounded";
+import { useRouter } from "next/navigation";
 
 interface MovieBrowserProps {}
 
@@ -85,6 +86,7 @@ const SectionRenderer: React.FC<{ config: (typeof SECTION_CONFIGS)[0] }> = ({ co
     queryKey: ["movies", config.id],
     queryFn: config.queryFn,
   });
+  const router = useRouter();
 
   return (
     <Box sx={{ py: 6 }}>
@@ -101,9 +103,13 @@ const SectionRenderer: React.FC<{ config: (typeof SECTION_CONFIGS)[0] }> = ({ co
             : movies.map((movie: any) => (
                 <Box
                   key={movie.id}
+                  onClick={() =>
+                    router.push(`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`)
+                  }
                   sx={{
                     minWidth: 280,
                     scrollSnapAlign: "start",
+                    cursor: "pointer",
                   }}
                 >
                   <MovieCard
