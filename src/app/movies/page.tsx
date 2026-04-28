@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function MoviesPage() {
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
-      <Box sx={{ pt: { xs: 10, md: 14 }, pb: 2 }}>
+      <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 0.75, md: 1 } }}>
         <Container maxWidth="xl">
           <Breadcrumbs
             aria-label="breadcrumb"

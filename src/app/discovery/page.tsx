@@ -1,11 +1,11 @@
-import { Box, Container, Typography, Breadcrumbs, Link as MuiLink } from "@mui/material";
+import { Box, Typography, Breadcrumbs, Link as MuiLink } from "@mui/material";
 import Link from "next/link";
 import { Metadata } from "next";
 import VibeExplorer from "@/components/Discovery/VibeExplorer";
 
 export const metadata: Metadata = {
   title: "Khám Phá | Gió Phim",
-  description: "Trạm lọc chuyên sâu giúp bạn tìm kiếm nội dung điện ảnh phù hợp nhất.",
+  description: "Khám phá kho phim khổng lồ theo thể loại, thập niên và xếp hạng.",
 };
 
 export default function DiscoveryPage() {
@@ -13,58 +13,72 @@ export default function DiscoveryPage() {
     <Box
       sx={{
         minHeight: "100vh",
-        pt: { xs: 10, md: 14 },
-        pb: 8,
+        pt: { xs: 10, md: 13 },
+        pb: 12,
         backgroundColor: "background.default",
+        px: { xs: 2, md: 5, lg: 7 },
       }}
     >
-      <Container maxWidth="xl">
-        <Breadcrumbs
-          aria-label="breadcrumb"
+      <Breadcrumbs
+        aria-label="breadcrumb"
+        sx={{
+          mb: 3,
+          fontSize: "0.8rem",
+          "& .MuiBreadcrumbs-separator": { color: "text.disabled" },
+        }}
+      >
+        <MuiLink
+          component={Link}
+          href="/"
           sx={{
-            mb: 3,
+            textDecoration: "none",
+            color: "text.secondary",
             fontSize: "0.8rem",
-            "& .MuiBreadcrumbs-separator": { color: "text.secondary" },
+            transition: "color 0.2s",
+            "&:hover": { color: "text.primary" },
           }}
         >
-          <MuiLink
-            component={Link}
-            href="/"
-            sx={{
-              textDecoration: "none",
-              color: "text.secondary",
-              fontSize: "0.8rem",
-              transition: "color 0.2s",
-              "&:hover": { color: "text.primary" },
-            }}
-          >
-            Trang chủ
-          </MuiLink>
-          <Typography color="text.primary" fontWeight={500} fontSize="0.8rem">
-            Khám phá Vibe
-          </Typography>
-        </Breadcrumbs>
+          Trang chủ
+        </MuiLink>
+        <Typography color="text.primary" fontWeight={500} fontSize="0.8rem">
+          Khám phá
+        </Typography>
+      </Breadcrumbs>
 
+      <Box sx={{ mb: { xs: 4, md: 5 } }}>
         <Typography
-          variant="h2"
-          mb={0.5}
-          fontWeight={800}
-          letterSpacing="-0.03em"
-          sx={{ fontSize: { xs: "1.75rem", md: "2.5rem" } }}
+          component="h1"
+          sx={{
+            fontSize: { xs: "2rem", sm: "2.6rem", md: "3.5rem" },
+            fontWeight: 900,
+            letterSpacing: "-0.04em",
+            lineHeight: 1.05,
+            color: "text.primary",
+            mb: 1.5,
+          }}
         >
-          Khám Phá Vibe
+          Tìm phim{" "}
+          <Box component="span" sx={{ color: "primary.main", fontStyle: "italic" }}>
+            theo ý bạn
+          </Box>
         </Typography>
         <Typography
-          variant="body2"
-          color="text.secondary"
-          mb={5}
-          sx={{ fontSize: "0.9rem", fontWeight: 400 }}
+          sx={{
+            fontSize: { xs: "0.9rem", md: "1rem" },
+            color: "text.secondary",
+            fontWeight: 400,
+            maxWidth: 520,
+          }}
         >
-          Tìm kiếm nội dung phù hợp với tâm trạng của bạn hôm nay.
+          Lọc theo thể loại, thập niên và xếp hạng — hoặc bấm{" "}
+          <Box component="span" sx={{ color: "text.primary", fontWeight: 600 }}>
+            Ngẫu nhiên
+          </Box>{" "}
+          để bất ngờ.
         </Typography>
+      </Box>
 
-        <VibeExplorer />
-      </Container>
+      <VibeExplorer />
     </Box>
   );
 }

@@ -9,13 +9,16 @@ import { CategoriesSection } from "@/components/Homepage/CategoriesSection";
 import { DiscoverySection } from "@/components/Homepage/DiscoverySection";
 import { RegionalDiscovery } from "@/components/Homepage/RegionalDiscovery";
 import { SocialEngagementSection } from "@/components/Homepage/SocialEngagementSection";
+import { GenrePulseSection } from "@/components/Homepage/GenrePulseSection";
+import { BingeUniverseSection } from "@/components/Homepage/BingeUniverseSection";
+import { SingleFilmSection } from "@/components/Homepage/SingleFilmSection";
 import { Footer } from "@/components/Layout/Footer";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useDiscovery } from "@/modules/movie/hooks/useDiscovery";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
-  const { weeklyNewMovies, upcomingMovies, topRatedMovies, topSeries } = useDiscovery();
+  const { weeklyNewMovies, upcomingMovies, topRatedMovies } = useDiscovery();
 
   return (
     <Box sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
@@ -54,7 +57,11 @@ export default function Home() {
           hideRating
         />
 
-        <CategoriesSection />
+        <SingleFilmSection />
+
+        <BingeUniverseSection />
+
+        <GenrePulseSection />
 
         <DiscoverySection
           title="Đánh giá cao nhất"
@@ -63,21 +70,11 @@ export default function Home() {
           isLoading={topRatedMovies.isLoading}
           isError={topRatedMovies.isError}
           href="/movies?sort=rating"
-          variant="compact"
         />
 
-        <DiscoverySection
-          title="Top 10 phim bộ hôm nay"
-          subtitle="Xu hướng phim dài tập không thể bỏ lỡ"
-          movies={topSeries.data || []}
-          isLoading={topSeries.isLoading}
-          isError={topSeries.isError}
-          variant="ranked"
-        />
+        <CategoriesSection />
 
         <RegionalDiscovery />
-
-        <SocialEngagementSection />
 
         <DiscoverySection
           title="Phim Sắp Tới"
@@ -87,6 +84,8 @@ export default function Home() {
           isError={upcomingMovies.isError}
           hideRating
         />
+
+        <SocialEngagementSection />
       </Box>
 
       <Footer />

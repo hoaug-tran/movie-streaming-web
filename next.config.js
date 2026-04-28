@@ -3,6 +3,11 @@ const path = require("path");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: [
+    "http://192.168.1.100:3000",
+    "http://192.168.1.100:5173",
+    "http://localhost:3000",
+  ],
   outputFileTracingRoot: path.join(__dirname),
   compiler: {
     emotion: true,
