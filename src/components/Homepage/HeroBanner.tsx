@@ -85,7 +85,7 @@ export function HeroBanner() {
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to right, rgba(12,12,12,0.9) 0%, rgba(12,12,12,0.3) 60%, transparent 100%)",
+              "linear-gradient(to right, rgba(12,12,12,0.95) 0%, rgba(12,12,12,0.4) 50%, transparent 100%)",
             zIndex: 1,
           }}
         />
@@ -95,9 +95,9 @@ export function HeroBanner() {
             bottom: 0,
             left: 0,
             right: 0,
-            height: "55%",
+            height: "70%",
             background:
-              "linear-gradient(to top, #0C0C0C 0%, rgba(12,12,12,0.6) 50%, transparent 100%)",
+              "linear-gradient(to top, #0C0C0C 0%, rgba(12,12,12,0.8) 30%, rgba(12,12,12,0.4) 60%, transparent 100%)",
             zIndex: 1,
           }}
         />
@@ -106,11 +106,13 @@ export function HeroBanner() {
           sx={{
             position: "relative",
             zIndex: 2,
-            pb: { xs: "220px", sm: "260px", md: "300px" },
-            px: { xs: 2.5, md: 5 },
+            pb: { xs: 4, sm: "260px", md: "300px" },
+            pt: { xs: 12, md: 0 },
+            px: { xs: 3, md: 5 },
             display: "flex",
             flexDirection: "column",
-            justifyContent: "flex-end",
+            justifyContent: { xs: "center", md: "flex-end" },
+            textAlign: { xs: "center", md: "left" },
             width: "100%",
             height: "100%",
             maxWidth: { xs: "100%", md: "55%" },
@@ -120,27 +122,28 @@ export function HeroBanner() {
             sx={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 1,
-              mb: 2,
+              justifyContent: { xs: "center", md: "flex-start" },
+              gap: 1.5,
+              mb: 2.5,
             }}
           >
             <Box
               sx={{
-                width: 3,
-                height: 20,
+                width: 4,
+                height: 18,
                 backgroundColor: "primary.main",
                 borderRadius: 0,
-                flexShrink: 0,
+                boxShadow: "0 0 15px rgba(200, 16, 46, 0.4)",
               }}
             />
             <Typography
               variant="caption"
               sx={{
-                color: "rgba(255,255,255,0.7)",
-                fontWeight: 600,
-                letterSpacing: "0.12em",
+                color: "rgba(255,255,255,0.8)",
+                fontWeight: 800,
+                letterSpacing: "0.15em",
                 textTransform: "uppercase",
-                fontSize: "0.7rem",
+                fontSize: "0.75rem",
               }}
             >
               Đề xuất cho bạn
@@ -150,13 +153,14 @@ export function HeroBanner() {
           <Typography
             variant="h1"
             sx={{
-              mb: 1.5,
-              fontSize: { xs: "2rem", sm: "2.75rem", md: "3.5rem" },
-              maxWidth: "640px",
-              fontWeight: 900,
+              mb: 2,
+              fontSize: { xs: "2.6rem", sm: "2.75rem", md: "3.5rem" },
+              maxWidth: { xs: "100%", md: "800px" },
+              fontWeight: 950,
               color: "#ffffff",
-              lineHeight: 1.05,
-              letterSpacing: "-0.04em",
+              lineHeight: 0.95,
+              letterSpacing: "-0.05em",
+              textShadow: "0 10px 40px rgba(0,0,0,0.6)",
             }}
           >
             {currentMovie?.title}
@@ -166,60 +170,76 @@ export function HeroBanner() {
             <Typography
               variant="body1"
               sx={{
-                maxWidth: "480px",
-                mb: 3,
+                maxWidth: { xs: "100%", md: "480px" },
+                mb: 4.5,
                 display: "-webkit-box",
-                WebkitLineClamp: 2,
+                WebkitLineClamp: { xs: 4, md: 2 },
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                lineHeight: 1.6,
-                fontSize: { xs: "0.875rem", md: "1rem" },
-                color: "rgba(255, 255, 255, 0.65)",
+                lineHeight: 1.7,
+                fontSize: { xs: "1rem", md: "1rem" },
+                color: "rgba(255, 255, 255, 0.75)",
                 fontWeight: 400,
+                px: { xs: 1, md: 0 },
               }}
             >
               {currentMovie.description}
             </Typography>
           )}
 
-          <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap" }}>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              flexWrap: "wrap",
+              justifyContent: { xs: "center", md: "flex-start" },
+            }}
+          >
             <Button
+              variant="contained"
               size="large"
               onClick={() => router.push(`/movies/${currentMovie?.slug}`)}
               sx={{
-                px: 4,
+                px: { xs: 4, md: 4 },
                 py: 1.4,
                 bgcolor: "#ffffff",
                 color: "#000000",
-                borderRadius: 1,
-                fontWeight: 700,
+                borderRadius: 1.5,
+                fontWeight: 800,
                 fontSize: "0.9rem",
-                letterSpacing: "0.02em",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.88)" },
+                "&:hover": {
+                  bgcolor: "rgba(255,255,255,0.9)",
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 8px 25px rgba(255,255,255,0.2)",
+                },
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               }}
             >
               ▶ Xem Ngay
             </Button>
 
             <Button
+              variant="outlined"
               size="large"
               sx={{
-                px: 3.5,
+                px: 3,
                 py: 1.4,
-                border: "1px solid rgba(255,255,255,0.35)",
-                color: "rgba(255,255,255,0.9)",
-                borderRadius: 1,
-                fontWeight: 600,
+                borderColor: "rgba(255,255,255,0.3)",
+                color: "#ffffff",
+                borderRadius: 1.5,
+                fontWeight: 700,
                 fontSize: "0.9rem",
-                backdropFilter: "blur(8px)",
-                backgroundColor: "rgba(255,255,255,0.06)",
+                backdropFilter: "blur(10px)",
+                backgroundColor: "rgba(255,255,255,0.05)",
                 "&:hover": {
-                  border: "1px solid rgba(255,255,255,0.7)",
-                  bgcolor: "rgba(255,255,255,0.12)",
+                  borderColor: "#ffffff",
+                  bgcolor: "rgba(255,255,255,0.15)",
+                  transform: "translateY(-2px)",
                 },
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               }}
             >
-              + Thêm Danh Sách
+              + Danh Sách
             </Button>
           </Stack>
         </Box>
@@ -228,11 +248,17 @@ export function HeroBanner() {
       <Box
         sx={{
           position: "absolute",
-          bottom: { xs: "200px", sm: "240px", md: "270px" },
-          right: { xs: 16, md: 32 },
+          bottom: { xs: 150, sm: "240px", md: "270px" },
+          right: { xs: 0, sm: 16, md: 32 },
+          left: { xs: 0, md: "auto" },
+          px: { xs: 3, md: 0 },
+          py: 1,
           zIndex: 10,
           display: "flex",
-          gap: 1.5,
+          gap: 2,
+          justifyContent: { xs: "center", md: "flex-end" },
+          overflow: { xs: "hidden", md: "visible" },
+          pb: { xs: 1, md: 0 },
         }}
       >
         {movies.slice(0, 4).map((movie, index) => (
@@ -241,17 +267,24 @@ export function HeroBanner() {
             onClick={() => handleCardClick(index)}
             sx={{
               cursor: "pointer",
-              width: { xs: 96, sm: 120, md: 148 },
-              height: { xs: 54, sm: 68, md: 84 },
-              borderRadius: 1,
+              width: { xs: 120, sm: 130, md: 160 },
+              height: { xs: 70, sm: 74, md: 90 },
+              borderRadius: 1.5,
               overflow: "hidden",
-              border:
-                currentIndex === index ? "2px solid #ffffff" : "2px solid rgba(255,255,255,0.15)",
-              transition: "all 0.3s ease",
+              border: "2px solid",
+              borderColor: currentIndex === index ? "#ffffff" : "rgba(255,255,255,0.1)",
+              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
               position: "relative",
               flexShrink: 0,
-              opacity: currentIndex === index ? 1 : 0.55,
-              "&:hover": { borderColor: "rgba(255,255,255,0.7)", opacity: 1 },
+              opacity: currentIndex === index ? 1 : 0.4,
+              scale: currentIndex === index ? "1.05" : "1",
+              "&:hover": { borderColor: "rgba(255,255,255,0.6)", opacity: 0.8 },
+              boxShadow: currentIndex === index ? "0 10px 30px rgba(0,0,0,0.5)" : "none",
+              display: {
+                xs: index >= 3 ? "none" : "block",
+                sm: index >= 2 ? "none" : "block",
+                lg: "block",
+              },
             }}
           >
             {movie.bannerUrl && (
@@ -259,7 +292,7 @@ export function HeroBanner() {
                 src={movie.bannerUrl}
                 alt={movie.title}
                 fill
-                sizes="(max-width: 768px) 96px, 148px"
+                sizes="(max-width: 768px) 100px, 160px"
                 style={{ objectFit: "cover" }}
               />
             )}

@@ -169,31 +169,84 @@ export function SocialEngagementSection() {
           </Box>
         </Grid>
 
-        {/* Right Column: Comment Wall */}
         <Grid item xs={12} md={7}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-            <MessageSquare size={20} color={theme.palette.secondary.main} />
-            <Typography variant="h6" fontWeight={700} color="white">
-              Cộng đồng nói gì?
-            </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 3,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <MessageSquare size={22} color={theme.palette.secondary.main} />
+              <Typography variant="h6" fontWeight={900} color="white" letterSpacing="-0.02em">
+                Cộng đồng đang nói gì?
+              </Typography>
+            </Box>
           </Box>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {leftColComments.map((comment) => (
-                  <CommentCard key={comment.id} comment={comment} />
-                ))}
-              </Box>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: { xs: 0, sm: 4 } }}>
-                {rightColComments.map((comment) => (
-                  <CommentCard key={comment.id} comment={comment} />
-                ))}
-              </Box>
-            </Grid>
-          </Grid>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "row", md: "column" },
+              gap: 2.5,
+              overflowX: { xs: "auto", md: "visible" },
+              pb: { xs: 3, md: 0 },
+              px: { xs: 0.5, md: 0 },
+              mx: { xs: -1, md: 0 },
+              scrollSnapType: { xs: "x mandatory", md: "none" },
+              "&::-webkit-scrollbar": { display: "none" },
+              msOverflowStyle: "none",
+              scrollbarWidth: "none",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "row", md: "column" },
+                gap: 2.5,
+                flexShrink: 0,
+                width: { xs: "max-content", md: "100%" },
+              }}
+            >
+              {allComments.slice(0, 4).map((comment) => (
+                <Box
+                  key={comment.id}
+                  sx={{
+                    width: { xs: 300, sm: 340, md: "100%" },
+                    scrollSnapAlign: "start",
+                    flexShrink: 0,
+                  }}
+                >
+                  <CommentCard comment={comment} />
+                </Box>
+              ))}
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "row", md: "column" },
+                gap: 2.5,
+                flexShrink: 0,
+                width: { xs: "max-content", md: "100%" },
+                mt: { xs: 0, md: 0 },
+              }}
+            >
+              {allComments.slice(4, 8).map((comment) => (
+                <Box
+                  key={comment.id}
+                  sx={{
+                    width: { xs: 300, sm: 340, md: "100%" },
+                    scrollSnapAlign: "start",
+                    flexShrink: 0,
+                  }}
+                >
+                  <CommentCard comment={comment} />
+                </Box>
+              ))}
+            </Box>
+          </Box>
         </Grid>
       </Grid>
     </Box>
