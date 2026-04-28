@@ -13,6 +13,8 @@ import {
   Stack,
   LinearProgress,
   Typography,
+  useTheme,
+  alpha,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/modules/auth/components/AuthLayout";
@@ -22,6 +24,7 @@ import { AuthContext } from "@/context/auth-context";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const theme = useTheme();
   const authContext = useContext(AuthContext);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -96,45 +99,57 @@ export default function RegisterPage() {
 
   const passwordStrength = getPasswordStrength(password);
   const strengthColor =
-    passwordStrength < 40 ? "#ff4d4d" : passwordStrength < 70 ? "#ffcc00" : "#00cc66";
+    passwordStrength < 40
+      ? theme.palette.error.main
+      : passwordStrength < 70
+        ? theme.palette.warning.main
+        : theme.palette.success.main;
 
   const inputSx = {
     "& .MuiOutlinedInput-root": {
-      backgroundColor: "rgba(255, 255, 255, 0.03)",
-      borderRadius: 0,
+      backgroundColor: alpha(theme.palette.common.white, 0.03),
+      borderRadius: 2,
+      transition: "all 0.3s ease",
       "& fieldset": {
-        borderColor: "rgba(255, 255, 255, 0.15)",
+        borderColor: alpha(theme.palette.common.white, 0.1),
       },
       "&:hover fieldset": {
-        borderColor: "rgba(255, 255, 255, 0.3)",
+        borderColor: alpha(theme.palette.common.white, 0.25),
       },
-      "&.Mui-focused fieldset": {
-        borderColor: "#ffffff",
+      "&.Mui-focused": {
+        backgroundColor: alpha(theme.palette.common.white, 0.05),
+        "& fieldset": {
+          borderColor: theme.palette.primary.main,
+          borderWidth: "1.5px",
+        },
       },
     },
     "& .MuiInputLabel-root": {
-      color: "rgba(255, 255, 255, 0.5)",
+      color: alpha(theme.palette.common.white, 0.4),
+      fontSize: "0.9rem",
       "&.Mui-focused": {
-        color: "#ffffff",
+        color: theme.palette.primary.main,
       },
     },
   };
 
   return (
     <AuthLayout
-      title="Tạo Tài Khoản"
-      subtitle="Bắt đầu hành trình xem phim của bạn cùng Gió Phim ngay hôm nay."
+      title="Khởi tạo hành trình"
+      subtitle="Bắt đầu trải nghiệm điện ảnh chuẩn 2026 ngay hôm nay cùng Gió Phim."
+      kineticText="REGISTER"
     >
-      <Stack spacing={3}>
+      <Stack spacing={3.5}>
         {error && (
           <Alert
             severity="error"
-            variant="outlined"
+            variant="filled"
             sx={{
-              borderRadius: 0,
-              color: "#ff4d4d",
-              borderColor: "#ff4d4d",
-              "& .MuiAlert-icon": { color: "#ff4d4d" },
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.error.main, 0.15),
+              color: theme.palette.error.light,
+              border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+              "& .MuiAlert-icon": { color: theme.palette.error.light },
             }}
           >
             {error}
@@ -187,27 +202,35 @@ export default function RegisterPage() {
                 sx={inputSx}
               />
               {password && (
-                <Box sx={{ mt: 1.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.5 }}>
+                <Box sx={{ mt: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.8 }}>
                     <LinearProgress
                       variant="determinate"
                       value={passwordStrength}
                       sx={{
                         flex: 1,
-                        height: 3,
-                        borderRadius: 0,
-                        backgroundColor: "rgba(255, 255, 255, 0.1)",
+                        height: 4,
+                        borderRadius: 1,
+                        backgroundColor: alpha(theme.palette.common.white, 0.1),
                         "& .MuiLinearProgress-bar": {
                           backgroundColor: strengthColor,
                         },
                       }}
                     />
-                    <Typography variant="caption" sx={{ color: strengthColor, fontWeight: 600 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: strengthColor,
+                        fontWeight: 900,
+                        minWidth: 60,
+                        textAlign: "right",
+                      }}
+                    >
                       {passwordStrength < 40
-                        ? "Yếu"
+                        ? "YẾU"
                         : passwordStrength < 70
-                          ? "Trung bình"
-                          : "Mạnh"}
+                          ? "TRUNG BÌNH"
+                          : "MẠNH"}
                     </Typography>
                   </Box>
                 </Box>
@@ -238,28 +261,51 @@ export default function RegisterPage() {
                     }}
                     disabled={loading}
                     sx={{
-                      color: "rgba(255, 255, 255, 0.3)",
+                      color: alpha(theme.palette.common.white, 0.2),
                       "&.Mui-checked": {
-                        color: "#fff",
+                        color: theme.palette.primary.main,
                       },
                     }}
                   />
                 }
                 label={
-                  <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: alpha(theme.palette.common.white, 0.5), fontWeight: 600 }}
+                  >
                     Tôi đồng ý với{" "}
-                    <Link href="/terms" sx={{ color: "#fff", fontWeight: 600 }}>
+                    <Link
+                      href="/terms"
+                      sx={{
+                        color: "white",
+                        fontWeight: 700,
+                        textDecoration: "none",
+                        "&:hover": { textDecoration: "underline" },
+                      }}
+                    >
                       Điều khoản
                     </Link>{" "}
                     &{" "}
-                    <Link href="/privacy" sx={{ color: "#fff", fontWeight: 600 }}>
+                    <Link
+                      href="/privacy"
+                      sx={{
+                        color: "white",
+                        fontWeight: 700,
+                        textDecoration: "none",
+                        "&:hover": { textDecoration: "underline" },
+                      }}
+                    >
                       Bảo mật
                     </Link>
                   </Typography>
                 }
               />
               {errors.terms && (
-                <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.5 }}>
+                <Typography
+                  variant="caption"
+                  color="error"
+                  sx={{ display: "block", mt: 0.5, fontWeight: 600 }}
+                >
                   {errors.terms}
                 </Typography>
               )}
@@ -272,23 +318,25 @@ export default function RegisterPage() {
               type="submit"
               disabled={loading}
               sx={{
-                py: 1.6,
+                py: 2,
                 textTransform: "none",
                 fontSize: "1rem",
-                fontWeight: 700,
-                backgroundColor: "#ffffff",
-                color: "#000000",
-                borderRadius: 0,
+                fontWeight: 900,
+                borderRadius: 2,
+                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
+                boxShadow: `0 12px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
                 "&:hover": {
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
+                  transform: "translateY(-2px)",
                 },
+                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
                 "&.Mui-disabled": {
-                  backgroundColor: "rgba(255, 255, 255, 0.1)",
-                  color: "rgba(255, 255, 255, 0.3)",
+                  background: alpha(theme.palette.common.white, 0.05),
+                  color: alpha(theme.palette.common.white, 0.2),
                 },
               }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Tạo tài khoản"}
+              {loading ? <CircularProgress size={24} color="inherit" /> : "Tạo tài khoản ngay"}
             </Button>
 
             <Box
@@ -296,16 +344,21 @@ export default function RegisterPage() {
                 display: "flex",
                 alignItems: "center",
                 gap: 2,
-                opacity: 0.5,
               }}
             >
-              <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255, 255, 255, 0.2)" }} />
+              <Box sx={{ flex: 1, height: "1px", backgroundColor: theme.palette.divider }} />
               <Typography
-                sx={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em" }}
+                sx={{
+                  fontSize: "0.7rem",
+                  color: alpha(theme.palette.common.white, 0.3),
+                  fontWeight: 950,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.2em",
+                }}
               >
-                Hoặc
+                Hoặc kết nối qua
               </Typography>
-              <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255, 255, 255, 0.2)" }} />
+              <Box sx={{ flex: 1, height: "1px", backgroundColor: theme.palette.divider }} />
             </Box>
 
             <GoogleOAuthButton isLoading={loading} />
@@ -313,18 +366,19 @@ export default function RegisterPage() {
             <Typography
               sx={{
                 textAlign: "center",
-                color: "rgba(255, 255, 255, 0.5)",
+                color: alpha(theme.palette.common.white, 0.4),
                 fontSize: "0.9rem",
+                fontWeight: 500,
               }}
             >
               Đã có tài khoản?{" "}
               <Link
                 href="/auth/login"
                 sx={{
-                  color: "#ffffff",
-                  fontWeight: 600,
+                  color: "white",
+                  fontWeight: 800,
                   textDecoration: "none",
-                  "&:hover": { textDecoration: "underline" },
+                  "&:hover": { color: theme.palette.primary.main },
                 }}
               >
                 Đăng nhập

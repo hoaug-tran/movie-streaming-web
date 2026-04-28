@@ -12,6 +12,8 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
+  alpha,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/modules/auth/components/AuthLayout";
@@ -21,6 +23,7 @@ import { AuthContext } from "@/context/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
+  const theme = useTheme();
   const authContext = useContext(AuthContext);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -75,41 +78,49 @@ export default function LoginPage() {
 
   const inputSx = {
     "& .MuiOutlinedInput-root": {
-      backgroundColor: "rgba(255, 255, 255, 0.03)",
-      borderRadius: 0,
+      backgroundColor: alpha(theme.palette.common.white, 0.03),
+      borderRadius: 2,
+      transition: "all 0.3s ease",
       "& fieldset": {
-        borderColor: "rgba(255, 255, 255, 0.15)",
+        borderColor: alpha(theme.palette.common.white, 0.1),
       },
       "&:hover fieldset": {
-        borderColor: "rgba(255, 255, 255, 0.3)",
+        borderColor: alpha(theme.palette.common.white, 0.25),
       },
-      "&.Mui-focused fieldset": {
-        borderColor: "#ffffff",
+      "&.Mui-focused": {
+        backgroundColor: alpha(theme.palette.common.white, 0.05),
+        "& fieldset": {
+          borderColor: theme.palette.primary.main,
+          borderWidth: "1.5px",
+        },
       },
     },
     "& .MuiInputLabel-root": {
-      color: "rgba(255, 255, 255, 0.5)",
+      color: alpha(theme.palette.common.white, 0.4),
+      fontSize: "0.9rem",
       "&.Mui-focused": {
-        color: "#ffffff",
+        color: theme.palette.primary.main,
       },
     },
   };
 
   return (
     <AuthLayout
-      title="Đăng nhập"
-      subtitle="Chào mừng trở lại! Hãy đăng nhập để tiếp tục trải nghiệm điện ảnh đỉnh cao."
+      title="Chào mừng trở lại"
+      subtitle="Đăng nhập để tiếp tục khám phá vũ trụ điện ảnh riêng biệt của bạn."
+      kineticText="WELCOME"
     >
-      <Stack spacing={3}>
+      <Stack spacing={3.5}>
         {error && (
           <Alert
             severity="error"
-            variant="outlined"
+            variant="filled"
             sx={{
-              borderRadius: 0,
-              color: "#ff4d4d",
-              borderColor: "#ff4d4d",
-              "& .MuiAlert-icon": { color: "#ff4d4d" },
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.error.main, 0.15),
+              color: theme.palette.error.light,
+              border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+              "& .MuiAlert-icon": { color: theme.palette.error.light },
             }}
           >
             {error}
@@ -117,7 +128,7 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <Stack spacing={2.5}>
+          <Stack spacing={3}>
             <TextField
               fullWidth
               label="Email hoặc Tên đăng nhập"
@@ -158,15 +169,21 @@ export default function LoginPage() {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     sx={{
-                      color: "rgba(255, 255, 255, 0.3)",
+                      color: alpha(theme.palette.common.white, 0.2),
                       "&.Mui-checked": {
-                        color: "#fff",
+                        color: theme.palette.primary.main,
                       },
                     }}
                   />
                 }
                 label={
-                  <Typography sx={{ fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.7)" }}>
+                  <Typography
+                    sx={{
+                      fontSize: "0.85rem",
+                      color: alpha(theme.palette.common.white, 0.5),
+                      fontWeight: 600,
+                    }}
+                  >
                     Ghi nhớ tôi
                   </Typography>
                 }
@@ -177,11 +194,10 @@ export default function LoginPage() {
                 href="/auth/forgot-password"
                 sx={{
                   fontSize: "0.85rem",
-                  color: "#ffffff",
+                  color: theme.palette.primary.light,
                   textDecoration: "none",
-                  fontWeight: 500,
-                  opacity: 0.7,
-                  "&:hover": { opacity: 1 },
+                  fontWeight: 700,
+                  "&:hover": { color: "white" },
                 }}
               >
                 Quên mật khẩu?
@@ -195,20 +211,22 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               sx={{
-                py: 1.6,
+                py: 2,
                 textTransform: "none",
                 fontSize: "1rem",
-                fontWeight: 700,
-                backgroundColor: "#ffffff",
-                color: "#000000",
-                borderRadius: 0,
+                fontWeight: 900,
+                borderRadius: 2,
+                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
+                boxShadow: `0 12px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
                 "&:hover": {
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
+                  transform: "translateY(-2px)",
                 },
                 "&.Mui-disabled": {
-                  backgroundColor: "rgba(255, 255, 255, 0.1)",
-                  color: "rgba(255, 255, 255, 0.3)",
+                  background: alpha(theme.palette.common.white, 0.05),
+                  color: alpha(theme.palette.common.white, 0.2),
                 },
+                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : "Đăng nhập ngay"}
@@ -219,16 +237,21 @@ export default function LoginPage() {
                 display: "flex",
                 alignItems: "center",
                 gap: 2,
-                opacity: 0.5,
               }}
             >
-              <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255, 255, 255, 0.2)" }} />
+              <Box sx={{ flex: 1, height: "1px", backgroundColor: theme.palette.divider }} />
               <Typography
-                sx={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em" }}
+                sx={{
+                  fontSize: "0.7rem",
+                  color: alpha(theme.palette.common.white, 0.3),
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.2em",
+                }}
               >
-                Hoặc
+                Hoặc tiếp tục với
               </Typography>
-              <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255, 255, 255, 0.2)" }} />
+              <Box sx={{ flex: 1, height: "1px", backgroundColor: theme.palette.divider }} />
             </Box>
 
             <GoogleOAuthButton isLoading={loading} />
@@ -236,18 +259,19 @@ export default function LoginPage() {
             <Typography
               sx={{
                 textAlign: "center",
-                color: "rgba(255, 255, 255, 0.5)",
+                color: alpha(theme.palette.common.white, 0.4),
                 fontSize: "0.9rem",
+                fontWeight: 500,
               }}
             >
               Bạn mới sử dụng Gió Phim?{" "}
               <Link
                 href="/auth/register"
                 sx={{
-                  color: "#ffffff",
-                  fontWeight: 600,
+                  color: "white",
+                  fontWeight: 800,
                   textDecoration: "none",
-                  "&:hover": { textDecoration: "underline" },
+                  "&:hover": { color: theme.palette.primary.main },
                 }}
               >
                 Đăng ký ngay

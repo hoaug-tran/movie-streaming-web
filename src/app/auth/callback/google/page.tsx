@@ -25,7 +25,6 @@ export default function GoogleCallbackPage() {
       const savedState = sessionStorage.getItem("google_oauth_state");
 
       if (!code) {
-        // If we already have a user from a previous tick (React Strict Mode), just redirect
         if (getFromLocalStorage("user")) {
           window.location.replace("/");
           return;
@@ -37,7 +36,6 @@ export default function GoogleCallbackPage() {
         return;
       }
 
-      // Important: replace state AFTER checking code
       window.history.replaceState({}, document.title, "/auth/callback/google");
 
       if (!state || state !== savedState) {
