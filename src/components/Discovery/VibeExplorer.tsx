@@ -18,7 +18,7 @@ import movieService from "@/modules/movie/api/movie-service";
 import { SearchMovieRequest } from "@/modules/movie/types/movie";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
 import { getMovieCardProps } from "@/components/Common/movie-card-props";
-import { useRouter } from "next/navigation";
+import { usePlayNavigation } from "@/hooks/use-play-navigation";
 import {
   Shuffle,
   SlidersHorizontal,
@@ -62,7 +62,7 @@ const DEFAULT_FILTERS: SearchMovieRequest = {
 };
 
 export default function VibeExplorer() {
-  const router = useRouter();
+  const { navigateToWatch } = usePlayNavigation();
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const [filters, setFilters] = useState<SearchMovieRequest>(DEFAULT_FILTERS);
@@ -132,13 +132,8 @@ export default function VibeExplorer() {
 
   const allMovies = data?.pages.flatMap((p) => p.content) || [];
   const totalCount = data?.pages[0]?.totalElements;
-
   const activeCat = categories?.find((c) => c.id === filters.categoryId);
   const activeDec = DECADES.find((d) => d.from === filters.fromYear);
-  const activeSort = SORT_OPTIONS.find((s) => s.value === filters.sortBy);
-  const activeType = TYPE_OPTIONS.find(
-    (t) => t.value === movieType || (t.value === undefined && movieType === undefined)
-  );
 
   const hasActiveFilters =
     filters.categoryId !== undefined ||
@@ -643,15 +638,16 @@ export default function VibeExplorer() {
           {allMovies.map((movie, i) => (
             <Box
               key={`${movie.id}-${i}`}
-              onClick={() =>
-                router.push(`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`)
-              }
               sx={{ cursor: "pointer" }}
             >
               <MovieCard
                 {...getMovieCardProps(movie)}
                 onPlay={() =>
-                  router.push(`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`)
+                  navigateToWatch({
+                    movieSlug: movie.slug ?? "",
+                    movieId: movie.id,
+                    isPremiumOnly: movie.isPremiumOnly,
+                  })
                 }
               />
             </Box>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Typography, Button, Skeleton } from "@mui/material";
+import { Box } from "@mui/material";
 import { SectionHeader } from "@/components/Common/SectionHeader";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
 import { getMovieCardProps } from "@/components/Common/movie-card-props";
@@ -29,7 +29,6 @@ export function DiscoverySection({
   isError,
   href,
   variant = "default",
-  icon: Icon,
   hideRating = false,
 }: DiscoverySectionProps) {
   const router = useRouter();

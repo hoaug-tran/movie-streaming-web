@@ -1,462 +1,469 @@
 "use client";
 
-import { useState } from "react";
-import { Box, Typography, Skeleton, alpha, useTheme, Chip } from "@mui/material";
+import { useMemo, useState } from "react";
+import { Box, Typography, Skeleton, alpha, useTheme, Chip, ButtonBase } from "@mui/material";
 import Image from "next/image";
-import { useDiscovery } from "@/modules/movie/hooks/useDiscovery";
-import { Movie } from "@/modules/movie/types/movie";
-import { useRouter } from "next/navigation";
-import { Play, Star, ArrowRight, Film } from "lucide-react";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
+import { useDiscovery } from "@/modules/movie/hooks/useDiscovery";
+import { ArrowRight, Play, Sparkles, Star, Ticket } from "lucide-react";
+import { usePlayNavigation } from "@/hooks/use-play-navigation";
 
-function PosterCard({
-  movie,
-  isActive,
-  onClick,
-}: {
-  movie: Movie;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  const img = movie.posterUrl;
-
-  return (
-    <Box
-      onClick={onClick}
-      sx={{
-        position: "relative",
-        width: { xs: 80, md: 96 },
-        height: { xs: 110, md: 132 },
-        flexShrink: 0,
-        borderRadius: 1.5,
-        overflow: "hidden",
-        cursor: "pointer",
-        border: "2px solid",
-        borderColor: isActive ? "primary.main" : "transparent",
-        transition: "all 0.25s ease",
-        opacity: isActive ? 1 : 0.55,
-        "&:hover": { opacity: 1, borderColor: isActive ? "primary.main" : "rgba(255,255,255,0.3)" },
-      }}
-    >
-      {img ? (
-        <Image src={img} alt={movie.title} fill style={{ objectFit: "cover" }} />
-      ) : (
-        <Box sx={{ width: "100%", height: "100%", bgcolor: "action.hover" }} />
-      )}
-    </Box>
-  );
-}
+const railNumbers = ["01", "02", "03", "04", "05", "06"];
 
 export function SingleFilmSection() {
   const router = useRouter();
   const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const { navigateToWatch } = usePlayNavigation();
   const { topRatedMovies, weeklyNewMovies } = useDiscovery();
-
   const [activeIdx, setActiveIdx] = useState(0);
 
+  const isDark = theme.palette.mode === "dark";
   const isLoading = topRatedMovies.isLoading && weeklyNewMovies.isLoading;
 
-  const allMovies = [...(topRatedMovies.data || []), ...(weeklyNewMovies.data || [])]
-    .filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i)
-    .filter(
-      (m) =>
-        !m.movieType ||
-        m.movieType.toUpperCase() === "SINGLE" ||
-        m.movieType.toUpperCase() === "MOVIE"
-    )
-    .slice(0, 7);
+  const films = useMemo(
+    () =>
+      [...(topRatedMovies.data || []), ...(weeklyNewMovies.data || [])]
+        .filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i)
+        .filter(
+          (m) =>
+            !m.movieType ||
+            m.movieType.toUpperCase() === "SINGLE" ||
+            m.movieType.toUpperCase() === "MOVIE"
+        )
+        .slice(0, 6),
+    [topRatedMovies.data, weeklyNewMovies.data]
+  );
 
-  const films = allMovies.length > 0 ? allMovies : (topRatedMovies.data || []).slice(0, 7);
   if (!isLoading && films.length === 0) return null;
 
   const featured = films[activeIdx] || films[0];
-  const banner = featured?.bannerUrl || featured?.posterUrl;
+  const poster = featured?.posterUrl || featured?.bannerUrl;
+  const backdrop = featured?.bannerUrl || featured?.posterUrl;
   const categories =
     featured?.categories
       ?.slice(0, 3)
-      .map((c) => c.name)
-      .filter(Boolean) || [];
+      .flatMap((category) => (category.name ? [category.name] : [])) || [];
+
+  const openDetail = (slug?: string) => {
+    if (slug) router.push(`/movies/${slug}`);
+  };
+
+  const playFeatured = () => {
+    if (!featured) return;
+    navigateToWatch({
+      movieSlug: featured.slug ?? "",
+      movieId: featured.id,
+      isPremiumOnly: featured.isPremiumOnly,
+    });
+  };
 
   return (
     <Box sx={{ width: "100%", px: { xs: 2, md: 4 } }}>
       <Box
         sx={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          mb: { xs: 2.5, md: 3 },
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: { xs: 2, md: 2.5 },
+          border: "1px solid",
+          borderColor: alpha(theme.palette.text.primary, isDark ? 0.1 : 0.08),
+          background: isDark
+            ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.92)}, ${alpha(
+                theme.palette.common.black,
+                0.96
+              )})`
+            : `linear-gradient(135deg, ${theme.palette.background.paper}, ${alpha(
+                theme.palette.primary.main,
+                0.045
+              )})`,
+          boxShadow: isDark
+            ? `0 28px 90px ${alpha(theme.palette.common.black, 0.34)}`
+            : `0 24px 70px ${alpha(theme.palette.text.primary, 0.08)}`,
         }}
       >
-        <Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-            <Film size={14} color={theme.palette.primary.main} />
-            <Typography
-              sx={{
-                fontSize: "0.7rem",
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "primary.main",
-              }}
-            >
-              Phim Lẻ
-            </Typography>
-          </Box>
-          <Typography
-            component="h2"
-            sx={{
-              fontSize: { xs: "1.5rem", sm: "1.8rem", md: "2.2rem" },
-              fontWeight: 900,
-              letterSpacing: "-0.04em",
-              lineHeight: 1.05,
-              color: "text.primary",
-            }}
-          >
-            Một phim.{" "}
-            <Box component="span" sx={{ color: "primary.main", fontStyle: "italic" }}>
-              Một đêm.
-            </Box>
-          </Typography>
-        </Box>
-
-        <Box
-          component={NextLink}
-          href="/movies?type=single"
-          sx={{
-            display: { xs: "none", sm: "flex" },
-            alignItems: "center",
-            gap: 0.5,
-            flexShrink: 0,
-            color: "text.secondary",
-            textDecoration: "none",
-            fontSize: "0.8rem",
-            fontWeight: 500,
-            pb: 0.5,
-            transition: "color 0.2s",
-            "&:hover": { color: "primary.main" },
-          }}
-        >
-          Xem tất cả <ArrowRight size={15} />
-        </Box>
-      </Box>
-
-      {isLoading ? (
         <Box
           sx={{
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            gap: 2,
-            height: { xs: "auto", md: 380 },
+            position: "absolute",
+            inset: 0,
+            background: `radial-gradient(circle at 8% 18%, ${alpha(
+              theme.palette.primary.main,
+              0.2
+            )}, transparent 34%), radial-gradient(circle at 86% 10%, ${alpha(
+              theme.palette.text.primary,
+              isDark ? 0.13 : 0.07
+            )}, transparent 32%)`,
+            pointerEvents: "none",
+          }}
+        />
+
+        <Box
+          sx={{
+            position: "relative",
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.9fr) minmax(360px, 1.1fr)" },
+            minHeight: { xs: "auto", lg: 540 },
           }}
         >
-          <Skeleton
-            variant="rounded"
-            sx={{ borderRadius: 2, flex: { md: "1" }, height: { xs: 220, md: "100%" } }}
-          />
           <Box
             sx={{
-              flexShrink: 0,
-              width: { md: 200 },
-              display: "flex",
-              flexDirection: { xs: "row", md: "column" },
-              gap: 1.5,
-            }}
-          >
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton
-                key={i}
-                variant="rounded"
-                sx={{
-                  borderRadius: 1.5,
-                  width: { xs: 80, md: "100%" },
-                  height: { xs: 110, md: 60 },
-                }}
-              />
-            ))}
-          </Box>
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            gap: { xs: 2, md: 0 },
-            height: { xs: "auto", md: 300 },
-            borderRadius: 1.5,
-            overflow: "hidden",
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          {featured && (
-            <Box
-              onClick={() => router.push(`/movies/${featured.slug}`)}
-              sx={{
-                position: "relative",
-                width: { xs: "100%", md: "55%" },
-                flexShrink: 0,
-                height: { xs: 200, md: "100%" },
-                cursor: "pointer",
-                overflow: "hidden",
-                "&:hover .sf-play": { opacity: 1 },
-              }}
-            >
-              {banner ? (
-                <Box
-                  className="sf-img"
-                  sx={{
-                    position: "absolute",
-                    inset: 0,
-                    transition: "transform 0.6s cubic-bezier(0.16,1,0.3,1)",
-                  }}
-                >
-                  <Image
-                    src={banner}
-                    alt={featured.title}
-                    fill
-                    style={{ objectFit: "cover" }}
-                    priority
-                  />
-                </Box>
-              ) : (
-                <Box sx={{ position: "absolute", inset: 0, bgcolor: "action.hover" }} />
-              )}
-
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(60deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 50%, transparent 100%)",
-                }}
-              />
-
-              <Box
-                className="sf-play"
-                sx={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%,-50%)",
-                  width: 60,
-                  height: 60,
-                  borderRadius: "50%",
-                  backgroundColor: "primary.main",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: 0,
-                  transition: "opacity 0.3s ease",
-                  boxShadow: "0 0 40px rgba(200,16,46,0.55)",
-                  zIndex: 2,
-                }}
-              >
-                <Play size={24} fill="#fff" color="#fff" />
-              </Box>
-
-              <Box
-                sx={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  p: { xs: 2, md: 3 },
-                  zIndex: 2,
-                  maxWidth: { md: "75%" },
-                }}
-              >
-                {categories.length > 0 && (
-                  <Box sx={{ display: "flex", gap: 0.75, mb: 1.25, flexWrap: "wrap" }}>
-                    {categories.map((cat) => (
-                      <Chip
-                        key={cat}
-                        label={cat}
-                        size="small"
-                        sx={{
-                          height: 20,
-                          fontSize: "0.6rem",
-                          fontWeight: 700,
-                          backgroundColor: "rgba(255,255,255,0.12)",
-                          color: "rgba(255,255,255,0.85)",
-                          backdropFilter: "blur(4px)",
-                        }}
-                      />
-                    ))}
-                  </Box>
-                )}
-
-                <Typography
-                  sx={{
-                    color: "#fff",
-                    fontWeight: 900,
-                    fontSize: { xs: "1.15rem", md: "1.5rem" },
-                    letterSpacing: "-0.03em",
-                    lineHeight: 1.15,
-                    mb: 0.75,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}
-                >
-                  {featured.title}
-                </Typography>
-
-                {featured.description && (
-                  <Typography
-                    sx={{
-                      color: "rgba(255,255,255,0.6)",
-                      fontSize: "0.8rem",
-                      lineHeight: 1.55,
-                      display: { xs: "none", md: "-webkit-box" },
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      mb: 1.25,
-                    }}
-                  >
-                    {featured.description}
-                  </Typography>
-                )}
-
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                  {featured.averageRating != null && featured.averageRating > 0 && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                      <Star size={13} fill="#FFD700" color="#FFD700" />
-                      <Typography sx={{ color: "#FFD700", fontSize: "0.78rem", fontWeight: 800 }}>
-                        {featured.averageRating.toFixed(1)}
-                      </Typography>
-                    </Box>
-                  )}
-                  {featured.releaseYear && (
-                    <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.75rem" }}>
-                      {featured.releaseYear}
-                    </Typography>
-                  )}
-                  {featured.country && (
-                    <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.75rem" }}>
-                      {featured.country}
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            </Box>
-          )}
-
-          <Box
-            sx={{
-              flex: 1,
-              minWidth: 0,
+              p: { xs: 2.25, sm: 3, lg: 4 },
               display: "flex",
               flexDirection: "column",
-              overflowY: "auto",
-              backgroundColor: "background.paper",
-              "&::-webkit-scrollbar": { width: 3 },
-              "&::-webkit-scrollbar-thumb": {
-                backgroundColor: alpha(theme.palette.primary.main, 0.3),
-                borderRadius: 99,
-              },
+              justifyContent: "space-between",
+              gap: { xs: 3, md: 4 },
             }}
           >
-            {films.map((movie, i) => {
-              const isActive = i === activeIdx;
-              const img = movie.posterUrl;
-
-              return (
+            <Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
                 <Box
-                  key={movie.id}
-                  onMouseEnter={() => setActiveIdx(i)}
-                  onClick={() => router.push(`/movies/${movie.slug}`)}
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                    px: 1.75,
-                    py: 1.25,
-                    cursor: "pointer",
-                    position: "relative",
-                    transition: "background-color 0.2s",
-                    backgroundColor: isActive
-                      ? alpha(theme.palette.primary.main, isDark ? 0.08 : 0.05)
-                      : "transparent",
-                    borderBottom: i < films.length - 1 ? "1px solid" : "none",
-                    borderColor: "divider",
-                    "&::before": isActive
-                      ? {
-                          content: '""',
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 3,
-                          backgroundColor: "primary.main",
-                          borderRadius: "0 2px 2px 0",
-                        }
-                      : {},
+                    width: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "primary.main",
+                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.22)}`,
                   }}
                 >
-                  <Box
-                    sx={{
-                      position: "relative",
-                      width: 36,
-                      height: 52,
-                      flexShrink: 0,
-                      borderRadius: 0.75,
-                      overflow: "hidden",
-                      border: "1px solid",
-                      borderColor: isActive ? "primary.main" : "divider",
-                      transition: "border-color 0.2s",
-                    }}
-                  >
-                    {img ? (
-                      <Image src={img} alt={movie.title} fill style={{ objectFit: "cover" }} />
-                    ) : (
-                      <Box sx={{ width: "100%", height: "100%", bgcolor: "action.hover" }} />
-                    )}
-                  </Box>
+                  <Ticket size={16} />
+                </Box>
+                <Typography
+                  sx={{
+                    fontSize: "0.72rem",
+                    fontWeight: 900,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "primary.main",
+                  }}
+                >
+                  Phim lẻ tuyển chọn
+                </Typography>
+              </Box>
 
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography
+              <Typography
+                component="h2"
+                sx={{
+                  maxWidth: 560,
+                  fontSize: { xs: "2.15rem", sm: "3rem", lg: "4.6rem" },
+                  fontWeight: 950,
+                  letterSpacing: "-0.075em",
+                  lineHeight: { xs: 0.96, md: 0.9 },
+                  color: "text.primary",
+                }}
+              >
+                Một phim
+                <Box
+                  component="span"
+                  sx={{
+                    display: "block",
+                    color: "primary.main",
+                    transform: { xs: "translateX(24px)", sm: "translateX(42px)" },
+                    textShadow: `0 18px 50px ${alpha(theme.palette.primary.main, 0.22)}`,
+                  }}
+                >
+                  một đêm.
+                </Box>
+              </Typography>
+
+              <Typography
+                sx={{
+                  mt: { xs: 2, md: 2.5 },
+                  maxWidth: 470,
+                  color: "text.secondary",
+                  fontSize: { xs: "0.92rem", md: "1rem" },
+                  lineHeight: 1.8,
+                }}
+              >
+                Một lựa chọn đủ mạnh cho cả buổi tối: ít phân vân, nhiều cảm xúc, bấm xem là vào
+                thẳng không khí điện ảnh.
+              </Typography>
+            </Box>
+
+            {isLoading ? (
+              <Box sx={{ display: "flex", gap: 1.25, overflow: "hidden" }}>
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton
+                    key={`single-rail-${railNumbers[index]}`}
+                    variant="rounded"
+                    sx={{ width: 86, height: 122, borderRadius: 2, flexShrink: 0 }}
+                  />
+                ))}
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "repeat(3, minmax(0, 1fr))", sm: "repeat(6, 1fr)" },
+                  gap: { xs: 1, md: 1.25 },
+                }}
+              >
+                {films.map((movie, index) => {
+                  const isActive = index === activeIdx;
+                  return (
+                    <ButtonBase
+                      key={movie.id}
+                      onMouseEnter={() => setActiveIdx(index)}
+                      onFocus={() => setActiveIdx(index)}
+                      onClick={() => openDetail(movie.slug)}
+                      aria-label={`Mở phim ${movie.title}`}
                       sx={{
-                        fontWeight: isActive ? 700 : 500,
-                        fontSize: "0.8rem",
-                        lineHeight: 1.25,
-                        letterSpacing: "-0.01em",
-                        color: isActive ? "text.primary" : "text.secondary",
-                        transition: "color 0.2s",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
+                        position: "relative",
+                        display: "block",
+                        height: { xs: 118, sm: 132, lg: 146 },
+                        borderRadius: 2,
                         overflow: "hidden",
-                        mb: 0.5,
+                        transform: isActive ? "translateY(-8px)" : "translateY(0)",
+                        transition: "transform 0.25s ease, box-shadow 0.25s ease",
+                        boxShadow: isActive
+                          ? `0 18px 42px ${alpha(theme.palette.primary.main, 0.24)}`
+                          : "none",
+                        outline: isActive
+                          ? `2px solid ${alpha(theme.palette.primary.main, 0.55)}`
+                          : `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
+                        outlineOffset: 0,
                       }}
                     >
-                      {movie.title}
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                      {movie.averageRating != null && movie.averageRating > 0 && (
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
-                          <Star size={9} fill="#FFD700" color="#FFD700" />
-                          <Typography
-                            sx={{ fontSize: "0.65rem", color: "#FFD700", fontWeight: 700 }}
-                          >
-                            {movie.averageRating.toFixed(1)}
-                          </Typography>
-                        </Box>
+                      {movie.posterUrl ? (
+                        <Image
+                          src={movie.posterUrl}
+                          alt={movie.title}
+                          fill
+                          sizes="(max-width: 600px) 30vw, (max-width: 1200px) 14vw, 110px"
+                          style={{ objectFit: "cover" }}
+                        />
+                      ) : (
+                        <Box sx={{ width: "100%", height: "100%", bgcolor: "action.hover" }} />
                       )}
-                      {movie.releaseYear && (
-                        <Typography sx={{ fontSize: "0.65rem", color: "text.disabled" }}>
-                          {movie.releaseYear}
-                        </Typography>
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          inset: 0,
+                          background: `linear-gradient(to top, ${alpha(
+                            theme.palette.common.black,
+                            0.72
+                          )}, transparent 60%)`,
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          position: "absolute",
+                          left: 8,
+                          bottom: 7,
+                          color: theme.palette.common.white,
+                          fontSize: "0.64rem",
+                          fontWeight: 900,
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {railNumbers[index]}
+                      </Typography>
+                    </ButtonBase>
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
+
+          <Box
+            sx={{
+              position: "relative",
+              minHeight: { xs: 430, sm: 500, lg: "auto" },
+              m: { xs: 1.25, sm: 1.75, lg: 2 },
+              borderRadius: { xs: 2.5, md: 3.5 },
+              overflow: "hidden",
+              isolation: "isolate",
+              backgroundColor: "action.hover",
+            }}
+          >
+            {isLoading ? (
+              <Skeleton variant="rectangular" sx={{ width: "100%", height: "100%" }} />
+            ) : (
+              featured && (
+                <>
+                  {backdrop && (
+                    <Image
+                      key={featured.id}
+                      src={backdrop}
+                      alt={featured.title}
+                      fill
+                      priority
+                      sizes="(max-width: 1200px) 100vw, 54vw"
+                      style={{ objectFit: "cover" }}
+                    />
+                  )}
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      inset: 0,
+                      background: `linear-gradient(90deg, ${alpha(
+                        theme.palette.common.black,
+                        0.86
+                      )} 0%, ${alpha(theme.palette.common.black, 0.46)} 48%, ${alpha(
+                        theme.palette.common.black,
+                        0.12
+                      )} 100%)`,
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      inset: "auto 0 0 0",
+                      p: { xs: 2.25, sm: 3, lg: 4 },
+                      display: "grid",
+                      gridTemplateColumns: { xs: "1fr", sm: "138px minmax(0, 1fr)" },
+                      gap: { xs: 2, sm: 2.5 },
+                      alignItems: "end",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: "relative",
+                        display: { xs: "none", sm: "block" },
+                        height: 202,
+                        borderRadius: 2,
+                        overflow: "hidden",
+                        border: `1px solid ${alpha(theme.palette.common.white, 0.22)}`,
+                        boxShadow: `0 24px 60px ${alpha(theme.palette.common.black, 0.38)}`,
+                      }}
+                    >
+                      {poster && (
+                        <Image
+                          src={poster}
+                          alt={featured.title}
+                          fill
+                          sizes="138px"
+                          style={{ objectFit: "cover" }}
+                        />
                       )}
                     </Box>
+
+                    <Box sx={{ minWidth: 0 }}>
+                      <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", mb: 1.5 }}>
+                        {categories.map((category) => (
+                          <Chip
+                            key={category}
+                            label={category}
+                            size="small"
+                            sx={{
+                              height: 24,
+                              borderRadius: 99,
+                              color: theme.palette.common.white,
+                              backgroundColor: alpha(theme.palette.common.white, 0.13),
+                              backdropFilter: "blur(10px)",
+                              fontWeight: 800,
+                              fontSize: "0.66rem",
+                            }}
+                          />
+                        ))}
+                      </Box>
+
+                      <Typography
+                        sx={{
+                          color: theme.palette.common.white,
+                          fontWeight: 950,
+                          fontSize: { xs: "1.55rem", sm: "2rem", lg: "2.5rem" },
+                          lineHeight: 1,
+                          letterSpacing: "-0.055em",
+                          maxWidth: 560,
+                        }}
+                      >
+                        {featured.title}
+                      </Typography>
+
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mt: 1.4, mb: 2 }}>
+                        {featured.averageRating != null && featured.averageRating > 0 && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.45 }}>
+                            <Star size={15} fill="#FFD700" color="#FFD700" />
+                            <Typography sx={{ color: "#FFD700", fontWeight: 900, fontSize: "0.9rem" }}>
+                              {featured.averageRating.toFixed(1)}
+                            </Typography>
+                          </Box>
+                        )}
+                        {featured.releaseYear && (
+                          <Typography sx={{ color: alpha(theme.palette.common.white, 0.68), fontSize: "0.85rem" }}>
+                            {featured.releaseYear}
+                          </Typography>
+                        )}
+                        {featured.country && (
+                          <Typography sx={{ color: alpha(theme.palette.common.white, 0.68), fontSize: "0.85rem" }}>
+                            {featured.country}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap" }}>
+                        <ButtonBase
+                          onClick={playFeatured}
+                          sx={{
+                            px: 2.2,
+                            py: 1.15,
+                            borderRadius: 99,
+                            color: theme.palette.primary.contrastText,
+                            backgroundColor: "primary.main",
+                            fontWeight: 900,
+                            gap: 1,
+                            boxShadow: `0 18px 40px ${alpha(theme.palette.primary.main, 0.34)}`,
+                            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                            "&:hover": {
+                              transform: "translateY(-2px)",
+                              boxShadow: `0 24px 54px ${alpha(theme.palette.primary.main, 0.42)}`,
+                            },
+                          }}
+                        >
+                          <Play size={17} fill="currentColor" />
+                          Xem ngay
+                        </ButtonBase>
+                        <Box
+                          component={NextLink}
+                          href="/movies?type=single"
+                          sx={{
+                            px: 2,
+                            py: 1.1,
+                            borderRadius: 99,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.8,
+                            color: theme.palette.common.white,
+                            textDecoration: "none",
+                            fontWeight: 850,
+                            border: `1px solid ${alpha(theme.palette.common.white, 0.18)}`,
+                            backgroundColor: alpha(theme.palette.common.white, 0.09),
+                            backdropFilter: "blur(12px)",
+                            "&:hover": { backgroundColor: alpha(theme.palette.common.white, 0.14) },
+                          }}
+                        >
+                          Xem tất cả <ArrowRight size={16} />
+                        </Box>
+                      </Box>
+                    </Box>
                   </Box>
-                </Box>
-              );
-            })}
+
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: { xs: 18, md: 28 },
+                      right: { xs: 18, md: 28 },
+                      width: { xs: 68, md: 86 },
+                      height: { xs: 68, md: 86 },
+                      borderRadius: "50%",
+                      display: "grid",
+                      placeItems: "center",
+                      color: theme.palette.common.white,
+                      backgroundColor: alpha(theme.palette.common.black, 0.34),
+                      border: `1px solid ${alpha(theme.palette.common.white, 0.18)}`,
+                      backdropFilter: "blur(16px)",
+                    }}
+                  >
+                    <Sparkles size={24} />
+                  </Box>
+                </>
+              )
+            )}
           </Box>
         </Box>
-      )}
+      </Box>
     </Box>
   );
 }

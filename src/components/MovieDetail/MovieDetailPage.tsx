@@ -20,6 +20,7 @@ import { useMemo } from "react";
 
 import { useMovieDetailPage } from "@/modules/movie/hooks/useMovieDetailPage";
 import { Episode, MovieComment, MovieDetail, MovieReview } from "@/modules/movie/types/movie";
+import { usePlayNavigation } from "@/hooks/use-play-navigation";
 
 type MovieDetailPageProps = {
   slug: string;
@@ -94,11 +95,11 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
 }
 
 function DetailAction({
-  href,
+  onClick,
   label,
   primary,
 }: {
-  href: string;
+  onClick: () => void;
   label: string;
   primary?: boolean;
 }) {
@@ -106,8 +107,7 @@ function DetailAction({
   return (
     <ButtonBase
       id={primary ? "movie-detail-play-button" : "movie-detail-list-button"}
-      component={Link}
-      href={href}
+      onClick={onClick}
       sx={{
         minWidth: primary ? 176 : 62,
         height: 58,
@@ -149,10 +149,10 @@ function DetailAction({
   );
 }
 
-function MovieHero({ movie, routeType }: { movie: MovieDetail; routeType: "movies" | "tv" }) {
+function MovieHero({ movie }: { movie: MovieDetail }) {
   const theme = useTheme();
+  const { navigateToWatch } = usePlayNavigation();
   const firstEpisode = movie.episodes?.[0];
-  const watchHref = firstEpisode ? `/watch/${firstEpisode.id}` : `/${routeType}/${movie.slug}`;
 
   return (
     <Box
@@ -240,8 +240,23 @@ function MovieHero({ movie, routeType }: { movie: MovieDetail; routeType: "movie
                 {movie.description || "Thông tin phim đang được cập nhật."}
               </Typography>
               <Stack direction="row" spacing={2} alignItems="center">
-                <DetailAction href={watchHref} label="Phát phim" primary />
-                <DetailAction href={`/${routeType}/${movie.slug}`} label="Thêm vào danh sách" />
+                <DetailAction
+                  onClick={() =>
+                    navigateToWatch({
+                      movieSlug: movie.slug,
+                      movieId: movie.id,
+                      isPremiumOnly: movie.isPremiumOnly,
+                      episodeId: firstEpisode?.id,
+                      isFreePreview: firstEpisode?.isFreePreview,
+                    })
+                  }
+                  label="Phát phim"
+                  primary
+                />
+                <DetailAction
+                  onClick={() => {}}
+                  label="Thêm vào danh sách"
+                />
                 <Typography color="text.secondary" sx={{ maxWidth: 240, fontSize: "0.92rem" }}>
                   Phát ngay hoặc lưu vào danh sách xem sau của bạn.
                 </Typography>
@@ -394,6 +409,7 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
 
 function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: MovieDetail }) {
   const theme = useTheme();
+  const { navigateToWatch } = usePlayNavigation();
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
       <SectionTitle eyebrow="Xem thôi nào" title="Tập phim" />
@@ -402,6 +418,15 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
           <Grid item xs={12} md={6} lg={4} key={episode.id}>
             <Paper
               elevation={0}
+              onClick={() =>
+                navigateToWatch({
+                  movieSlug: movie.slug,
+                  movieId: movie.id,
+                  isPremiumOnly: movie.isPremiumOnly,
+                  episodeId: episode.id,
+                  isFreePreview: episode.isFreePreview,
+                })
+              }
               sx={{
                 position: "relative",
                 overflow: "hidden",
@@ -409,6 +434,7 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
                 borderRadius: 1.5,
                 border: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
                 backgroundColor: "background.paper",
+                cursor: "pointer",
                 transition: "transform .28s ease, border-color .28s ease",
                 "&:hover": {
                   transform: "translateY(-6px)",
@@ -584,7 +610,7 @@ function CommentSection({ comments, episodes }: { comments: MovieComment[]; epis
   );
 }
 
-export default function MovieDetailPage({ slug, routeType }: MovieDetailPageProps) {
+export default function MovieDetailPage({ slug }: MovieDetailPageProps) {
   const { data, isLoading, isError } = useMovieDetailPage(slug);
   const comments = useMemo(() => data?.comments ?? [], [data?.comments]);
   const reviews = useMemo(() => data?.reviews ?? [], [data?.reviews]);
@@ -618,7 +644,7 @@ export default function MovieDetailPage({ slug, routeType }: MovieDetailPageProp
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
-      <MovieHero movie={data.movie} routeType={routeType} />
+      <MovieHero movie={data.movie} />
       <InfoSection movie={data.movie} />
       <EpisodeSection episodes={data.movie.episodes || []} movie={data.movie} />
       <ReviewSection reviews={reviews} />

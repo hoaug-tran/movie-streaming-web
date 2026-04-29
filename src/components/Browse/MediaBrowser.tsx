@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Box, Chip, Grid, Typography, CircularProgress, Stack, Container } from "@mui/material";
+import { useEffect, useState, useRef } from "react";
+import { Box, Chip, Grid, Typography, CircularProgress, Stack } from "@mui/material";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import movieService from "@/modules/movie/api/movie-service";
-import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
+import { MovieCard } from "@/components/Common/MovieCard";
 import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import { useRouter } from "next/navigation";
 
@@ -25,15 +25,16 @@ export default function MediaBrowser({ movieType }: MediaBrowserProps) {
     },
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["media", movieType, selectedCategory, sortBy],
     queryFn: async ({ pageParam = 0 }) => {
-      const response = await movieService.searchMovies({
-        movieType,
+      const response = await movieService.advancedSearch({
+        movieType: movieType === "TV" ? "SERIES" : "SINGLE",
         categoryId: selectedCategory ? parseInt(selectedCategory) : undefined,
         page: pageParam,
         size: 12,
-        sortBy,
+        sortBy:
+          sortBy === "rating" ? "averageRating" : sortBy === "popularity" ? "viewCount" : sortBy,
         sortDirection: "DESC",
       });
       return response?.content || [];
@@ -60,7 +61,7 @@ export default function MediaBrowser({ movieType }: MediaBrowserProps) {
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 

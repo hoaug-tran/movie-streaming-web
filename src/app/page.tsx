@@ -59,9 +59,9 @@ export default function Home() {
 
         <SingleFilmSection />
 
-        <BingeUniverseSection />
-
         <GenrePulseSection />
+
+        <BingeUniverseSection />
 
         <DiscoverySection
           title="Đánh giá cao nhất"

@@ -3,12 +3,12 @@
 import { Box, Typography, Button, Stack, Skeleton } from "@mui/material";
 import Image from "next/image";
 import { useCarouselMovies } from "@/modules/movie/hooks/useClientMovies";
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { usePlayNavigation } from "@/hooks/use-play-navigation";
 
 export function HeroBanner() {
   const { data: movies = [], isLoading, isError } = useCarouselMovies();
-  const router = useRouter();
+  const { navigateToWatch } = usePlayNavigation();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
@@ -198,7 +198,13 @@ export function HeroBanner() {
             <Button
               variant="contained"
               size="large"
-              onClick={() => router.push(`/movies/${currentMovie?.slug}`)}
+              onClick={() => {
+                navigateToWatch({
+                  movieSlug: currentMovie?.slug ?? "",
+                  movieId: currentMovie?.id ?? 0,
+                  isPremiumOnly: currentMovie?.isPremiumOnly,
+                });
+              }}
               sx={{
                 px: { xs: 4, md: 4 },
                 py: 1.4,

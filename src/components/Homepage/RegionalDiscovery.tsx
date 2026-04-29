@@ -55,7 +55,7 @@ export function RegionalDiscovery() {
             },
           }}
         >
-          {REGIONS.map((region, index) => (
+          {REGIONS.map((region) => (
             <Tab
               key={region.value}
               label={region.label}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Box, Paper, Typography, alpha, useTheme, Stack } from "@mui/material";
+import { Box, Typography, alpha, useTheme, Stack } from "@mui/material";
 import Link from "next/link";
 import { ArrowBackIosNewOutlined } from "@mui/icons-material";
 

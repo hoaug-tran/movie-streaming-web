@@ -235,7 +235,6 @@ export default function CinematicBrowsePage({
   title,
   subtitle,
   primaryLabel,
-  secondaryLabel,
 }: CinematicBrowsePageProps) {
   const theme = useTheme();
   const router = useRouter();
