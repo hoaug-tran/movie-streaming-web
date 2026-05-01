@@ -17,6 +17,7 @@ import Image from "next/image";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import AddIcon from "@mui/icons-material/Add";
+import { usePlayNavigation } from "@/hooks/use-play-navigation";
 
 export interface MovieCardProps {
   id: number;
@@ -86,6 +87,7 @@ export function MovieCard({
   sx: sxOverride,
 }: MovieCardProps) {
   const theme = useTheme();
+  const { navigateToWatch } = usePlayNavigation();
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
   const hoverTimeout = useRef<NodeJS.Timeout>();
@@ -95,12 +97,23 @@ export function MovieCard({
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-      if (leaveTimeout.current) clearTimeout(leaveTimeout.current);
-    };
-  }, []);
+  const handlePlay = () => {
+    if (onPlay) {
+      onPlay(id);
+      return;
+    }
+
+    if (!slug) {
+      console.warn("Cannot play movie without slug:", title);
+      return;
+    }
+
+    navigateToWatch({
+      movieSlug: slug,
+      movieId: id,
+      isPremiumOnly: isPremiumOnly,
+    });
+  };
 
   const handleMouseEnter = () => {
     if (posterRef.current) {
@@ -115,6 +128,13 @@ export function MovieCard({
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
     leaveTimeout.current = setTimeout(() => setIsHovered(false), 200);
   };
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+      if (leaveTimeout.current) clearTimeout(leaveTimeout.current);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -628,7 +648,7 @@ export function MovieCard({
                       aria-label={`Phát ${title}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onPlay?.(id);
+                        handlePlay();
                       }}
                       sx={{
                         bgcolor: "primary.main",

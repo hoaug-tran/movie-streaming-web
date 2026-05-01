@@ -105,7 +105,7 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
       if (!videoRef.current || !isPlaying) return;
       const t = Math.floor(videoRef.current.currentTime);
       const d = Math.floor(videoRef.current.duration) || 0;
-      if (t < 5) return;
+      if (t < 3) return; // Changed from 5 to 3 seconds
       watchHistoryService
         .upsert({
           movieId: movie.id,
