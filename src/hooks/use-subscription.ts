@@ -33,8 +33,7 @@ export function useSubscription(): ActiveSubscriptionInfo & { isLoading: boolean
   }
 
   const plan = plans?.find((p) => p.id === activeSub.planId) ?? null;
-  const canWatchPremium =
-    plan?.code === "PREMIUM_PLUS" || plan?.code === "PREMIUM";
+  const canWatchPremium = plan?.code === "PREMIUM_PLUS" || plan?.code === "PREMIUM";
 
   return {
     hasActiveSubscription: true,
