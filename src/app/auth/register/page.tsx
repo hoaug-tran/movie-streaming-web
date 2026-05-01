@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const theme = useTheme();
   const authContext = useContext(AuthContext);
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -54,6 +55,10 @@ export default function RegisterPage() {
 
     if (!fullName.trim()) {
       newErrors.fullName = "Vui lòng nhập họ và tên";
+    }
+
+    if (!username.trim()) {
+      newErrors.username = "Vui lòng nhập tên tài khoản";
     }
 
     if (!email) {
@@ -90,7 +95,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await register(fullName, email, password);
+      await register(fullName, username, email, password);
       router.push("/");
     } catch (err) {
       console.error("Registration failed:", err);
@@ -135,8 +140,8 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout
-      title="Khởi tạo hành trình"
-      subtitle="Bắt đầu trải nghiệm điện ảnh chuẩn 2026 ngay hôm nay cùng Gió Phim."
+      title="Cùng Gió bắt đầu"
+      subtitle="Để Gió Phim đưa bạn vào thế giới điện ảnh."
       kineticText="REGISTER"
     >
       <Stack spacing={3.5}>
@@ -169,6 +174,21 @@ export default function RegisterPage() {
               error={!!errors.fullName}
               helperText={errors.fullName}
               placeholder="Nhập họ và tên của bạn"
+              disabled={loading}
+              sx={inputSx}
+            />
+
+            <TextField
+              fullWidth
+              label="Tên tài khoản"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setErrors({ ...errors, username: "" });
+              }}
+              error={!!errors.username}
+              helperText={errors.username}
+              placeholder="Nhập tên tài khoản của bạn"
               disabled={loading}
               sx={inputSx}
             />

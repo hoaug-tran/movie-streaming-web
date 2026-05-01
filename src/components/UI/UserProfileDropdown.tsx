@@ -60,7 +60,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
           textTransform: "none",
           color: "text.primary",
           padding: "6px 12px",
-          borderRadius: 0,
+          borderRadius: 1.5,
           border: "1px solid",
           borderColor: "divider",
           backgroundColor: "transparent",
@@ -80,7 +80,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
             fontWeight: 500,
             bgcolor: "text.primary",
             color: "background.default",
-            borderRadius: 0,
+            borderRadius: 1,
             border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
@@ -114,7 +114,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
             backgroundColor: "background.paper",
             border: "1px solid",
             borderColor: "divider",
-            borderRadius: 0,
+            borderRadius: 1.5,
             mt: 1,
             boxShadow: "none",
             minWidth: "280px",
@@ -141,7 +141,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
               fontWeight: 500,
               bgcolor: "text.primary",
               color: "background.default",
-              borderRadius: 0,
+              borderRadius: 1,
               border: "1px solid rgba(255, 255, 255, 0.1)",
             }}
           >

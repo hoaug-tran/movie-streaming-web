@@ -29,7 +29,7 @@ class AdvertisementService {
         episodeId: request.episodeId,
       });
     } catch {
-      // Silent — tracking shouldn't break playback
+      // shutup
     }
   }
 }

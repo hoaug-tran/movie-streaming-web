@@ -24,7 +24,7 @@ export const useAsync = <T, E = string>(asyncFunction: () => Promise<T>) => {
   return { execute, status, data, error };
 };
 
-/* useLocalStorage hook */
+// useLocalStorage hook
 export const useLocalStorage = <T>(key: string, initialValue: T) => {
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === "undefined") {
@@ -54,7 +54,7 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
   return [storedValue, setValue] as const;
 };
 
-/* useDebounce hook */
+// useDebounce hook
 export const useDebounce = <T>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
@@ -69,7 +69,7 @@ export const useDebounce = <T>(value: T, delay: number): T => {
   return debouncedValue;
 };
 
-/* usePrevious hook */
+// usePrevious hook
 export const usePrevious = <T>(value: T): T | undefined => {
   const ref = React.useRef<T>();
 

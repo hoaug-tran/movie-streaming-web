@@ -169,7 +169,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </Typography>
           </Box>
 
-          <Box sx={{ mb: 5 }}>
+          <Box sx={{ mb: 3 }}>
             <Typography
               variant="h3"
               sx={{

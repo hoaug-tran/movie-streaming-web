@@ -7,7 +7,7 @@ import { getFromLocalStorage, removeFromLocalStorage, setInLocalStorage } from "
 
 interface AuthContextType extends Omit<AuthState, "refreshToken"> {
   login: (identifier: string, password: string) => Promise<void>;
-  register: (fullName: string, email: string, password: string) => Promise<void>;
+  register: (fullName: string, username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: UserInfo | null) => void;
   refreshToken: () => Promise<void>;
@@ -132,12 +132,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         type: "RESTORE_AUTH",
         payload: {
           user: storedUser,
-          accessToken: "", // Không còn lưu ở localStorage
+          accessToken: "",
           refreshToken: "",
         },
       });
 
-      // Kiểm tra thực tế xem còn session không bằng cách gọi /me
       authService
         .getCurrentUser()
         .then((user) => {
@@ -162,7 +161,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password,
       });
 
-      // Lấy thông tin chi tiết từ /auth/me sau khi có token (tự động gửi qua cookie)
       const fullUser = await authService.getCurrentUser();
 
       const loginData = {
@@ -179,32 +177,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const register = useCallback(async (fullName: string, email: string, password: string) => {
-    dispatch({ type: "AUTH_START" });
+  const register = useCallback(
+    async (fullName: string, username: string, email: string, password: string) => {
+      dispatch({ type: "AUTH_START" });
 
-    try {
-      const response = await authService.register({
-        fullName,
-        email,
-        password,
-        confirmPassword: password,
-      });
+      try {
+        const response = await authService.register({
+          fullName,
+          username,
+          email,
+          password,
+          confirmPassword: password,
+        });
 
-      const fullUser = await authService.getCurrentUser();
+        const fullUser = await authService.getCurrentUser();
 
-      const registerData = {
-        ...response,
-        user: fullUser,
-      };
+        const registerData = {
+          ...response,
+          user: fullUser,
+        };
 
-      persistAuthSession(registerData);
-      dispatch({ type: "AUTH_SUCCESS", payload: registerData });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Đăng ký thất bại";
-      dispatch({ type: "AUTH_ERROR", payload: errorMessage });
-      throw error;
-    }
-  }, []);
+        persistAuthSession(registerData);
+        dispatch({ type: "AUTH_SUCCESS", payload: registerData });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Đăng ký thất bại";
+        dispatch({ type: "AUTH_ERROR", payload: errorMessage });
+        throw error;
+      }
+    },
+    []
+  );
 
   const logout = useCallback(async () => {
     try {
