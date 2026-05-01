@@ -2,11 +2,16 @@ import apiClient from "@/services/api-client";
 import {
   WatchHistory,
   UpsertWatchHistoryRequest,
+  ContinueWatchingItem,
 } from "@/modules/watch-history/types/watch-history";
 
 class WatchHistoryService {
   async upsert(request: UpsertWatchHistoryRequest): Promise<WatchHistory> {
     return apiClient.post<WatchHistory>("/watch-histories", request);
+  }
+
+  async getContinueWatching(): Promise<ContinueWatchingItem[]> {
+    return apiClient.get<ContinueWatchingItem[]>("/watch-histories/me/continue-watching");
   }
 
   async getMyMovieHistory(movieId: number): Promise<WatchHistory[]> {

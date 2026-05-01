@@ -17,9 +17,15 @@ interface WatchPlayerProps {
   movie: MovieDetail;
   episodes: Episode[];
   currentEpisode: Episode;
+  initialResumeSecond?: number;
 }
 
-export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPlayerProps) {
+export default function WatchPlayer({
+  movie,
+  episodes,
+  currentEpisode,
+  initialResumeSecond,
+}: WatchPlayerProps) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { hasAdsFree } = useSubscription();
@@ -29,6 +35,7 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [resumeStartTime, setResumeStartTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
@@ -45,9 +52,15 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
   }>({ preRoll: [], midRoll: [], postRoll: [] });
   const [midRollFired, setMidRollFired] = useState(false);
   const [postRollFired, setPostRollFired] = useState(false);
+  const [midRollTimestamp, setMidRollTimestamp] = useState<number>(0);
 
   const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSavedProgress = useRef<number>(0);
+  const pendingResumeSecondRef = useRef<number | null>(null);
+  const selectedEpisodeRef = useRef(currentEpisode);
+  const currentAdRef = useRef<Advertisement | null>(null);
+  const isLeavingRef = useRef(false);
 
   const pickRandom = <T,>(arr: T[]): T | null =>
     arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : null;
@@ -77,61 +90,131 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
     };
 
     loadAds();
-  }, [selectedEpisode.id, hasAdsFree, isAuthenticated]);
+  }, [selectedEpisode.id, hasAdsFree, isAuthenticated, movie.id]);
+
+  useEffect(() => {
+    selectedEpisodeRef.current = selectedEpisode;
+  }, [selectedEpisode]);
+
+  useEffect(() => {
+    currentAdRef.current = currentAd;
+  }, [currentAd]);
+
+  const saveProgress = useCallback(
+    async (force = false) => {
+      if (!isAuthenticated || currentAdRef.current || !videoRef.current) return false;
+      const t = Math.floor(videoRef.current.currentTime);
+      const d =
+        Math.floor(videoRef.current.duration) || selectedEpisodeRef.current.durationSeconds || 0;
+      if (t <= 0 && !force) return false;
+      if (!force && Math.abs(t - lastSavedProgress.current) < 3) return false;
+      lastSavedProgress.current = t;
+
+      try {
+        await watchHistoryService.upsert({
+          movieId: movie.id,
+          episodeId: selectedEpisodeRef.current.id,
+          watchedDurationSeconds: d > 0 ? Math.min(t, d) : t,
+          stoppedAtSecond: d > 0 ? Math.min(t, d) : t,
+          isCompleted: d > 0 && (t >= d - 10 || t >= Math.floor(d * 0.95)),
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [isAuthenticated, movie.id]
+  );
+
+  const applyResumeSecond = useCallback((second: number) => {
+    if (second <= 5) return;
+    pendingResumeSecondRef.current = second;
+    setResumeStartTime(second);
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = second;
+    setCurrentTime(second);
+    lastSavedProgress.current = second;
+  }, []);
+
+  const handleVideoLoaded = useCallback(() => {
+    const pendingSecond = pendingResumeSecondRef.current;
+    if (pendingSecond && pendingSecond > 5) {
+      applyResumeSecond(pendingSecond);
+    }
+  }, [applyResumeSecond]);
 
   useEffect(() => {
     setMidRollFired(false);
     setPostRollFired(false);
+    setMidRollTimestamp(0);
     setCurrentAd(null);
     setAdPhase(null);
     setCurrentTime(0);
+    setResumeStartTime(0);
+    lastSavedProgress.current = 0;
+    pendingResumeSecondRef.current = null;
+
+    if (
+      selectedEpisode.id === currentEpisode.id &&
+      initialResumeSecond &&
+      initialResumeSecond > 5
+    ) {
+      applyResumeSecond(initialResumeSecond);
+      return;
+    }
 
     if (isAuthenticated && movie.id && selectedEpisode.id) {
       watchHistoryService
         .getEpisodeProgress(movie.id, selectedEpisode.id)
         .then((h) => {
-          if (h && h.stoppedAtSecond > 30 && !h.isCompleted && videoRef.current) {
-            videoRef.current.currentTime = h.stoppedAtSecond;
+          if (h && h.stoppedAtSecond > 5 && !h.isCompleted) {
+            applyResumeSecond(h.stoppedAtSecond);
           }
         })
         .catch(() => {});
     }
-  }, [selectedEpisode.id]);
+  }, [
+    selectedEpisode.id,
+    currentEpisode.id,
+    initialResumeSecond,
+    isAuthenticated,
+    movie.id,
+    applyResumeSecond,
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     progressSaveRef.current = setInterval(() => {
       if (!videoRef.current || !isPlaying) return;
-      const t = Math.floor(videoRef.current.currentTime);
-      const d = Math.floor(videoRef.current.duration) || 0;
-      if (t < 3) return; // Changed from 5 to 3 seconds
-      watchHistoryService
-        .upsert({
-          movieId: movie.id,
-          episodeId: selectedEpisode.id,
-          watchedDurationSeconds: t,
-          stoppedAtSecond: t,
-          isCompleted: d > 0 && t >= d - 10,
-        })
-        .catch(() => {});
-    }, 10000);
+      void saveProgress(false);
+    }, 5000);
 
     return () => {
       if (progressSaveRef.current) clearInterval(progressSaveRef.current);
+      void saveProgress(true);
     };
-  }, [isPlaying, isAuthenticated, selectedEpisode.id]);
+  }, [isPlaying, isAuthenticated, saveProgress]);
 
   const handleTimeUpdate = useCallback(() => {
     if (!videoRef.current) return;
     const t = videoRef.current.currentTime;
     const d = videoRef.current.duration;
+    const pendingSecond = pendingResumeSecondRef.current;
+    if (pendingSecond && Math.abs(t - pendingSecond) < 2) {
+      pendingResumeSecondRef.current = null;
+    }
     setCurrentTime(t);
 
-    if (!hasAdsFree && !midRollFired && d > 60 && t >= d * 0.5) {
+    if (hasAdsFree) return;
+
+    // MID_ROLL: Hard checkpoint at 50%, trigger once
+    if (!midRollFired && d > 60 && t >= d * 0.5) {
       const midAd = pickRandom(adsForEpisode.midRoll);
       if (midAd) {
         setMidRollFired(true);
+        setMidRollTimestamp(t);
         videoRef.current.pause();
         setIsPlaying(false);
         setCurrentAd(midAd);
@@ -143,7 +226,38 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
         });
       }
     }
-  }, [hasAdsFree, midRollFired, adsForEpisode, selectedEpisode.id]);
+
+    // POST_ROLL: Between (mid-roll + 10min) and (end - 10min)
+    // Only if video is long enough and mid-roll already fired
+    if (!postRollFired && midRollFired && d > 1200) {
+      const postRollStart = midRollTimestamp + 600; // 10 minutes after mid-roll
+      const postRollEnd = d - 600; // 10 minutes before end
+
+      if (t >= postRollStart && t <= postRollEnd) {
+        const postAd = pickRandom(adsForEpisode.postRoll);
+        if (postAd) {
+          setPostRollFired(true);
+          videoRef.current.pause();
+          setIsPlaying(false);
+          setCurrentAd(postAd);
+          setAdPhase("POST_ROLL");
+          advertisementService.trackView({
+            advertisementId: postAd.id,
+            movieId: movie.id,
+            episodeId: selectedEpisode.id,
+          });
+        }
+      }
+    }
+  }, [
+    hasAdsFree,
+    midRollFired,
+    postRollFired,
+    midRollTimestamp,
+    adsForEpisode,
+    selectedEpisode.id,
+    movie.id,
+  ]);
 
   const handleVideoEnded = useCallback(() => {
     if (isAuthenticated && movie.id) {
@@ -158,34 +272,12 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
         .catch(() => {});
     }
 
-    if (!hasAdsFree && !postRollFired) {
-      const postAd = pickRandom(adsForEpisode.postRoll);
-      if (postAd) {
-        setPostRollFired(true);
-        setCurrentAd(postAd);
-        setAdPhase("POST_ROLL");
-        advertisementService.trackView({
-          advertisementId: postAd.id,
-          movieId: movie.id,
-          episodeId: selectedEpisode.id,
-        });
-        return;
-      }
-    }
-
+    // Auto-play next episode if available
     const currentIdx = episodes.findIndex((e) => e.id === selectedEpisode.id);
     if (currentIdx >= 0 && currentIdx < episodes.length - 1) {
       setSelectedEpisode(episodes[currentIdx + 1]);
     }
-  }, [
-    hasAdsFree,
-    postRollFired,
-    adsForEpisode,
-    episodes,
-    selectedEpisode,
-    duration,
-    isAuthenticated,
-  ]);
+  }, [episodes, selectedEpisode, duration, isAuthenticated, movie.id]);
 
   const handleAdSkipped = useCallback(() => {
     setCurrentAd(null);
@@ -218,11 +310,15 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
     setIsPlaying(!isPlaying);
   }, [isPlaying]);
 
-  const handleSeek = useCallback((value: number) => {
-    if (!videoRef.current) return;
-    videoRef.current.currentTime = value;
-    setCurrentTime(value);
-  }, []);
+  const handleSeek = useCallback(
+    (value: number) => {
+      if (!videoRef.current) return;
+      videoRef.current.currentTime = value;
+      setCurrentTime(value);
+      void saveProgress(true);
+    },
+    [saveProgress]
+  );
 
   const handleVolumeChange = useCallback((value: number) => {
     if (!videoRef.current) return;
@@ -256,6 +352,29 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        void saveProgress(true);
+      }
+    };
+    const handleBeforeUnload = () => void saveProgress(true);
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [saveProgress]);
+
+  const handleBack = useCallback(async () => {
+    if (isLeavingRef.current) return;
+    isLeavingRef.current = true;
+    await saveProgress(true);
+    router.back();
+  }, [router, saveProgress]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -312,12 +431,16 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
         <HlsPlayer
           videoRef={videoRef}
           src={selectedEpisode.videoUrl ?? ""}
+          startTime={resumeStartTime}
           onTimeUpdate={handleTimeUpdate}
           onDurationChange={(d) => setDuration(d)}
           onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
+          onPause={() => {
+            setIsPlaying(false);
+            saveProgress(true);
+          }}
           onEnded={handleVideoEnded}
-          onLoaded={() => {}}
+          onLoaded={handleVideoLoaded}
         />
       )}
 
@@ -340,7 +463,7 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
           onVolumeChange={handleVolumeChange}
           onMuteToggle={handleMuteToggle}
           onFullscreen={handleFullscreen}
-          onBack={() => router.back()}
+          onBack={handleBack}
           onEpisodeSelect={(ep) => setSelectedEpisode(ep)}
         />
       )}

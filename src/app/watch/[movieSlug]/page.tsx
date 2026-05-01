@@ -34,7 +34,9 @@ interface WatchPageProps {
 function WatchPageContent({ movieSlug }: { movieSlug: string }) {
   const searchParams = useSearchParams();
   const episodeIdParam = searchParams.get("episode");
+  const resumeSecondParam = searchParams.get("t");
   const episodeId = episodeIdParam ? parseInt(episodeIdParam, 10) : undefined;
+  const resumeSecond = resumeSecondParam ? Math.max(0, parseInt(resumeSecondParam, 10)) : undefined;
 
   const {
     data: movieDetail,
@@ -93,7 +95,14 @@ function WatchPageContent({ movieSlug }: { movieSlug: string }) {
     );
   }
 
-  return <WatchPlayer movie={movie} episodes={episodes} currentEpisode={currentEpisode} />;
+  return (
+    <WatchPlayer
+      movie={movie}
+      episodes={episodes}
+      currentEpisode={currentEpisode}
+      initialResumeSecond={resumeSecond}
+    />
+  );
 }
 
 export default function WatchPage({ params }: WatchPageProps) {

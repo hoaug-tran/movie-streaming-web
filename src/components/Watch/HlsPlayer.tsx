@@ -7,6 +7,7 @@ import { Box } from "@mui/material";
 interface HlsPlayerProps {
   videoRef: RefObject<HTMLVideoElement | null>;
   src: string;
+  startTime?: number;
   onTimeUpdate?: () => void;
   onDurationChange?: (duration: number) => void;
   onPlay?: () => void;
@@ -18,6 +19,7 @@ interface HlsPlayerProps {
 export default function HlsPlayer({
   videoRef,
   src,
+  startTime = 0,
   onTimeUpdate,
   onDurationChange,
   onPlay,
@@ -26,6 +28,19 @@ export default function HlsPlayer({
   onLoaded,
 }: HlsPlayerProps) {
   const hlsRef = useRef<Hls | null>(null);
+  const hasAppliedStartTimeRef = useRef(false);
+
+  useEffect(() => {
+    hasAppliedStartTimeRef.current = false;
+  }, [src]);
+
+  const applyStartTime = () => {
+    const video = videoRef.current;
+    if (!video || hasAppliedStartTimeRef.current || startTime <= 5) return;
+    if (Number.isFinite(video.duration) && startTime >= video.duration) return;
+    video.currentTime = startTime;
+    hasAppliedStartTimeRef.current = true;
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -41,11 +56,13 @@ export default function HlsPlayer({
       hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        applyStartTime();
         video.play().catch(() => {});
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = src;
       video.addEventListener("loadedmetadata", () => {
+        applyStartTime();
         video.play().catch(() => {});
       });
     }
@@ -65,10 +82,15 @@ export default function HlsPlayer({
     const handlePlay = () => onPlay?.();
     const handlePause = () => onPause?.();
     const handleEnded = () => onEnded?.();
-    const handleLoaded = () => onLoaded?.();
+    const handleLoaded = () => {
+      applyStartTime();
+      onLoaded?.();
+    };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("durationchange", handleDuration);
+    video.addEventListener("loadedmetadata", handleLoaded);
+    video.addEventListener("canplay", handleLoaded);
     video.addEventListener("play", handlePlay);
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
@@ -77,12 +99,14 @@ export default function HlsPlayer({
     return () => {
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("durationchange", handleDuration);
+      video.removeEventListener("loadedmetadata", handleLoaded);
+      video.removeEventListener("canplay", handleLoaded);
       video.removeEventListener("play", handlePlay);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("loadeddata", handleLoaded);
     };
-  }, [onTimeUpdate, onDurationChange, onPlay, onPause, onEnded, onLoaded]);
+  }, [onTimeUpdate, onDurationChange, onPlay, onPause, onEnded, onLoaded, startTime]);
 
   return (
     <Box

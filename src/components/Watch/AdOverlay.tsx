@@ -16,12 +16,15 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
   const SKIP_DELAY = 10;
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const [secondsWatched, setSecondsWatched] = useState(0);
-  const [adDuration, setAdDuration] = useState(0);
-  const canSkip = secondsWatched >= SKIP_DELAY;
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const hasEndedRef = useRef(false);
+  const canSkip = currentTime >= SKIP_DELAY;
 
   useEffect(() => {
-    setSecondsWatched(0);
+    setCurrentTime(0);
+    setDuration(0);
+    hasEndedRef.current = false;
     const video = videoRef.current;
     if (!video || !ad.videoUrl) return;
 
@@ -42,14 +45,9 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
     };
   }, [ad.videoUrl]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsWatched((s) => s + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleEnded = () => {
+    if (hasEndedRef.current) return;
+    hasEndedRef.current = true;
     onEnded();
   };
 
@@ -74,8 +72,11 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
       <video
         ref={videoRef}
         onEnded={handleEnded}
+        onTimeUpdate={() => {
+          if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+        }}
         onDurationChange={() => {
-          if (videoRef.current) setAdDuration(videoRef.current.duration);
+          if (videoRef.current) setDuration(videoRef.current.duration);
         }}
         onContextMenu={(e) => e.preventDefault()}
         style={{ width: "100%", height: "100%", objectFit: "contain" }}
@@ -164,7 +165,7 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
                 color: "#fff",
               }}
             >
-              {SKIP_DELAY - secondsWatched}
+              {Math.max(0, Math.ceil(SKIP_DELAY - currentTime))}
             </Box>
             Có thể bỏ qua sau
           </Box>
@@ -190,11 +191,11 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
         )}
       </Box>
 
-      {adDuration > 0 && (
+      {duration > 0 && (
         <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
           <LinearProgress
             variant="determinate"
-            value={(secondsWatched / adDuration) * 100}
+            value={Math.min(100, (currentTime / duration) * 100)}
             sx={{
               height: 3,
               bgcolor: "rgba(255,255,255,0.2)",
