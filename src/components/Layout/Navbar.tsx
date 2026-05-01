@@ -48,7 +48,7 @@ const Navbar: React.FC = () => {
     { label: "Khám phá", href: "/discovery", icon: <Compass size={20} /> },
     { label: "Phim bộ", href: "/tv", icon: <Tv size={20} /> },
     { label: "Phim lẻ", href: "/movies", icon: <Film size={20} /> },
-    ...(isAuthenticated
+    ...(isAuthenticated && !loading
       ? [{ label: "Danh sách", href: "/watchlist", icon: <Bookmark size={20} /> }]
       : []),
   ];

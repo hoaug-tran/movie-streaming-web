@@ -4,7 +4,9 @@ import React, { useState } from "react";
 import { Box, Avatar, Menu, MenuItem, Divider, Typography, Button } from "@mui/material";
 import Link from "next/link";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { useSubscription } from "@/hooks/use-subscription";
 import { getAbsoluteAvatarUrl } from "@/utils/avatar";
+import { SubscriptionBadge } from "@/components/UI/SubscriptionBadge";
 
 interface UserProfileDropdownProps {
   onLogout: () => Promise<void>;
@@ -12,6 +14,7 @@ interface UserProfileDropdownProps {
 
 export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogout }) => {
   const { user } = useAuth();
+  const { currentPlan } = useSubscription();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -49,6 +52,41 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
     return "U";
   };
 
+  const getPlanAccent = () => {
+    const code = currentPlan?.code?.toUpperCase();
+
+    if (code === "PREMIUM_PLUS" || code === "PREMIUM+") {
+      return {
+        border: "rgba(244, 180, 0, 0.72)",
+        background: "rgba(244, 180, 0, 0.06)",
+        hover: "rgba(244, 180, 0, 0.1)",
+        shadow: "rgba(244, 180, 0, 0.12)",
+      };
+    }
+
+    if (code === "PREMIUM") {
+      return {
+        border: "rgba(200, 16, 46, 0.66)",
+        background: "rgba(200, 16, 46, 0.055)",
+        hover: "rgba(200, 16, 46, 0.095)",
+        shadow: "rgba(200, 16, 46, 0.1)",
+      };
+    }
+
+    if (code === "BASIC") {
+      return {
+        border: "rgba(142, 167, 233, 0.62)",
+        background: "rgba(142, 167, 233, 0.055)",
+        hover: "rgba(142, 167, 233, 0.095)",
+        shadow: "rgba(142, 167, 233, 0.1)",
+      };
+    }
+
+    return null;
+  };
+
+  const planAccent = getPlanAccent();
+
   return (
     <Box>
       <Button
@@ -62,30 +100,34 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
           padding: "6px 12px",
           borderRadius: 1.5,
           border: "1px solid",
-          borderColor: "divider",
-          backgroundColor: "transparent",
+          borderColor: planAccent?.border ?? "divider",
+          backgroundColor: planAccent?.background ?? "transparent",
+          boxShadow: planAccent ? `inset 0 0 0 1px ${planAccent.shadow}` : "none",
           transition: "all 0.3s ease",
           "&:hover": {
-            backgroundColor: "action.hover",
+            backgroundColor: planAccent?.hover ?? "action.hover",
+            borderColor: planAccent?.border ?? "divider",
           },
         }}
       >
-        <Avatar
-          src={avatarUrl || undefined}
-          alt={user?.fullName || "User"}
-          sx={{
-            width: 32,
-            height: 32,
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            bgcolor: "text.primary",
-            color: "background.default",
-            borderRadius: 1,
-            border: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          {getInitials()}
-        </Avatar>
+        <Box sx={{ position: "relative" }}>
+          <Avatar
+            src={avatarUrl || undefined}
+            alt={user?.fullName || "User"}
+            sx={{
+              width: 32,
+              height: 32,
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              bgcolor: "text.primary",
+              color: "background.default",
+              borderRadius: 1,
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            {getInitials()}
+          </Avatar>
+        </Box>
 
         <Typography
           variant="body2"
@@ -149,19 +191,28 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
           </Avatar>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.primary",
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {user?.fullName}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.4 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {user?.fullName}
+              </Typography>
+              {currentPlan && (
+                <SubscriptionBadge
+                  planCode={currentPlan.code}
+                  planName={currentPlan.name}
+                  variant="full"
+                />
+              )}
+            </Box>
 
             <Typography
               variant="caption"

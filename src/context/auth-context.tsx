@@ -37,6 +37,8 @@ const initialState: AuthState = {
   error: null,
 };
 
+const getInitialAuthState = (): AuthState => initialState;
+
 const unauthenticatedState: AuthState = {
   isAuthenticated: false,
   user: null,
@@ -122,28 +124,20 @@ const clearAuthSession = () => {
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
+  const [state, dispatch] = useReducer(authReducer, initialState, getInitialAuthState);
 
   useEffect(() => {
     const storedUser = getFromLocalStorage<UserInfo>("user");
 
     if (storedUser) {
-      dispatch({
-        type: "RESTORE_AUTH",
-        payload: {
-          user: storedUser,
-          accessToken: "",
-          refreshToken: "",
-        },
-      });
-
       authService
         .getCurrentUser()
         .then((user) => {
           dispatch({ type: "SET_USER", payload: user });
         })
         .catch(() => {
-          logout();
+          clearAuthSession();
+          dispatch({ type: "LOGOUT" });
         });
       return;
     }
@@ -218,10 +212,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       removeFromLocalStorage("rememberedEmail");
       removeFromLocalStorage("rememberedIdentifier");
       dispatch({ type: "LOGOUT" });
-
-      if (typeof window !== "undefined") {
-        window.location.href = "/";
-      }
     }
   }, []);
 
