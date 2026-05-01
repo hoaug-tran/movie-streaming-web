@@ -15,7 +15,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { CheckCircle, Home, ReceiptLong, Replay, WorkspacePremium } from "@mui/icons-material";
+import { CheckCircle, Home, Replay, WorkspacePremium } from "@mui/icons-material";
 import subscriptionService from "@/modules/subscription/api/subscription-service";
 import { useNotification } from "@/context/notification-context";
 
@@ -55,6 +55,36 @@ export default function SubscriptionSuccessPage() {
   });
 
   const subscription = useMemo(() => history?.[0] ?? null, [history]);
+
+  useEffect(() => {
+    const completePayment = async () => {
+      if (!orderCode) return;
+
+      const code = searchParams.get("code");
+      const id = searchParams.get("id");
+      const cancel = searchParams.get("cancel");
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
+
+      try {
+        const response = await fetch(
+          `${apiBaseUrl}/payments/success?orderCode=${orderCode}&code=${code}&id=${id}&cancel=${cancel}&status=${status}`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          console.log("Payment completed successfully");
+          refetch();
+        }
+      } catch (error) {
+        console.error("Failed to complete payment:", error);
+      }
+    };
+
+    completePayment();
+  }, [orderCode, searchParams, status, refetch]);
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
@@ -131,8 +161,8 @@ export default function SubscriptionSuccessPage() {
                 Thanh toán đã được ghi nhận.
               </Typography>
               <Typography sx={{ color: "rgba(255,255,255,0.64)", mt: 1.5, lineHeight: 1.8 }}>
-                Nếu ngân hàng đã xác nhận nhưng gói vẫn đang chờ, webhook PayOS có thể cần thêm vài
-                giây. Trang này sẽ tự kiểm tra lại trạng thái gần nhất.
+                Sau khi thanh toán thành công, hệ thống có thể mất vài giây để cập nhật trạng thái
+                từ Ngân hàng. Trang này sẽ tự động làm mới để hiển thị kết quả chính xác nhất
               </Typography>
             </Box>
 
@@ -219,7 +249,6 @@ export default function SubscriptionSuccessPage() {
               alignItems="center"
               sx={{ color: "rgba(255,255,255,0.46)" }}
             >
-              <ReceiptLong sx={{ fontSize: 16 }} />
               <Typography variant="caption">
                 Gói không tự động gia hạn. Bạn có thể gia hạn thủ công khi gần hết hạn.
               </Typography>

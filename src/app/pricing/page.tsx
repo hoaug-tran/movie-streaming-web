@@ -69,19 +69,33 @@ const formatPrice = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-const hasFullHdOr4k = (plan?: SubscriptionPlan | null) => {
+const hasFullHd = (plan?: SubscriptionPlan | null) => {
   const quality = plan?.videoQuality?.toUpperCase() ?? "";
-  return quality.includes("FULL") || quality.includes("FHD") || quality.includes("4K");
+  return quality.includes("FULL") || quality.includes("FHD") || quality.includes("1080");
 };
 
-const hasExclusiveMovies = (plan?: SubscriptionPlan | null) => plan?.code === "PREMIUM_PLUS";
+const has4K = (plan?: SubscriptionPlan | null) => {
+  const quality = plan?.videoQuality?.toUpperCase() ?? "";
+  return quality.includes("4K");
+};
 
-const getPlanEntitlements = (plan?: SubscriptionPlan | null): Entitlement[] => [
-  { label: "Không quảng cáo", available: Boolean(plan?.hasAdsFree) },
-  { label: "Full HD / 4K", available: hasFullHdOr4k(plan) },
-  { label: "Nhiều thiết bị", available: Number(plan?.maxDevices ?? 1) > 1 },
-  { label: "Phim mới - độc quyền", available: hasExclusiveMovies(plan) },
-];
+const hasExclusiveMovies = (plan?: SubscriptionPlan | null) => {
+  return plan?.code === "PREMIUM" || plan?.code === "PREMIUM_PLUS";
+};
+
+const getPlanEntitlements = (plan?: SubscriptionPlan | null): Entitlement[] => {
+  const isPremiumPlus = plan?.code === "PREMIUM_PLUS";
+
+  return [
+    { label: "Không quảng cáo", available: Boolean(plan?.hasAdsFree) },
+    {
+      label: isPremiumPlus ? "4K" : "Full HD",
+      available: isPremiumPlus ? has4K(plan) : hasFullHd(plan),
+    },
+    { label: "Nhiều thiết bị", available: Number(plan?.maxDevices ?? 1) > 1 },
+    { label: "Phim mới - độc quyền", available: hasExclusiveMovies(plan) },
+  ];
+};
 
 function EntitlementChip({ entitlement }: { entitlement: Entitlement }) {
   return (
@@ -219,7 +233,11 @@ function PlanCard({
               )}
               <Typography
                 variant="body2"
-                sx={{ color: entitlement.available ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.46)" }}
+                sx={{
+                  color: entitlement.available
+                    ? "rgba(255,255,255,0.82)"
+                    : "rgba(255,255,255,0.46)",
+                }}
               >
                 {entitlement.label}
               </Typography>
@@ -267,7 +285,9 @@ export default function PricingPage() {
   const orderedPlans = useMemo(() => [...(plans ?? [])].sort((a, b) => a.price - b.price), [plans]);
   const highestPlan = orderedPlans.at(-1) ?? null;
   const canUpgrade = Boolean(
-    hasActiveSubscription && currentPlan && orderedPlans.some((plan) => plan.price > currentPlan.price)
+    hasActiveSubscription &&
+    currentPlan &&
+    orderedPlans.some((plan) => plan.price > currentPlan.price)
   );
   const isAtHighestPlan = Boolean(
     hasActiveSubscription && currentPlan && highestPlan && currentPlan.id === highestPlan.id
@@ -452,7 +472,8 @@ export default function PricingPage() {
         )}
 
         <Typography sx={{ textAlign: "center", mt: 5, color: "rgba(255,255,255,0.42)" }}>
-          Gói PayOS không tự động gia hạn. Khi sắp hết hạn, bạn chỉ cần tạo phiên QR mới để gia hạn.
+          Sử dụng chủ động, không lo tự động trừ phí. Khi gói sắp hết hạn, bạn chỉ cần thực hiện
+          thanh toán qua mã QR mới để tiếp tục duy trì dịch vụ.
         </Typography>
       </Container>
     </Box>
