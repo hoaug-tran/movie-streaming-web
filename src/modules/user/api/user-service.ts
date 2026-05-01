@@ -2,16 +2,16 @@ import apiClient from "@/services/api-client";
 import {
   UserProfile,
   UpdateProfileRequest,
+  EmailChangeResponse,
   Favorite,
   WatchHistory,
 } from "@/modules/user/types/user";
 import { PaginatedResponse, PaginationParams } from "@/types/api";
 
 class UserService {
-  async getUserProfile(userId?: string): Promise<UserProfile> {
+  async getUserProfile(): Promise<UserProfile> {
     try {
-      const url = userId ? `/users/${userId}` : "/users/profile";
-      return await apiClient.get<UserProfile>(url);
+      return await apiClient.get<UserProfile>("/users/me");
     } catch (error) {
       throw this.handleError(error);
     }
@@ -19,10 +19,28 @@ class UserService {
 
   async updateProfile(data: UpdateProfileRequest): Promise<UserProfile> {
     try {
-      return await apiClient.put<UserProfile>("/users/profile", data);
+      return await apiClient.put<UserProfile>("/users/me", data);
     } catch (error) {
       throw this.handleError(error);
     }
+  }
+
+  async uploadAvatar(file: File): Promise<UserProfile> {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    return apiClient.patch<UserProfile>("/users/me/avatar", formData);
+  }
+
+  async startEmailChange(newEmail: string): Promise<EmailChangeResponse> {
+    return apiClient.patch<EmailChangeResponse>("/users/me/email-change/start", { newEmail });
+  }
+
+  async verifyCurrentEmailChange(otp: string): Promise<EmailChangeResponse> {
+    return apiClient.patch<EmailChangeResponse>("/users/me/email-change/verify-current", { otp });
+  }
+
+  async verifyNewEmailChange(otp: string): Promise<EmailChangeResponse> {
+    return apiClient.patch<EmailChangeResponse>("/users/me/email-change/verify-new", { otp });
   }
 
   async getFavorites(params?: PaginationParams): Promise<PaginatedResponse<Favorite>> {
