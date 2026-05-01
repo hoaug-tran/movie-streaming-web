@@ -187,10 +187,27 @@ function PlanCard({
               <Chip
                 label={meta.badge}
                 size="small"
-                sx={{ bgcolor: meta.accent, color: "#111", fontWeight: 900 }}
+                sx={{
+                  bgcolor: `${meta.accent}24`,
+                  color: meta.accent === "#F4B400" ? "#FFD66B" : "#FF7A90",
+                  border: `1px solid ${meta.accent}66`,
+                  fontWeight: 900,
+                  boxShadow: `0 8px 20px ${meta.accent}22`,
+                }}
               />
             )}
-            {active && <Chip label="Đang dùng" size="small" color="success" />}
+            {active && (
+              <Chip
+                label="Đang dùng"
+                size="small"
+                sx={{
+                  bgcolor: "rgba(74, 222, 128, 0.16)",
+                  color: "#86EFAC",
+                  border: "1px solid rgba(134, 239, 172, 0.44)",
+                  fontWeight: 900,
+                }}
+              />
+            )}
           </Stack>
         </Stack>
 

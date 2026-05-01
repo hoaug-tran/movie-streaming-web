@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Box,
   Button,
@@ -15,7 +15,14 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { CheckCircle, Home, Replay, WorkspacePremium } from "@mui/icons-material";
+import {
+  CheckCircle,
+  ErrorOutline,
+  Home,
+  HourglassTop,
+  Replay,
+  WorkspacePremium,
+} from "@mui/icons-material";
 import subscriptionService from "@/modules/subscription/api/subscription-service";
 import { useNotification } from "@/context/notification-context";
 
@@ -33,13 +40,16 @@ const formatDate = (value?: string) => {
   );
 };
 
-export default function SubscriptionSuccessPage() {
-  const router = useRouter();
+function SubscriptionSuccessContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { notify } = useNotification();
-  const orderCode = searchParams.get("orderCode") ?? searchParams.get("id") ?? "";
-  const status = searchParams.get("status") ?? "PAID";
+  const orderCode = searchParams.get("orderCode") ?? "";
+  const [paymentResult, setPaymentResult] = useState<Awaited<
+    ReturnType<typeof subscriptionService.verifyPayment>
+  > | null>(null);
+  const [isVerifying, setIsVerifying] = useState(Boolean(orderCode));
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const {
     data: history,
@@ -57,48 +67,70 @@ export default function SubscriptionSuccessPage() {
   const subscription = useMemo(() => history?.[0] ?? null, [history]);
 
   useEffect(() => {
-    const completePayment = async () => {
-      if (!orderCode) return;
+    const verifyPayment = async () => {
+      if (!orderCode) {
+        setIsVerifying(false);
+        setVerifyError("Không tìm thấy mã giao dịch để kiểm tra thanh toán.");
+        return;
+      }
 
-      const code = searchParams.get("code");
-      const id = searchParams.get("id");
-      const cancel = searchParams.get("cancel");
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
+      setIsVerifying(true);
+      setVerifyError(null);
 
       try {
-        const response = await fetch(
-          `${apiBaseUrl}/payments/success?orderCode=${orderCode}&code=${code}&id=${id}&cancel=${cancel}&status=${status}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
+        const result = await subscriptionService.verifyPayment(orderCode);
+        setPaymentResult(result);
+        queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
+        queryClient.invalidateQueries({ queryKey: ["my-subscriptions"] });
+        await refetch();
+      } catch {
+        setVerifyError(
+          "Chưa thể kết nối máy chủ để kiểm tra thanh toán. Hệ thống sẽ tự đối soát lại, bạn có thể bấm kiểm tra lại sau ít phút."
         );
-
-        if (response.ok) {
-          console.log("Payment completed successfully");
-          refetch();
-        }
-      } catch (error) {
-        console.error("Failed to complete payment:", error);
+      } finally {
+        setIsVerifying(false);
       }
     };
 
-    completePayment();
-  }, [orderCode, searchParams, status, refetch]);
+    verifyPayment();
+  }, [orderCode, queryClient, refetch]);
 
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
-    queryClient.invalidateQueries({ queryKey: ["my-subscriptions"] });
     notify({
-      message:
-        status === "PAID"
-          ? "PayOS đã chuyển bạn về Gió Phim. Đang đồng bộ trạng thái gói."
-          : "Đã nhận phản hồi từ PayOS.",
-      severity: "success",
+      message: orderCode
+        ? "Đang kiểm tra thanh toán trực tiếp từ PayOS qua máy chủ."
+        : "Không tìm thấy mã giao dịch để kiểm tra.",
+      severity: orderCode ? "info" : "warning",
     });
-  }, [notify, queryClient, status]);
+  }, [notify, orderCode]);
 
-  const isActive = subscription?.status === "ACTIVE";
+  const paymentStatus = paymentResult?.status ?? subscription?.status;
+  const isActive =
+    paymentResult?.subscriptionStatus === "ACTIVE" || subscription?.status === "ACTIVE";
+  const isPending = paymentStatus === "PENDING" || isVerifying;
+  const isFailed = paymentStatus === "FAILED" || Boolean(verifyError && !isVerifying);
+  const displayAmount = paymentResult?.amount ?? subscription?.plan?.price ?? 0;
+  const displayPlanName =
+    paymentResult?.planName ?? subscription?.plan?.name ?? `Gói #${subscription?.planId ?? "-"}`;
+  const displayEndAt = paymentResult?.endAt ?? subscription?.endAt;
+  const verifyPayment = async () => {
+    if (!orderCode) return;
+    setIsVerifying(true);
+    setVerifyError(null);
+    try {
+      const result = await subscriptionService.verifyPayment(orderCode);
+      setPaymentResult(result);
+      queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["my-subscriptions"] });
+      await refetch();
+    } catch {
+      setVerifyError(
+        "Chưa thể kết nối máy chủ để kiểm tra thanh toán. Hệ thống sẽ tự đối soát lại, bạn có thể bấm kiểm tra lại sau ít phút."
+      );
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   return (
     <Box
@@ -145,24 +177,40 @@ export default function SubscriptionSuccessPage() {
                 border: "1px solid rgba(74,222,128,0.28)",
               }}
             >
-              <CheckCircle sx={{ fontSize: 42 }} />
+              {isFailed ? (
+                <ErrorOutline sx={{ fontSize: 42 }} />
+              ) : isPending ? (
+                <HourglassTop sx={{ fontSize: 42 }} />
+              ) : (
+                <CheckCircle sx={{ fontSize: 42 }} />
+              )}
             </Box>
 
             <Box>
               <Chip
-                label={isActive ? "Gói đã kích hoạt" : "Đang đồng bộ PayOS"}
-                color={isActive ? "success" : "warning"}
+                label={
+                  isActive
+                    ? "Gói đã kích hoạt"
+                    : isFailed
+                      ? "Cần kiểm tra lại"
+                      : "Đang đồng bộ PayOS"
+                }
+                color={isActive ? "success" : isFailed ? "error" : "warning"}
               />
               <Typography
                 variant="h1"
                 fontWeight={950}
                 sx={{ fontSize: { xs: "2.4rem", md: "4rem" }, mt: 2 }}
               >
-                Thanh toán đã được ghi nhận.
+                {isActive
+                  ? "Thanh toán thành công."
+                  : isFailed
+                    ? "Chưa xác minh được thanh toán."
+                    : "Đang xác minh thanh toán."}
               </Typography>
               <Typography sx={{ color: "rgba(255,255,255,0.64)", mt: 1.5, lineHeight: 1.8 }}>
-                Sau khi thanh toán thành công, hệ thống có thể mất vài giây để cập nhật trạng thái
-                từ Ngân hàng. Trang này sẽ tự động làm mới để hiển thị kết quả chính xác nhất
+                {verifyError ??
+                  "Gió Phim đang kiểm tra trạng thái thật từ PayOS qua máy chủ. Trang này không dùng dữ liệu trạng thái trên URL nên kết quả luôn được đối soát an toàn."}
               </Typography>
             </Box>
 
@@ -188,25 +236,19 @@ export default function SubscriptionSuccessPage() {
                   <Divider sx={{ borderColor: "rgba(255,255,255,0.10)" }} />
                   <Stack direction="row" justifyContent="space-between" spacing={2}>
                     <Typography color="rgba(255,255,255,0.56)">Gói</Typography>
-                    <Typography fontWeight={900}>
-                      {subscription?.plan?.name ?? `Gói #${subscription?.planId ?? "-"}`}
-                    </Typography>
+                    <Typography fontWeight={900}>{displayPlanName}</Typography>
                   </Stack>
                   <Stack direction="row" justifyContent="space-between" spacing={2}>
                     <Typography color="rgba(255,255,255,0.56)">Số tiền</Typography>
-                    <Typography fontWeight={900}>
-                      {formatPrice(subscription?.plan?.price ?? 0)}
-                    </Typography>
+                    <Typography fontWeight={900}>{formatPrice(displayAmount)}</Typography>
                   </Stack>
                   <Stack direction="row" justifyContent="space-between" spacing={2}>
                     <Typography color="rgba(255,255,255,0.56)">Trạng thái</Typography>
-                    <Typography fontWeight={900}>
-                      {subscription?.status ?? "Đang kiểm tra"}
-                    </Typography>
+                    <Typography fontWeight={900}>{paymentStatus ?? "Đang kiểm tra"}</Typography>
                   </Stack>
                   <Stack direction="row" justifyContent="space-between" spacing={2}>
                     <Typography color="rgba(255,255,255,0.56)">Có hiệu lực đến</Typography>
-                    <Typography fontWeight={900}>{formatDate(subscription?.endAt)}</Typography>
+                    <Typography fontWeight={900}>{formatDate(displayEndAt)}</Typography>
                   </Stack>
                 </Stack>
               )}
@@ -236,7 +278,7 @@ export default function SubscriptionSuccessPage() {
                 fullWidth
                 variant="text"
                 startIcon={<Replay />}
-                onClick={() => refetch()}
+                onClick={verifyPayment}
                 sx={{ color: "rgba(255,255,255,0.72)" }}
               >
                 Kiểm tra lại
@@ -257,5 +299,13 @@ export default function SubscriptionSuccessPage() {
         </Paper>
       </Container>
     </Box>
+  );
+}
+
+export default function SubscriptionSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <SubscriptionSuccessContent />
+    </Suspense>
   );
 }

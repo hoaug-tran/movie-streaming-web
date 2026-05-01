@@ -3,6 +3,7 @@ import {
   Invoice,
   PaymentCheckoutResponse,
   PaymentTransaction,
+  PaymentVerificationResponse,
   SubscriptionPlan,
   UserSubscription,
 } from "@/modules/subscription/types/subscription";
@@ -43,6 +44,12 @@ class SubscriptionService {
   async createCheckout(planId: number): Promise<PaymentCheckoutResponse> {
     return apiClient.post<PaymentCheckoutResponse>("/payments/checkout", undefined, {
       params: { planId },
+    });
+  }
+
+  async verifyPayment(orderCode: string): Promise<PaymentVerificationResponse> {
+    return apiClient.get<PaymentVerificationResponse>("/payments/success", {
+      params: { orderCode },
     });
   }
 }

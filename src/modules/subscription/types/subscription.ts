@@ -72,3 +72,17 @@ export interface PaymentCheckoutResponse {
   currentPlanName?: string;
   newPlanName?: string;
 }
+
+export interface PaymentVerificationResponse {
+  paymentId: number;
+  orderCode: string;
+  amount: number;
+  status: "PENDING" | "SUCCESS" | "FAILED" | string;
+  paidAt?: string;
+  subscriptionId: number;
+  planName: string;
+  planDuration: number;
+  subscriptionStatus: "PENDING" | "ACTIVE" | "EXPIRED" | "CANCELLED" | string;
+  startAt?: string;
+  endAt?: string;
+}

@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Box, Button, Chip, Container, Divider, Paper, Stack, Typography } from "@mui/material";
 import { ArrowBack, Cancel, Home, Replay } from "@mui/icons-material";
 import { useNotification } from "@/context/notification-context";
 
-export default function SubscriptionCancelPage() {
+function SubscriptionCancelContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { notify } = useNotification();
@@ -132,5 +132,13 @@ export default function SubscriptionCancelPage() {
         </Paper>
       </Container>
     </Box>
+  );
+}
+
+export default function SubscriptionCancelPage() {
+  return (
+    <Suspense fallback={null}>
+      <SubscriptionCancelContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -42,7 +42,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function SubscriptionCheckoutPage() {
+function SubscriptionCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
@@ -357,5 +357,13 @@ export default function SubscriptionCheckoutPage() {
         </Grid>
       </Container>
     </Box>
+  );
+}
+
+export default function SubscriptionCheckoutPage() {
+  return (
+    <Suspense fallback={null}>
+      <SubscriptionCheckoutContent />
+    </Suspense>
   );
 }
