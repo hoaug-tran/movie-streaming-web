@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Box,
-  IconButton,
-  Slider,
-  Tooltip,
-  Typography,
-  Fade,
-} from "@mui/material";
+import { Box, IconButton, Slider, Tooltip, Typography, Fade } from "@mui/material";
 import {
   PlayArrow,
   Pause,
@@ -128,7 +121,10 @@ export default function PlayerControls({
           }}
         >
           <IconButton
-            onClick={(e) => { e.stopPropagation(); onBack(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBack();
+            }}
             sx={{
               color: "#fff",
               "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },

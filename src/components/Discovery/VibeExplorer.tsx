@@ -636,10 +636,7 @@ export default function VibeExplorer() {
           }}
         >
           {allMovies.map((movie, i) => (
-            <Box
-              key={`${movie.id}-${i}`}
-              sx={{ cursor: "pointer" }}
-            >
+            <Box key={`${movie.id}-${i}`} sx={{ cursor: "pointer" }}>
               <MovieCard
                 {...getMovieCardProps(movie)}
                 onPlay={() =>
@@ -686,7 +683,12 @@ export default function VibeExplorer() {
         >
           <Box sx={{ flex: 1, height: "1px", backgroundColor: "divider" }} />
           <Typography
-            sx={{ fontSize: "0.75rem", color: "text.disabled", fontWeight: 600, whiteSpace: "nowrap" }}
+            sx={{
+              fontSize: "0.75rem",
+              color: "text.disabled",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
           >
             Đã hiển thị tất cả {allMovies.length} phim
           </Typography>

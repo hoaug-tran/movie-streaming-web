@@ -34,7 +34,8 @@ export function BingeUniverseSection() {
   const active = allSeries[activeIdx] || allSeries[0];
   const activeImage = active?.bannerUrl || active?.posterUrl;
   const activeCategories =
-    active?.categories?.slice(0, 3).flatMap((category) => (category.name ? [category.name] : [])) || [];
+    active?.categories?.slice(0, 3).flatMap((category) => (category.name ? [category.name] : [])) ||
+    [];
 
   const openDetail = (slug?: string) => {
     if (slug) router.push(`/movies/${slug}`);
@@ -287,7 +288,10 @@ export function BingeUniverseSection() {
                   <Skeleton
                     key={`binge-${label}`}
                     variant="rounded"
-                    sx={{ height: { xs: 190, sm: 224, lg: 260 }, borderRadius: { xs: 1.25, md: 1.5 } }}
+                    sx={{
+                      height: { xs: 190, sm: 224, lg: 260 },
+                      borderRadius: { xs: 1.25, md: 1.5 },
+                    }}
                   />
                 ))}
               </Box>
@@ -319,7 +323,8 @@ export function BingeUniverseSection() {
                         borderRadius: { xs: 1.25, md: 1.5 },
                         overflow: "hidden",
                         transform: isActive ? "translateY(-4px)" : "translateY(0)",
-                        transition: "transform 0.22s ease, box-shadow 0.22s ease, outline-color 0.22s ease",
+                        transition:
+                          "transform 0.22s ease, box-shadow 0.22s ease, outline-color 0.22s ease",
                         boxShadow: isActive
                           ? `0 20px 48px ${alpha(theme.palette.primary.main, 0.2)}`
                           : `0 12px 30px ${alpha(theme.palette.common.black, isDark ? 0.22 : 0.1)}`,

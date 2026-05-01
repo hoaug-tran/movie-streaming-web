@@ -11,6 +11,7 @@ import Navbar from "@/components/Layout/Navbar";
 import SearchResultsPage from "@/components/Search/SearchResultsPage";
 import { darkTheme } from "@/config/theme";
 import { Box } from "@mui/material";
+import { NotificationProvider } from "@/context/notification-context";
 
 function LayoutWrapper({ children }: { children: ReactNode }) {
   const { searchOpen, searchQuery, setSearchOpen, setSearchQuery } = useSearch();
@@ -40,7 +41,9 @@ export default function Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SearchProvider>
-            <LayoutWrapper>{children}</LayoutWrapper>
+            <NotificationProvider>
+              <LayoutWrapper>{children}</LayoutWrapper>
+            </NotificationProvider>
           </SearchProvider>
         </AuthProvider>
       </QueryClientProvider>

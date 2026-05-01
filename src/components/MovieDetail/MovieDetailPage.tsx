@@ -253,10 +253,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                   label="Phát phim"
                   primary
                 />
-                <DetailAction
-                  onClick={() => {}}
-                  label="Thêm vào danh sách"
-                />
+                <DetailAction onClick={() => {}} label="Thêm vào danh sách" />
                 <Typography color="text.secondary" sx={{ maxWidth: 240, fontSize: "0.92rem" }}>
                   Phát ngay hoặc lưu vào danh sách xem sau của bạn.
                 </Typography>

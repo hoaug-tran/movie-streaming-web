@@ -1,5 +1,8 @@
 import apiClient from "@/services/api-client";
-import { WatchHistory, UpsertWatchHistoryRequest } from "@/modules/watch-history/types/watch-history";
+import {
+  WatchHistory,
+  UpsertWatchHistoryRequest,
+} from "@/modules/watch-history/types/watch-history";
 
 class WatchHistoryService {
   async upsert(request: UpsertWatchHistoryRequest): Promise<WatchHistory> {

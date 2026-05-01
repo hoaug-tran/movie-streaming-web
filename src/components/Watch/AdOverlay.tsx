@@ -54,8 +54,11 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
   };
 
   const adLabel =
-    ad.adType === "PRE_ROLL" ? "Quảng cáo trước phim" :
-    ad.adType === "MID_ROLL" ? "Quảng cáo giữa phim" : "Quảng cáo sau phim";
+    ad.adType === "PRE_ROLL"
+      ? "Quảng cáo trước phim"
+      : ad.adType === "MID_ROLL"
+        ? "Quảng cáo giữa phim"
+        : "Quảng cáo sau phim";
 
   return (
     <Box

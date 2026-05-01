@@ -247,7 +247,9 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
                 },
               }}
             />
-            <Typography sx={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>
+            <Typography
+              sx={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", fontWeight: 500 }}
+            >
               Đang tải thêm...
             </Typography>
           </Box>
@@ -263,7 +265,9 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
             }}
           >
             <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.08)" }} />
-            <Typography sx={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.25)", fontWeight: 600 }}>
+            <Typography
+              sx={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.25)", fontWeight: 600 }}
+            >
               Đã hiển thị tất cả {results.length} kết quả
             </Typography>
             <Box sx={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.08)" }} />

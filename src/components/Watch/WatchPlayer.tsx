@@ -177,7 +177,15 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
     if (currentIdx >= 0 && currentIdx < episodes.length - 1) {
       setSelectedEpisode(episodes[currentIdx + 1]);
     }
-  }, [hasAdsFree, postRollFired, adsForEpisode, episodes, selectedEpisode, duration, isAuthenticated]);
+  }, [
+    hasAdsFree,
+    postRollFired,
+    adsForEpisode,
+    episodes,
+    selectedEpisode,
+    duration,
+    isAuthenticated,
+  ]);
 
   const handleAdSkipped = useCallback(() => {
     setCurrentAd(null);
@@ -313,13 +321,7 @@ export default function WatchPlayer({ movie, episodes, currentEpisode }: WatchPl
         />
       )}
 
-      {currentAd && (
-        <AdOverlay
-          ad={currentAd}
-          onSkip={handleAdSkipped}
-          onEnded={handleAdSkipped}
-        />
-      )}
+      {currentAd && <AdOverlay ad={currentAd} onSkip={handleAdSkipped} onEnded={handleAdSkipped} />}
 
       {!currentAd && (
         <PlayerControls

@@ -376,18 +376,30 @@ export function SingleFilmSection() {
                         {featured.averageRating != null && featured.averageRating > 0 && (
                           <Box sx={{ display: "flex", alignItems: "center", gap: 0.45 }}>
                             <Star size={15} fill="#FFD700" color="#FFD700" />
-                            <Typography sx={{ color: "#FFD700", fontWeight: 900, fontSize: "0.9rem" }}>
+                            <Typography
+                              sx={{ color: "#FFD700", fontWeight: 900, fontSize: "0.9rem" }}
+                            >
                               {featured.averageRating.toFixed(1)}
                             </Typography>
                           </Box>
                         )}
                         {featured.releaseYear && (
-                          <Typography sx={{ color: alpha(theme.palette.common.white, 0.68), fontSize: "0.85rem" }}>
+                          <Typography
+                            sx={{
+                              color: alpha(theme.palette.common.white, 0.68),
+                              fontSize: "0.85rem",
+                            }}
+                          >
                             {featured.releaseYear}
                           </Typography>
                         )}
                         {featured.country && (
-                          <Typography sx={{ color: alpha(theme.palette.common.white, 0.68), fontSize: "0.85rem" }}>
+                          <Typography
+                            sx={{
+                              color: alpha(theme.palette.common.white, 0.68),
+                              fontSize: "0.85rem",
+                            }}
+                          >
                             {featured.country}
                           </Typography>
                         )}

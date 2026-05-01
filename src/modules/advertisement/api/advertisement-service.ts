@@ -1,5 +1,8 @@
 import apiClient from "@/services/api-client";
-import { Advertisement, AdvertisementViewRequest } from "@/modules/advertisement/types/advertisement";
+import {
+  Advertisement,
+  AdvertisementViewRequest,
+} from "@/modules/advertisement/types/advertisement";
 
 class AdvertisementService {
   async getAdsByType(adType: "PRE_ROLL" | "MID_ROLL" | "POST_ROLL"): Promise<Advertisement[]> {

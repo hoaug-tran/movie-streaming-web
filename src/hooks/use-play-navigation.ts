@@ -38,9 +38,7 @@ export function usePlayNavigation() {
         }
       }
 
-      const url = episodeId
-        ? `/watch/${movieSlug}?episode=${episodeId}`
-        : `/watch/${movieSlug}`;
+      const url = episodeId ? `/watch/${movieSlug}?episode=${episodeId}` : `/watch/${movieSlug}`;
 
       router.push(url);
     },

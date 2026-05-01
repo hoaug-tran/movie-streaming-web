@@ -79,14 +79,10 @@ export default function EpisodeList({
                 py: 1.5,
                 cursor: "pointer",
                 bgcolor: isCurrent ? "rgba(200,16,46,0.12)" : "transparent",
-                borderLeft: isCurrent
-                  ? "3px solid #C8102E"
-                  : "3px solid transparent",
+                borderLeft: isCurrent ? "3px solid #C8102E" : "3px solid transparent",
                 transition: "all 0.2s",
                 "&:hover": {
-                  bgcolor: isCurrent
-                    ? "rgba(200,16,46,0.18)"
-                    : "rgba(255,255,255,0.06)",
+                  bgcolor: isCurrent ? "rgba(200,16,46,0.18)" : "rgba(255,255,255,0.06)",
                 },
               }}
             >
@@ -152,9 +148,7 @@ export default function EpisodeList({
                 )}
               </Box>
 
-              {isCurrent ? (
-                <PlayArrow sx={{ color: "#C8102E", fontSize: 18 }} />
-              ) : null}
+              {isCurrent ? <PlayArrow sx={{ color: "#C8102E", fontSize: 18 }} /> : null}
             </Box>
           );
         })}

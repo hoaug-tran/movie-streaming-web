@@ -227,7 +227,7 @@ export function SocialEngagementSection() {
                       transition: "opacity 0.25s",
                     }}
                   >
-                    "{comment.content}"
+                    &ldquo;{comment.content}&rdquo;
                   </Typography>
                 </Box>
               );

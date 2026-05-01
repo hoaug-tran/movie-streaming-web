@@ -1,6 +1,7 @@
 ## Project Structure Guide
 
 ### Overview
+
 This is a **production-ready NextJS frontend** for Movie Streaming Platform, built with **Clean Architecture** principles and **Feature-Based** organization.
 
 ### Architecture Pattern: **Clean Architecture + Feature-Based**
@@ -38,13 +39,16 @@ src/
 ### Folder Structure Details
 
 #### **modules/** - Feature-Based Modules
+
 Each module is self-contained with its own:
+
 - `types/` - Module-specific TypeScript types
 - `api/` - API service calls
 - `components/` - Module components
 - `hooks/` - Module hooks
 
 Example: `modules/auth/`
+
 ```
 auth/
 ├── types/
@@ -60,6 +64,7 @@ auth/
 ```
 
 #### **components/** - Shared Components
+
 ```
 components/
 ├── Layout/          # Layout wrappers (Navbar, Sidebar, Footer)
@@ -71,13 +76,16 @@ components/
 ```
 
 #### **services/** - API Client
+
 - `api-client.ts` - Axios instance with interceptors
 - Service files for specific domains
 
 #### **context/** - State Management
+
 - `auth-context.tsx` - Global authentication state
 
 #### **hooks/** - Custom Hooks
+
 - `useApi.ts` - API hooks
 - `useAuth.ts` - Authentication hooks
 - `useFetch.ts` - Data fetching hooks
@@ -85,16 +93,19 @@ components/
 ### Design Patterns
 
 #### 1. **Clean Architecture**
+
 - Separation of concerns (Business Logic, Presentation, Data)
 - Dependency inversion
 - Single responsibility principle
 
 #### 2. **Feature-Based Organization**
+
 - Each feature is self-contained
 - Easy to find related code
 - Scalable structure
 
 #### 3. **API Service Pattern**
+
 ```typescript
 // Usage in components
 const { login } = useAuth();
@@ -106,6 +117,7 @@ await login(email, password);
 ```
 
 #### 4. **Custom Hooks**
+
 - `useAuth()` - Authentication state
 - `useGetData<T>()` - Fetch data with react-query
 - `usePostData<T>()` - Submit data
@@ -113,17 +125,17 @@ await login(email, password);
 
 ### Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| **UI Framework** | NextJS 15 + React 19 |
-| **Component Library** | Material-UI (MUI) |
-| **State Management** | Context API + Zustand (optional) |
-| **Data Fetching** | React Query + Axios |
-| **Authentication** | JWT + Context API |
-| **Type Safety** | TypeScript |
-| **Styling** | MUI + CSS-in-JS (Emotion) |
-| **Testing** | Jest + React Testing Library |
-| **Linting** | ESLint + Prettier |
+| Layer                 | Technology                       |
+| --------------------- | -------------------------------- |
+| **UI Framework**      | NextJS 15 + React 19             |
+| **Component Library** | Material-UI (MUI)                |
+| **State Management**  | Context API + Zustand (optional) |
+| **Data Fetching**     | React Query + Axios              |
+| **Authentication**    | JWT + Context API                |
+| **Type Safety**       | TypeScript                       |
+| **Styling**           | MUI + CSS-in-JS (Emotion)        |
+| **Testing**           | Jest + React Testing Library     |
+| **Linting**           | ESLint + Prettier                |
 
 ### Key Features
 
@@ -143,17 +155,20 @@ await login(email, password);
 ### Getting Started
 
 1. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 2. **Set up environment variables**
+
    ```bash
    cp .env.example .env.local
    # Edit .env.local with your backend URL
    ```
 
 3. **Run development server**
+
    ```bash
    npm run dev
    # Open http://localhost:3000
@@ -170,6 +185,7 @@ await login(email, password);
 #### Creating a New Feature Module
 
 1. Create module structure:
+
    ```
    src/modules/newfeature/
    ├── types/
@@ -312,20 +328,24 @@ docker run -p 3000:3000 movie-streaming-web
 ### Troubleshooting
 
 **Issue: CORS errors**
+
 - Check backend CORS configuration
 - Ensure API_BASE_URL in .env.local is correct
 
 **Issue: Authentication token expired**
+
 - Implement token refresh logic in API client
 - Check token expiration in JWT config
 
 **Issue: Module not found**
+
 - Check tsconfig.json paths
 - Ensure path aliases are correct
 
 ---
 
 For more details, refer to:
+
 - [NextJS Documentation](https://nextjs.org/docs)
 - [MUI Documentation](https://mui.com/docs/)
 - [React Query Documentation](https://tanstack.com/query/latest)
