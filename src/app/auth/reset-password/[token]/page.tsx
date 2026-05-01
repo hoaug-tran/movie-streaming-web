@@ -93,13 +93,13 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <AuthLayout 
-        title="Đăng ký mật khẩu mới" 
+      <AuthLayout
+        title="Đăng ký mật khẩu mới"
         subtitle="Mật khẩu của bạn đã được cập nhật thành công."
         kineticText="SUCCESS"
       >
         <Stack spacing={4}>
-          <Alert 
+          <Alert
             severity="success"
             variant="filled"
             sx={{
@@ -124,7 +124,7 @@ export default function ResetPasswordPage() {
               borderRadius: 2,
               background: "white",
               color: "black",
-              "&:hover": { background: alpha(theme.palette.common.white, 0.8) }
+              "&:hover": { background: alpha(theme.palette.common.white, 0.8) },
             }}
           >
             Đến trang Đăng nhập
@@ -135,15 +135,15 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout 
-      title="Đặt lại mật khẩu" 
+    <AuthLayout
+      title="Đặt lại mật khẩu"
       subtitle="Thiết lập mật khẩu mới cho tài khoản của bạn."
       kineticText="SECURITY"
     >
       <form onSubmit={handleSubmit}>
         <Stack spacing={3}>
           {error && (
-            <Alert 
+            <Alert
               severity="error"
               variant="filled"
               sx={{
@@ -200,20 +200,20 @@ export default function ResetPasswordPage() {
               "&:hover": {
                 boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
                 transform: "translateY(-2px)",
-              }
+              },
             }}
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : "Xác nhận mật khẩu mới"}
           </Button>
 
           <Box sx={{ textAlign: "center", mt: 2 }}>
-            <Link 
-              href="/auth/login" 
-              sx={{ 
-                color: alpha(theme.palette.common.white, 0.4), 
-                fontWeight: 600, 
+            <Link
+              href="/auth/login"
+              sx={{
+                color: alpha(theme.palette.common.white, 0.4),
+                fontWeight: 600,
                 textDecoration: "none",
-                "&:hover": { color: "white" }
+                "&:hover": { color: "white" },
               }}
             >
               Hủy bỏ và Quay lại

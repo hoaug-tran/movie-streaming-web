@@ -6,6 +6,7 @@ import {
   ResetPasswordRequest,
   VerifyEmailRequest,
 } from "@/modules/auth/types/auth";
+import deviceSessionService from "@/modules/user/api/device-session-service";
 import { ApiResponse } from "@/types/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
@@ -41,6 +42,33 @@ const mapAuthResponse = (authData: any): LoginResponse => {
       updatedAt: authData.updatedAt || authData.updated_at || undefined,
     },
   };
+};
+
+const ensureDeviceSession = async (authResponse?: LoginResponse): Promise<void> => {
+  if (typeof window === "undefined") return;
+  const previousAccessToken = window.localStorage.getItem("accessToken");
+  const previousRefreshToken = window.localStorage.getItem("refreshToken");
+
+  if (authResponse?.accessToken) {
+    window.localStorage.setItem("accessToken", authResponse.accessToken);
+  }
+  if (authResponse?.refreshToken) {
+    window.localStorage.setItem("refreshToken", authResponse.refreshToken);
+  }
+
+  try {
+    await deviceSessionService.createCurrentSession();
+  } catch (error) {
+    if (previousAccessToken) window.localStorage.setItem("accessToken", previousAccessToken);
+    else window.localStorage.removeItem("accessToken");
+
+    if (previousRefreshToken) window.localStorage.setItem("refreshToken", previousRefreshToken);
+    else window.localStorage.removeItem("refreshToken");
+
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Device session creation failed", error);
+    }
+  }
 };
 
 const handleError = (error: any): Error => {
@@ -85,7 +113,9 @@ const executeOAuthExchange = async (code: string, provider: string): Promise<Log
       body: JSON.stringify({ code }),
     });
 
-    return mapAuthResponse(response.data || response);
+    const authResponse = mapAuthResponse(response.data || response);
+    await ensureDeviceSession(authResponse);
+    return authResponse;
   } catch (error) {
     throw handleError(error);
   }
@@ -98,7 +128,9 @@ const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
       body: JSON.stringify(credentials),
     });
 
-    return mapAuthResponse(data.data || data);
+    const authResponse = mapAuthResponse(data.data || data);
+    await ensureDeviceSession(authResponse);
+    return authResponse;
   } catch (error) {
     throw handleError(error);
   }
@@ -111,7 +143,9 @@ const register = async (data: RegisterRequest): Promise<LoginResponse> => {
       body: JSON.stringify(data),
     });
 
-    return mapAuthResponse(response.data || response);
+    const authResponse = mapAuthResponse(response.data || response);
+    await ensureDeviceSession(authResponse);
+    return authResponse;
   } catch (error) {
     throw handleError(error);
   }
