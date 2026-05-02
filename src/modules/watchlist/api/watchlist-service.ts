@@ -1,38 +1,23 @@
 import apiClient from "@/services/api-client";
-import { Watchlist } from "@/modules/watchlist/types/watchlist";
-import { PaginatedResponse, PaginationParams } from "@/types/api";
+import { MovieInWatchlistResponse, Watchlist } from "@/modules/watchlist/types/watchlist";
 
 class WatchlistService {
-  async getWatchlist(params?: PaginationParams): Promise<PaginatedResponse<Watchlist>> {
-    try {
-      return await apiClient.get<PaginatedResponse<Watchlist>>("/watchlist", { params });
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async getMyWatchlist(): Promise<Watchlist[]> {
+    return apiClient.get<Watchlist[]>("/watchlists/me");
   }
 
-  async addToWatchlist(movieId: string): Promise<Watchlist> {
-    try {
-      return await apiClient.post<Watchlist>("/watchlist", { movieId });
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async add(movieId: number): Promise<Watchlist> {
+    return apiClient.post<Watchlist>(`/watchlists/${movieId}`);
   }
 
-  async removeFromWatchlist(movieId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/watchlist/${movieId}`);
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async remove(movieId: number): Promise<void> {
+    await apiClient.delete<void>(`/watchlists/${movieId}`);
   }
 
-  private handleError(error: any): Error {
-    if (error.data?.message) {
-      return new Error(error.data.message);
-    }
-    return new Error(error.message || "An error occurred");
+  async check(movieId: number): Promise<MovieInWatchlistResponse> {
+    return apiClient.get<MovieInWatchlistResponse>(`/watchlists/me/check/${movieId}`);
   }
 }
 
-export default new WatchlistService();
+const watchlistService = new WatchlistService();
+export default watchlistService;

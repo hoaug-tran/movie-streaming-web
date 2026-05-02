@@ -1,14 +1,12 @@
-/* Watchlist Domain Types */
-
 import { MovieSummary } from "@/modules/movie/types/movie";
 
-export interface Watchlist {
+export interface Favorite {
   id: number;
   movieId: number;
   addedAt: string;
   movie?: MovieSummary | null;
 }
 
-export interface MovieInWatchlistResponse {
-  inWatchlist: boolean;
+export interface MovieInFavoriteResponse {
+  inFavorite: boolean;
 }
