@@ -22,13 +22,13 @@ const NotFound = () => {
           404
         </Typography>
         <Typography variant="h5" paragraph>
-          Page Not Found
+          Không tìm thấy trang
         </Typography>
         <Typography variant="body1" paragraph>
-          Could not find the requested resource
+          Ồ ố, bạn có lẽ đã đi nhầm chỗ hoặc Gió phim đang bay đâu mất rồi..
         </Typography>
         <Button variant="contained" onClick={() => router.push("/")}>
-          Back to Home
+          Quay trở về trang chủ
         </Button>
       </Box>
     </Container>

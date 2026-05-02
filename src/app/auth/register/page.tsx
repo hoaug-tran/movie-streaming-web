@@ -338,16 +338,17 @@ export default function RegisterPage() {
               type="submit"
               disabled={loading}
               sx={{
-                py: 2,
+                py: { xs: 1.15, sm: 1.25 },
+                minHeight: 44,
                 textTransform: "none",
-                fontSize: "1rem",
-                fontWeight: 900,
-                borderRadius: 2,
+                fontSize: "0.92rem",
+                fontWeight: 800,
+                borderRadius: 1,
                 background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
-                boxShadow: `0 12px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
+                boxShadow: `0 8px 18px ${alpha(theme.palette.primary.main, 0.22)}`,
                 "&:hover": {
-                  boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
-                  transform: "translateY(-2px)",
+                  boxShadow: `0 10px 22px ${alpha(theme.palette.primary.main, 0.3)}`,
+                  transform: "translateY(-1px)",
                 },
                 transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
                 "&.Mui-disabled": {
@@ -356,7 +357,7 @@ export default function RegisterPage() {
                 },
               }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Tạo tài khoản ngay"}
+              {loading ? <CircularProgress size={20} color="inherit" /> : "Tạo tài khoản ngay"}
             </Button>
 
             <Box

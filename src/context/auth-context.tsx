@@ -3,6 +3,7 @@
 import React, { createContext, ReactNode, useCallback, useEffect, useReducer } from "react";
 import { AuthState, UserInfo, LoginResponse } from "@/modules/auth/types/auth";
 import authService from "@/modules/auth/api/auth-service";
+import { queryClient } from "@/config/react-query";
 import { getFromLocalStorage, removeFromLocalStorage, setInLocalStorage } from "@/utils/helpers";
 
 interface AuthContextType extends Omit<AuthState, "refreshToken"> {
@@ -36,6 +37,11 @@ const initialState: AuthState = {
   loading: true,
   error: null,
 };
+
+const protectedRoutePrefixes = ["/profile", "/watchlist", "/favorites", "/history"];
+
+const shouldRedirectAfterLogout = (pathname: string) =>
+  protectedRoutePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
 const getInitialAuthState = (): AuthState => initialState;
 
@@ -121,6 +127,17 @@ const persistAuthSession = (response: LoginResponse) => {
 
 const clearAuthSession = () => {
   removeFromLocalStorage("user");
+  removeFromLocalStorage("accessToken");
+  removeFromLocalStorage("refreshToken");
+  removeFromLocalStorage("rememberMe");
+  removeFromLocalStorage("rememberedEmail");
+  removeFromLocalStorage("rememberedIdentifier");
+
+  if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem("google_oauth_state");
+  }
+
+  queryClient.clear();
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -208,10 +225,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch {
     } finally {
       clearAuthSession();
-      removeFromLocalStorage("rememberMe");
-      removeFromLocalStorage("rememberedEmail");
-      removeFromLocalStorage("rememberedIdentifier");
       dispatch({ type: "LOGOUT" });
+
+      if (typeof window !== "undefined" && shouldRedirectAfterLogout(window.location.pathname)) {
+        window.location.replace("/auth/login");
+      }
     }
   }, []);
 

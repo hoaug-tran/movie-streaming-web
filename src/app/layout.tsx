@@ -3,7 +3,7 @@ import Providers from "./providers";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Gió Phim — Xem Phim Online Chất Lượng Cao",
+  title: "Gió phim - Gió đưa, phim tới",
   description: "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
 };
 

@@ -46,14 +46,16 @@ export const GoogleOAuthButton: React.FC<GoogleOAuthButtonProps> = ({
       disabled={isLoading}
       startIcon={<GoogleIcon sx={{ fontSize: 20 }} />}
       sx={{
-        py: 1.5,
+        py: { xs: 1.1, sm: 1.2 },
+        minHeight: 44,
         borderColor: "rgba(255, 255, 255, 0.15)",
         color: "#FFFFFF",
-        fontSize: "0.95rem",
+        fontSize: "0.9rem",
         fontWeight: 600,
         textTransform: "none",
-        borderRadius: 0,
-        transition: "all 0.3s ease",
+        borderRadius: 1,
+        transition: "all 0.25s ease",
+        "& .MuiButton-startIcon": { mr: 1 },
         "&:hover": {
           borderColor: "rgba(255, 255, 255, 0.4)",
           backgroundColor: "rgba(255, 255, 255, 0.05)",

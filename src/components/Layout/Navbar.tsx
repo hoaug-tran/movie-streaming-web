@@ -23,7 +23,7 @@ import SearchBar from "@/components/Search/SearchBar";
 import { useSearch } from "@/context/search-context";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import { Compass, Tv, Film, Bookmark, ShieldCheck, LogIn } from "lucide-react";
+import { Compass, Tv, Film, Bookmark, ShieldCheck, LogIn, Heart, History } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const theme = useTheme();
@@ -49,11 +49,16 @@ const Navbar: React.FC = () => {
     { label: "Phim bộ", href: "/tv", icon: <Tv size={20} /> },
     { label: "Phim lẻ", href: "/movies", icon: <Film size={20} /> },
     ...(isAuthenticated && !loading
-      ? [{ label: "Danh sách", href: "/watchlist", icon: <Bookmark size={20} /> }]
+      ? [
+          { label: "Xem sau", href: "/watchlist", icon: <Bookmark size={20} /> },
+          { label: "Yêu thích", href: "/favorites", icon: <Heart size={20} /> },
+          { label: "Lịch sử", href: "/history", icon: <History size={20} /> },
+        ]
       : []),
   ];
 
   const mobileNavLinks = [
+    { label: "Trang chủ", href: "/", icon: <Film size={20} /> },
     ...desktopNavLinks,
     ...(user?.role === "ROLE_ADMIN"
       ? [{ label: "Trang quản trị", href: "/admin", icon: <ShieldCheck size={20} /> }]
