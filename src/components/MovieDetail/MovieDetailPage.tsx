@@ -13,7 +13,6 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -21,6 +20,8 @@ import { useMemo } from "react";
 import { useMovieDetailPage } from "@/modules/movie/hooks/useMovieDetailPage";
 import { Episode, MovieComment, MovieDetail, MovieReview } from "@/modules/movie/types/movie";
 import { usePlayNavigation } from "@/hooks/use-play-navigation";
+import { FavoriteToggleButton } from "@/modules/favorite/components/FavoriteToggleButton";
+import { WatchlistToggleButton } from "@/modules/watchlist/components/WatchlistToggleButton";
 
 type MovieDetailPageProps = {
   slug: string;
@@ -94,57 +95,39 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
   );
 }
 
-function DetailAction({
-  onClick,
-  label,
-  primary,
-}: {
-  onClick: () => void;
-  label: string;
-  primary?: boolean;
-}) {
+function DetailAction({ onClick, label }: { onClick: () => void; label: string }) {
   const theme = useTheme();
   return (
     <ButtonBase
-      id={primary ? "movie-detail-play-button" : "movie-detail-list-button"}
+      id="movie-detail-play-button"
       onClick={onClick}
       sx={{
-        minWidth: primary ? 176 : 62,
+        minWidth: 176,
         height: 58,
-        px: primary ? 2.8 : 0,
+        px: 2.8,
         borderRadius: 1,
-        color: primary ? theme.palette.common.white : theme.palette.text.primary,
-        background: primary
-          ? theme.palette.primary.main
-          : alpha(theme.palette.background.paper, 0.78),
-        border: `1px solid ${primary ? alpha(theme.palette.primary.light, 0.42) : alpha(theme.palette.text.primary, 0.16)}`,
+        color: theme.palette.common.white,
+        background: theme.palette.primary.main,
+        border: `1px solid ${alpha(theme.palette.primary.light, 0.42)}`,
         boxShadow: "none",
         backdropFilter: "blur(16px)",
         display: "inline-flex",
         gap: 1.1,
         fontWeight: 900,
-        letterSpacing: primary ? "0.02em" : 0,
+        letterSpacing: "0.02em",
         textTransform: "uppercase",
         transition: "transform .2s ease, background-color .2s ease, border-color .2s ease",
         "&:hover": {
           transform: "translateY(-2px)",
-          backgroundColor: primary
-            ? theme.palette.primary.dark
-            : alpha(theme.palette.text.primary, 0.08),
-          borderColor: primary
-            ? alpha(theme.palette.primary.light, 0.6)
-            : alpha(theme.palette.text.primary, 0.28),
+          backgroundColor: theme.palette.primary.dark,
+          borderColor: alpha(theme.palette.primary.light, 0.6),
           boxShadow: "none",
         },
       }}
       aria-label={label}
     >
-      {primary ? (
-        <PlayArrowRoundedIcon sx={{ fontSize: 28 }} />
-      ) : (
-        <AddRoundedIcon sx={{ fontSize: 28 }} />
-      )}
-      {primary && <Box component="span">Phát</Box>}
+      <PlayArrowRoundedIcon sx={{ fontSize: 28 }} />
+      <Box component="span">Phát</Box>
     </ButtonBase>
   );
 }
@@ -251,11 +234,11 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                     })
                   }
                   label="Phát phim"
-                  primary
                 />
-                <DetailAction onClick={() => {}} label="Thêm vào danh sách" />
-                <Typography color="text.secondary" sx={{ maxWidth: 240, fontSize: "0.92rem" }}>
-                  Phát ngay hoặc lưu vào danh sách xem sau của bạn.
+                <WatchlistToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
+                <FavoriteToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
+                <Typography color="text.secondary" sx={{ maxWidth: 300, fontSize: "0.92rem" }}>
+                  Phát ngay, thêm vào danh sách xem sau hoặc chạm trái tim để lưu phim yêu thích.
                 </Typography>
               </Stack>
               <Box sx={{ maxWidth: 920 }}>

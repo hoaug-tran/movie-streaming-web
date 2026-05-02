@@ -16,8 +16,9 @@ import {
 import Image from "next/image";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import AddIcon from "@mui/icons-material/Add";
 import { usePlayNavigation } from "@/hooks/use-play-navigation";
+import { FavoriteToggleButton } from "@/modules/favorite/components/FavoriteToggleButton";
+import { WatchlistToggleButton } from "@/modules/watchlist/components/WatchlistToggleButton";
 
 export interface MovieCardProps {
   id: number;
@@ -66,7 +67,6 @@ export function MovieCard({
   ageRating,
   movieType,
   onPlay,
-  onAddToList,
   progress = 0,
   showProgress = false,
   description,
@@ -661,28 +661,8 @@ export function MovieCard({
                     >
                       <PlayArrowIcon />
                     </IconButton>
-                    <IconButton
-                      aria-label={`Thêm ${title} vào danh sách`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAddToList?.(id);
-                      }}
-                      sx={{
-                        border: "1px solid",
-                        borderColor: "divider",
-                        color: "text.primary",
-                        bgcolor: alpha(theme.palette.text.primary, 0.05),
-                        width: 36,
-                        height: 36,
-                        "&:hover": {
-                          borderColor: "primary.main",
-                          bgcolor: alpha(theme.palette.primary.main, 0.12),
-                          transform: "scale(1.04)",
-                        },
-                      }}
-                    >
-                      <AddIcon />
-                    </IconButton>
+                    <WatchlistToggleButton movieId={id} movieTitle={title} size="small" />
+                    <FavoriteToggleButton movieId={id} movieTitle={title} size="small" />
                   </Stack>
                   <Stack direction="row" spacing={0.75} alignItems="center">
                     <Box
@@ -877,10 +857,10 @@ export function MovieCard({
                         key={item.label}
                         sx={{ color: "text.secondary", fontSize: "0.68rem", fontWeight: 800 }}
                       >
+                        {item.label}{" "}
                         <Box component="span" sx={{ color: "text.primary", fontWeight: 950 }}>
                           {item.value}
-                        </Box>{" "}
-                        {item.label}
+                        </Box>
                       </Typography>
                     ))}
                   </Stack>

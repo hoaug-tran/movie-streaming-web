@@ -151,6 +151,7 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
               gap: 1,
             }}
           >
+            Có thể bỏ qua sau
             <Box
               sx={{
                 width: 28,
@@ -167,7 +168,6 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
             >
               {Math.max(0, Math.ceil(SKIP_DELAY - currentTime))}
             </Box>
-            Có thể bỏ qua sau
           </Box>
         ) : (
           <Button

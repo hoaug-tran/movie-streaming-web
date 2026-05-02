@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCarouselMovies } from "@/modules/movie/hooks/useClientMovies";
 import { useState, useEffect } from "react";
 import { usePlayNavigation } from "@/hooks/use-play-navigation";
+import { WatchlistToggleButton } from "@/modules/watchlist/components/WatchlistToggleButton";
 
 export function HeroBanner() {
   const { data: movies = [], isLoading, isError } = useCarouselMovies();
@@ -224,29 +225,11 @@ export function HeroBanner() {
               ▶ Xem Ngay
             </Button>
 
-            <Button
-              variant="outlined"
+            <WatchlistToggleButton
+              movieId={currentMovie.id}
+              movieTitle={currentMovie.title}
               size="large"
-              sx={{
-                px: 3,
-                py: 1.4,
-                borderColor: "rgba(255,255,255,0.3)",
-                color: "#ffffff",
-                borderRadius: 1.5,
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                backdropFilter: "blur(10px)",
-                backgroundColor: "rgba(255,255,255,0.05)",
-                "&:hover": {
-                  borderColor: "#ffffff",
-                  bgcolor: "rgba(255,255,255,0.15)",
-                  transform: "translateY(-2px)",
-                },
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              }}
-            >
-              + Danh Sách
-            </Button>
+            />
           </Stack>
         </Box>
       </Box>
