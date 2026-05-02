@@ -245,7 +245,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
               },
             }}
           >
-            Danh sách theo dõi
+            Danh sách xem sau
           </MenuItem>
         </Link>
 

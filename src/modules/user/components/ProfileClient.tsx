@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Avatar,
   Box,
@@ -37,9 +39,12 @@ import {
   Close as CloseIcon,
   Computer as DesktopIcon,
   EditRounded,
+  RefreshRounded,
   PhoneAndroid as MobileIcon,
   Tablet as TabletIcon,
 } from "@mui/icons-material";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { PaymentTransaction, UserSubscription } from "@/modules/subscription/types/subscription";
 import {
   AutoplayMode,
   formatDate,
@@ -73,8 +78,79 @@ const getDeviceIcon = (type?: string) => {
   return <DesktopIcon />;
 };
 
+type ChipTone = "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning";
+
+const subscriptionStatusMap: Record<string, { label: string; color: ChipTone }> = {
+  ACTIVE: { label: "Đang hoạt động", color: "success" },
+  PENDING: { label: "Đang xử lý", color: "warning" },
+  CANCELLED: { label: "Đã hủy", color: "default" },
+  EXPIRED: { label: "Hết hạn", color: "error" },
+};
+
+const paymentStatusMap: Record<string, { label: string; color: ChipTone }> = {
+  SUCCESS: { label: "Đã thanh toán", color: "success" },
+  PENDING: { label: "Đang chờ", color: "warning" },
+  FAILED: { label: "Thất bại", color: "error" },
+  CANCELLED: { label: "Đã hủy", color: "default" },
+  EXPIRED: { label: "Đã hết hạn", color: "error" },
+};
+
+const getSubscriptionStatusMeta = (status?: string) =>
+  subscriptionStatusMap[status ?? ""] ?? {
+    label: status ? `Trạng thái: ${status}` : "Chưa có",
+    color: "default" as ChipTone,
+  };
+
+const getPaymentStatusMeta = (status?: string) =>
+  paymentStatusMap[status ?? ""] ?? {
+    label: status ? `Trạng thái: ${status}` : "Chưa có",
+    color: "default" as ChipTone,
+  };
+
+const findPaymentForSubscription = (
+  payments: PaymentTransaction[],
+  subscription: UserSubscription
+) => payments.find((entry) => Number(entry.subscriptionId) === Number(subscription.id));
+
+const getSubscriptionAmountLabel = (
+  subscription: UserSubscription,
+  payment?: PaymentTransaction
+) => {
+  if (payment?.amount !== undefined && payment.amount !== null) {
+    return formatCurrency(Number(payment.amount));
+  }
+
+  if (subscription.plan?.price !== undefined && subscription.plan.price !== null) {
+    return formatCurrency(Number(subscription.plan.price));
+  }
+
+  return "Chưa có giá từ hệ thống";
+};
+
+const canVerifyPendingPayment = (payment?: PaymentTransaction) =>
+  payment?.status === "PENDING" && Boolean(payment.providerTransactionId);
+
 export function ProfileClient() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const d = useProfileData();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace("/auth/login?redirect=/profile");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || (!authLoading && !isAuthenticated)) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 12 }}>
+        <Stack alignItems="center" spacing={2}>
+          <LinearProgress sx={{ width: "100%", maxWidth: 420, borderRadius: 99 }} />
+          <Typography color="text.secondary">Đang kiểm tra phiên đăng nhập...</Typography>
+        </Stack>
+      </Container>
+    );
+  }
 
   if (d.state === "loading") {
     return (
@@ -543,7 +619,26 @@ export function ProfileClient() {
                       Chưa có thiết bị nào.
                     </Typography>
                   ) : (
-                    <List disablePadding>
+                    <List
+                      disablePadding
+                      sx={{
+                        maxHeight: 226,
+                        overflowY: d.sessions.length > 3 ? "auto" : "visible",
+                        pr: d.sessions.length > 3 ? 0.75 : 0,
+                        mr: d.sessions.length > 3 ? -0.75 : 0,
+                        scrollbarWidth: "thin",
+                        scrollbarColor: "rgba(244,180,0,0.55) rgba(255,255,255,0.06)",
+                        "&::-webkit-scrollbar": { width: 7 },
+                        "&::-webkit-scrollbar-track": {
+                          bgcolor: "rgba(255,255,255,0.06)",
+                          borderRadius: 99,
+                        },
+                        "&::-webkit-scrollbar-thumb": {
+                          bgcolor: "rgba(244,180,0,0.55)",
+                          borderRadius: 99,
+                        },
+                      }}
+                    >
                       {d.sessions.map((session) => (
                         <ListItemButton
                           key={session.id}
@@ -602,21 +697,93 @@ export function ProfileClient() {
                           </Typography>
                         </Grid>
                       </Grid>
-                      <List disablePadding>
+                      <List
+                        disablePadding
+                        sx={{
+                          maxHeight: 292,
+                          overflowY: "auto",
+                          pr: 0.75,
+                          mr: -0.75,
+                          scrollbarWidth: "thin",
+                          scrollbarColor: "rgba(244,180,0,0.55) rgba(255,255,255,0.06)",
+                          "&::-webkit-scrollbar": { width: 7 },
+                          "&::-webkit-scrollbar-track": {
+                            bgcolor: "rgba(255,255,255,0.06)",
+                            borderRadius: 99,
+                          },
+                          "&::-webkit-scrollbar-thumb": {
+                            bgcolor: "rgba(244,180,0,0.55)",
+                            borderRadius: 99,
+                          },
+                        }}
+                      >
                         {d.history.map((item) => {
-                          const payment = d.payments.find(
-                            (entry) => entry.subscriptionId === item.id
-                          );
+                          const payment = findPaymentForSubscription(d.payments, item);
+                          const subscriptionMeta = getSubscriptionStatusMeta(item.status);
+                          const paymentMeta = getPaymentStatusMeta(payment?.status);
                           return (
                             <ListItemButton
                               key={item.id}
                               onClick={() => d.setSelectedSubscription(item)}
-                              sx={{ borderRadius: 1.5, mb: 0.5 }}
+                              sx={{
+                                borderRadius: 1.5,
+                                mb: 0.75,
+                                alignItems: "stretch",
+                                flexDirection: { xs: "column", sm: "row" },
+                                gap: { xs: 1.25, sm: 2 },
+                                py: { xs: 1.35, sm: 1 },
+                              }}
                             >
                               <ListItemText
                                 primary={item.plan?.name ?? `Gói #${item.planId}`}
-                                secondary={`${payment ? formatCurrency(Number(payment.amount)) : item.status} · ${formatDate(item.startAt)}`}
+                                secondary={`${getSubscriptionAmountLabel(item, payment)} · ${formatDate(item.startAt)}`}
+                                sx={{
+                                  minWidth: 0,
+                                  m: 0,
+                                  flex: 1,
+                                  "& .MuiListItemText-primary": {
+                                    fontWeight: 800,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  },
+                                  "& .MuiListItemText-secondary": {
+                                    overflowWrap: "anywhere",
+                                  },
+                                }}
                               />
+                              <Stack
+                                direction="row"
+                                spacing={0.75}
+                                useFlexGap
+                                flexWrap="wrap"
+                                justifyContent={{ xs: "flex-start", sm: "flex-end" }}
+                                alignItems="center"
+                                sx={{
+                                  flexShrink: 0,
+                                  maxWidth: { xs: "100%", sm: "52%" },
+                                  "& .MuiChip-root": {
+                                    maxWidth: "100%",
+                                  },
+                                  "& .MuiChip-label": {
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  },
+                                }}
+                              >
+                                <Chip
+                                  size="small"
+                                  color={subscriptionMeta.color}
+                                  label={subscriptionMeta.label}
+                                  variant="outlined"
+                                />
+                                {payment && (
+                                  <Chip
+                                    size="small"
+                                    color={paymentMeta.color}
+                                    label={paymentMeta.label}
+                                  />
+                                )}
+                              </Stack>
                             </ListItemButton>
                           );
                         })}
@@ -726,21 +893,41 @@ export function ProfileClient() {
             {d.selectedSubscription && (
               <Stack spacing={3}>
                 {(() => {
-                  const payment = d.payments.find(
-                    (entry) => entry.subscriptionId === d.selectedSubscription!.id
-                  );
+                  const selectedSubscription = d.selectedSubscription!;
+                  const payment = findPaymentForSubscription(d.payments, selectedSubscription);
                   const invoice = payment
                     ? d.invoices.find((entry) => entry.paymentTransactionId === payment.id)
                     : undefined;
-                  const plan = d.selectedSubscription!.plan;
+                  const plan = selectedSubscription.plan;
+                  const subscriptionMeta = getSubscriptionStatusMeta(selectedSubscription.status);
+                  const paymentMeta = getPaymentStatusMeta(payment?.status);
+                  const allowVerify = canVerifyPendingPayment(payment);
                   return (
                     <>
                       <Box>
-                        <Typography variant="overline" color="text.secondary">
-                          {d.selectedSubscription!.status}
-                        </Typography>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          flexWrap="wrap"
+                          sx={{ mb: 1 }}
+                        >
+                          <Chip
+                            size="small"
+                            color={subscriptionMeta.color}
+                            label={subscriptionMeta.label}
+                            variant="outlined"
+                          />
+                          {payment && (
+                            <Chip
+                              size="small"
+                              color={paymentMeta.color}
+                              label={paymentMeta.label}
+                            />
+                          )}
+                        </Stack>
                         <Typography variant="h5" fontWeight={950}>
-                          {plan?.name ?? `Gói #${d.selectedSubscription!.planId}`}
+                          {plan?.name ?? `Gói #${selectedSubscription.planId}`}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {plan?.description ?? "Không có mô tả gói từ hệ thống."}
@@ -748,27 +935,21 @@ export function ProfileClient() {
                       </Box>
                       <Grid container spacing={2}>
                         {[
-                          [
-                            "Giá gói",
-                            plan
-                              ? formatCurrency(plan.price)
-                              : payment
-                                ? formatCurrency(Number(payment.amount))
-                                : "Chưa có",
-                          ],
+                          ["Giá gói", getSubscriptionAmountLabel(selectedSubscription, payment)],
                           ["Chất lượng", plan?.videoQuality ?? "Chưa có"],
                           ["Thiết bị", plan ? `${plan.maxDevices} thiết bị` : "Chưa có"],
                           ["Không quảng cáo", plan?.hasAdsFree ? "Có" : "Không"],
-                          ["Ngày bắt đầu", formatDate(d.selectedSubscription!.startAt)],
-                          ["Ngày kết thúc", formatDate(d.selectedSubscription!.endAt)],
-                          ["Tự động gia hạn", d.selectedSubscription!.autoRenew ? "Có" : "Không"],
+                          ["Ngày bắt đầu", formatDate(selectedSubscription.startAt)],
+                          ["Ngày kết thúc", formatDate(selectedSubscription.endAt)],
+                          ["Tự động gia hạn", selectedSubscription.autoRenew ? "Có" : "Không"],
                           ["Phương thức", payment?.paymentMethod ?? "Chưa có"],
                           [
                             "Mã thanh toán",
                             payment?.providerTransactionId ??
                               (payment ? `#${payment.id}` : "Chưa có"),
                           ],
-                          ["Trạng thái thanh toán", payment?.status ?? "Chưa có"],
+                          ["Trạng thái gói", subscriptionMeta.label],
+                          ["Trạng thái thanh toán", paymentMeta.label],
                           ["Hóa đơn", invoice?.invoiceNumber ?? "Chưa có"],
                           ["Ngày xuất hóa đơn", formatDate(invoice?.issuedAt)],
                         ].map(([label, value]) => (
@@ -782,6 +963,50 @@ export function ProfileClient() {
                           </Grid>
                         ))}
                       </Grid>
+                      {payment?.status === "PENDING" && (
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1.5}
+                          alignItems={{ xs: "stretch", sm: "center" }}
+                          sx={{
+                            p: 2,
+                            borderRadius: 2,
+                            border: 1,
+                            borderColor: "rgba(244,180,0,0.35)",
+                            background:
+                              "linear-gradient(135deg, rgba(244,180,0,0.14), rgba(200,16,46,0.08))",
+                          }}
+                        >
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle2" fontWeight={900}>
+                              Thanh toán đang chờ xác nhận
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Nếu bạn đã thanh toán trên PayOS, bấm kiểm tra lại để đồng bộ trạng
+                              thái mới nhất từ backend.
+                            </Typography>
+                          </Box>
+                          <Button
+                            id="profile-verify-pending-payment"
+                            variant="contained"
+                            color="warning"
+                            startIcon={<RefreshRounded />}
+                            disabled={
+                              !allowVerify || d.verifyingOrderCode === payment.providerTransactionId
+                            }
+                            onClick={() => {
+                              if (allowVerify) {
+                                d.verifyPendingPayment(payment.providerTransactionId!);
+                              }
+                            }}
+                            sx={{ fontWeight: 900, whiteSpace: "nowrap" }}
+                          >
+                            {d.verifyingOrderCode === payment.providerTransactionId
+                              ? "Đang kiểm tra..."
+                              : "Kiểm tra lại"}
+                          </Button>
+                        </Stack>
+                      )}
                     </>
                   );
                 })()}

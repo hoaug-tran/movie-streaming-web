@@ -52,6 +52,10 @@ class SubscriptionService {
       params: { orderCode },
     });
   }
+
+  async verifyPaymentManually(orderCode: string): Promise<PaymentVerificationResponse> {
+    return apiClient.post<PaymentVerificationResponse>(`/payments/${orderCode}/verify`);
+  }
 }
 
 const subscriptionService = new SubscriptionService();

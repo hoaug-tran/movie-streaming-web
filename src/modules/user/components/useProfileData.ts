@@ -173,6 +173,7 @@ export function useProfileData() {
   const [emailStep, setEmailStep] = useState<EmailStep>("idle");
   const [settings, setSettings] = useState<ProfileSettings>(defaultSettings);
   const [crop, setCrop] = useState<CropSelection | null>(null);
+  const [verifyingOrderCode, setVerifyingOrderCode] = useState<string | null>(null);
 
   const [selectedSubscription, setSelectedSubscription] = useState<UserSubscription | null>(null);
 
@@ -181,6 +182,20 @@ export function useProfileData() {
     () => daysLeft(currentSubscription?.endAt ?? profile?.premiumExpiryDate),
     [currentSubscription?.endAt, profile?.premiumExpiryDate]
   );
+
+  const refreshBillingData = async () => {
+    const [activeData, historyData, paymentData, invoiceData] = await Promise.all([
+      subscriptionService.getActiveSubscription().catch(() => null),
+      subscriptionService.getMySubscriptions().catch(() => []),
+      subscriptionService.getMyPayments().catch(() => []),
+      subscriptionService.getMyInvoices().catch(() => []),
+    ]);
+    setCurrentSubscription(activeData);
+    setHistory(historyData);
+    setPayments(paymentData);
+    setInvoices(invoiceData);
+    return { activeData, historyData, paymentData, invoiceData };
+  };
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -319,6 +334,30 @@ export function useProfileData() {
     notify({ message: "Đã thu hồi quyền truy cập.", severity: "success" });
   };
 
+  const verifyPendingPayment = async (orderCode?: string) => {
+    if (!orderCode) return;
+    setVerifyingOrderCode(orderCode);
+    try {
+      const result = await subscriptionService.verifyPaymentManually(orderCode);
+      const { historyData } = await refreshBillingData();
+      setSelectedSubscription(
+        historyData.find((item) => item.id === result.subscriptionId) ?? selectedSubscription
+      );
+      notify({
+        message:
+          result.status === "SUCCESS"
+            ? "Thanh toán đã được xác nhận thành công."
+            : result.status === "FAILED"
+              ? "Thanh toán đã hết hạn hoặc thất bại."
+              : "Thanh toán vẫn đang chờ PayOS xác nhận.",
+        severity:
+          result.status === "SUCCESS" ? "success" : result.status === "FAILED" ? "warning" : "info",
+      });
+    } finally {
+      setVerifyingOrderCode(null);
+    }
+  };
+
   return {
     fileInputRef,
     state,
@@ -359,5 +398,7 @@ export function useProfileData() {
     verifyCurrentEmail,
     verifyNewEmail,
     revokeSession,
+    verifyPendingPayment,
+    verifyingOrderCode,
   };
 }
