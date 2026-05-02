@@ -10,6 +10,10 @@ class WatchHistoryService {
     return apiClient.post<WatchHistory>("/watch-histories", request);
   }
 
+  async getMyWatchHistories(): Promise<WatchHistory[]> {
+    return apiClient.get<WatchHistory[]>("/watch-histories/me");
+  }
+
   async getContinueWatching(): Promise<ContinueWatchingItem[]> {
     return apiClient.get<ContinueWatchingItem[]>("/watch-histories/me/continue-watching");
   }

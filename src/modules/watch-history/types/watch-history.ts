@@ -1,12 +1,29 @@
+export interface WatchHistoryMovieSummary {
+  id: number;
+  title: string;
+  slug: string;
+  posterUrl?: string;
+  bannerUrl?: string;
+  releaseYear?: number;
+  movieType?: string;
+  averageRating?: number;
+}
+
 export interface WatchHistory {
   id: number;
-  userId: number;
+  userId?: number;
   movieId: number;
   episodeId: number;
+  episodeTitle?: string | null;
+  episodeNumber?: number | null;
+  episodeDurationSeconds?: number | null;
   watchedDurationSeconds: number;
   stoppedAtSecond: number;
+  resumeSecond?: number | null;
+  progressPercent?: number | null;
   isCompleted: boolean;
   lastWatchedAt: string;
+  movie?: WatchHistoryMovieSummary | null;
 }
 
 export interface ContinueWatchingItem {
@@ -20,16 +37,7 @@ export interface ContinueWatchingItem {
   resumeSecond: number;
   progressPercent: number;
   lastWatchedAt: string;
-  movie: {
-    id: number;
-    title: string;
-    slug: string;
-    posterUrl?: string | null;
-    bannerUrl?: string | null;
-    releaseYear?: number;
-    movieType?: string;
-    averageRating?: number;
-  };
+  movie: WatchHistoryMovieSummary;
 }
 
 export interface UpsertWatchHistoryRequest {
