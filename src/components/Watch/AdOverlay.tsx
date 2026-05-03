@@ -13,13 +13,13 @@ interface AdOverlayProps {
 }
 
 export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
-  const SKIP_DELAY = 10;
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const hasEndedRef = useRef(false);
-  const canSkip = currentTime >= SKIP_DELAY;
+  const skipAfterSeconds = Math.max(0, ad.skipAfterSeconds ?? 0);
+  const canSkip = ad.isSkippable && currentTime >= skipAfterSeconds;
 
   useEffect(() => {
     setCurrentTime(0);
@@ -29,7 +29,14 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
     if (!video || !ad.videoUrl) return;
 
     if (Hls.isSupported() && ad.videoUrl.includes(".m3u8")) {
-      const hls = new Hls();
+      const hls = new Hls({
+        xhrSetup: (xhr) => {
+          const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+          if (token) {
+            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          }
+        },
+      });
       hlsRef.current = hls;
       hls.loadSource(ad.videoUrl);
       hls.attachMedia(video);
@@ -121,7 +128,7 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
             "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
           }}
         >
-          Tìm hiểu thêm →
+          Tìm hiểu thêm
         </Box>
       )}
 
@@ -136,7 +143,24 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
           gap: 1,
         }}
       >
-        {!canSkip ? (
+        {!ad.isSkippable ? (
+          <Box
+            sx={{
+              bgcolor: "rgba(0,0,0,0.7)",
+              color: "rgba(255,255,255,0.7)",
+              borderRadius: 1.5,
+              px: 2,
+              py: 1,
+              fontFamily: "Inter, sans-serif",
+              fontSize: "0.85rem",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            Không thể bỏ qua quảng cáo
+          </Box>
+        ) : !canSkip ? (
           <Box
             sx={{
               bgcolor: "rgba(0,0,0,0.7)",
@@ -166,7 +190,7 @@ export default function AdOverlay({ ad, onSkip, onEnded }: AdOverlayProps) {
                 color: "#fff",
               }}
             >
-              {Math.max(0, Math.ceil(SKIP_DELAY - currentTime))}
+              {Math.max(0, Math.ceil(skipAfterSeconds - currentTime))}
             </Box>
           </Box>
         ) : (

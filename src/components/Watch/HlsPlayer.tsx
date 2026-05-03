@@ -8,6 +8,7 @@ interface HlsPlayerProps {
   videoRef: RefObject<HTMLVideoElement | null>;
   src: string;
   startTime?: number;
+  shouldPlay?: boolean;
   onTimeUpdate?: () => void;
   onDurationChange?: (duration: number) => void;
   onPlay?: () => void;
@@ -20,6 +21,7 @@ export default function HlsPlayer({
   videoRef,
   src,
   startTime = 0,
+  shouldPlay = true,
   onTimeUpdate,
   onDurationChange,
   onPlay,
@@ -46,24 +48,32 @@ export default function HlsPlayer({
     const video = videoRef.current;
     if (!video || !src) return;
 
+    const attachAuthToHlsRequest = (xhr: XMLHttpRequest) => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+    };
+
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
         backBufferLength: 90,
+        xhrSetup: attachAuthToHlsRequest,
       });
       hlsRef.current = hls;
       hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         applyStartTime();
-        video.play().catch(() => {});
+        if (shouldPlay) video.play().catch(() => {});
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = src;
       video.addEventListener("loadedmetadata", () => {
         applyStartTime();
-        video.play().catch(() => {});
+        if (shouldPlay) video.play().catch(() => {});
       });
     }
 
@@ -71,7 +81,19 @@ export default function HlsPlayer({
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
-  }, [src]);
+  }, [src, startTime, shouldPlay]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (shouldPlay) {
+      video.play().catch(() => {});
+      return;
+    }
+
+    video.pause();
+  }, [shouldPlay, videoRef]);
 
   useEffect(() => {
     const video = videoRef.current;

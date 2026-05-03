@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Box } from "@mui/material";
 import { Episode, MovieDetail } from "@/modules/movie/types/movie";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -12,6 +13,7 @@ import AdOverlay from "./AdOverlay";
 import { Advertisement } from "@/modules/advertisement/types/advertisement";
 import advertisementService from "@/modules/advertisement/api/advertisement-service";
 import watchHistoryService from "@/modules/watch-history/api/watch-history-service";
+import { ContinueWatchingItem } from "@/modules/watch-history/types/watch-history";
 
 interface WatchPlayerProps {
   movie: MovieDetail;
@@ -27,6 +29,7 @@ export default function WatchPlayer({
   initialResumeSecond,
 }: WatchPlayerProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
   const { hasAdsFree } = useSubscription();
 
@@ -61,12 +64,108 @@ export default function WatchPlayer({
   const selectedEpisodeRef = useRef(currentEpisode);
   const currentAdRef = useRef<Advertisement | null>(null);
   const isLeavingRef = useRef(false);
+  const resumeAfterAdRef = useRef<number | null>(null);
+  const preRollEpisodeIdRef = useRef<number | null>(null);
+  const lastSavedItemRef = useRef<ContinueWatchingItem | null>(null);
+  const lastPlaybackSecondRef = useRef(0);
+  const lastDurationRef = useRef(0);
 
-  const pickRandom = <T,>(arr: T[]): T | null =>
-    arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : null;
+  const COMPLETION_PERCENT = 0.95;
+  const COMPLETION_GRACE_SECONDS = 10;
+
+  const pickHighestPriority = <T,>(arr: T[]): T | null => (arr.length > 0 ? arr[0] : null);
+
+  const getFiniteDuration = useCallback(() => {
+    const videoDuration = videoRef.current?.duration;
+    if (Number.isFinite(videoDuration) && videoDuration > 0) {
+      return Math.floor(videoDuration);
+    }
+    return lastDurationRef.current || selectedEpisodeRef.current.durationSeconds || 0;
+  }, []);
+
+  const updatePlaybackSnapshot = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return { second: lastPlaybackSecondRef.current, duration: getFiniteDuration() };
+    }
+
+    const second = Math.max(lastPlaybackSecondRef.current, Math.floor(video.currentTime || 0));
+    const duration = getFiniteDuration();
+    lastPlaybackSecondRef.current = second;
+    if (duration > 0) {
+      lastDurationRef.current = duration;
+    }
+    return { second, duration };
+  }, [getFiniteDuration]);
+
+  const isPlaybackCompleted = useCallback((second: number, totalDuration: number) => {
+    if (totalDuration <= 0) return false;
+    return (
+      second >= totalDuration - COMPLETION_GRACE_SECONDS ||
+      second >= Math.floor(totalDuration * COMPLETION_PERCENT)
+    );
+  }, []);
+
+  const trackAdView = useCallback(
+    (ad: Advertisement) => {
+      if (!isAuthenticated || !ad.id) return;
+      void advertisementService.trackView({
+        advertisementId: ad.id,
+        movieId: movie.id,
+        episodeId: selectedEpisodeRef.current.id,
+      });
+    },
+    [isAuthenticated, movie.id]
+  );
+
+  const showAd = useCallback(
+    (ad: Advertisement, phase: "PRE_ROLL" | "MID_ROLL" | "POST_ROLL", resumeSecond?: number) => {
+      if (resumeSecond !== undefined) {
+        const safeSecond = Math.max(0, Math.floor(resumeSecond));
+        setResumeStartTime(safeSecond);
+        resumeAfterAdRef.current = safeSecond;
+      }
+
+      videoRef.current?.pause();
+      setIsPlaying(false);
+      setCurrentAd(ad);
+      setAdPhase(phase);
+      trackAdView(ad);
+    },
+    [trackAdView]
+  );
+
+  const resumeMainVideoAfterAd = useCallback(
+    (resumeSecond: number | null, shouldResume: boolean) => {
+      const video = videoRef.current;
+      if (!video || !shouldResume) return;
+
+      if (resumeSecond && resumeSecond > 5) {
+        video.currentTime = resumeSecond;
+        lastPlaybackSecondRef.current = Math.floor(resumeSecond);
+        setCurrentTime(resumeSecond);
+      }
+
+      void video
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          resumeAfterAdRef.current = null;
+        })
+        .catch(() => {
+          setIsPlaying(false);
+        });
+    },
+    []
+  );
 
   useEffect(() => {
-    if (hasAdsFree || !isAuthenticated) return;
+    if (hasAdsFree) {
+      setAdsForEpisode({ preRoll: [], midRoll: [], postRoll: [] });
+      return;
+    }
+
+    let cancelled = false;
 
     const loadAds = async () => {
       const [pre, mid, post] = await Promise.all([
@@ -74,23 +173,23 @@ export default function WatchPlayer({
         advertisementService.getAdsByType("MID_ROLL"),
         advertisementService.getAdsByType("POST_ROLL"),
       ]);
+
+      if (cancelled) return;
+
       setAdsForEpisode({ preRoll: pre, midRoll: mid, postRoll: post });
-      const preAd = pickRandom(pre);
+      const preAd = pickHighestPriority(pre);
       if (preAd) {
-        setCurrentAd(preAd);
-        setAdPhase("PRE_ROLL");
-        if (preAd.id) {
-          advertisementService.trackView({
-            advertisementId: preAd.id,
-            movieId: movie.id,
-            episodeId: selectedEpisode.id,
-          });
-        }
+        preRollEpisodeIdRef.current = selectedEpisode.id;
+        showAd(preAd, "PRE_ROLL");
       }
     };
 
     loadAds();
-  }, [selectedEpisode.id, hasAdsFree, isAuthenticated, movie.id]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEpisode.id, hasAdsFree, showAd]);
 
   useEffect(() => {
     selectedEpisodeRef.current = selectedEpisode;
@@ -102,39 +201,75 @@ export default function WatchPlayer({
 
   const saveProgress = useCallback(
     async (force = false) => {
-      if (!isAuthenticated || currentAdRef.current || !videoRef.current) return false;
-      const t = Math.floor(videoRef.current.currentTime);
+      if (!isAuthenticated || !videoRef.current) return false;
+      const adResumeSecond = currentAdRef.current ? resumeAfterAdRef.current : null;
+      const videoSecond = videoRef.current ? Math.floor(videoRef.current.currentTime) : 0;
+      const t = Math.max(
+        0,
+        Math.floor(adResumeSecond ?? Math.max(videoSecond, lastPlaybackSecondRef.current))
+      );
+      const videoDuration =
+        videoRef.current && Number.isFinite(videoRef.current.duration)
+          ? Math.floor(videoRef.current.duration)
+          : 0;
       const d =
-        Math.floor(videoRef.current.duration) || selectedEpisodeRef.current.durationSeconds || 0;
+        videoDuration || lastDurationRef.current || selectedEpisodeRef.current.durationSeconds || 0;
       if (t <= 0 && !force) return false;
       if (!force && Math.abs(t - lastSavedProgress.current) < 3) return false;
       lastSavedProgress.current = t;
 
       try {
-        await watchHistoryService.upsert({
+        const savedHistory = await watchHistoryService.upsert({
           movieId: movie.id,
           episodeId: selectedEpisodeRef.current.id,
           watchedDurationSeconds: d > 0 ? Math.min(t, d) : t,
           stoppedAtSecond: d > 0 ? Math.min(t, d) : t,
-          isCompleted: d > 0 && (t >= d - 10 || t >= Math.floor(d * 0.95)),
+          isCompleted: isPlaybackCompleted(t, d),
         });
+
+        lastSavedItemRef.current = {
+          movieId: savedHistory.movieId,
+          episodeId: savedHistory.episodeId,
+          episodeTitle: savedHistory.episodeTitle,
+          episodeNumber: savedHistory.episodeNumber,
+          episodeDurationSeconds: savedHistory.episodeDurationSeconds ?? d,
+          stoppedAtSecond: savedHistory.stoppedAtSecond,
+          watchedDurationSeconds: savedHistory.watchedDurationSeconds,
+          resumeSecond: savedHistory.resumeSecond ?? savedHistory.stoppedAtSecond,
+          progressPercent:
+            savedHistory.progressPercent ??
+            (d > 0 ? Math.min(100, (savedHistory.stoppedAtSecond * 100) / d) : 0),
+          lastWatchedAt: savedHistory.lastWatchedAt,
+          movie: savedHistory.movie ?? {
+            id: movie.id,
+            title: movie.title,
+            slug: movie.slug,
+            posterUrl: movie.posterUrl ?? undefined,
+            bannerUrl: movie.bannerUrl ?? undefined,
+            releaseYear: movie.releaseYear,
+            movieType: movie.movieType,
+            averageRating: movie.averageRating,
+          },
+        };
         return true;
       } catch {
         return false;
       }
     },
-    [isAuthenticated, movie.id]
+    [isAuthenticated, isPlaybackCompleted, movie]
   );
 
   const applyResumeSecond = useCallback((second: number) => {
-    if (second <= 5) return;
-    pendingResumeSecondRef.current = second;
-    setResumeStartTime(second);
+    const safeSecond = Math.max(0, Math.floor(second));
+    if (safeSecond <= 5) return;
+    pendingResumeSecondRef.current = safeSecond;
+    lastPlaybackSecondRef.current = safeSecond;
+    setResumeStartTime(safeSecond);
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = second;
-    setCurrentTime(second);
-    lastSavedProgress.current = second;
+    video.currentTime = safeSecond;
+    setCurrentTime(safeSecond);
+    lastSavedProgress.current = safeSecond;
   }, []);
 
   const handleVideoLoaded = useCallback(() => {
@@ -148,11 +283,17 @@ export default function WatchPlayer({
     setMidRollFired(false);
     setPostRollFired(false);
     setMidRollTimestamp(0);
-    setCurrentAd(null);
-    setAdPhase(null);
+    setAdsForEpisode({ preRoll: [], midRoll: [], postRoll: [] });
+    if (preRollEpisodeIdRef.current !== selectedEpisode.id) {
+      setCurrentAd(null);
+      setAdPhase(null);
+    }
     setCurrentTime(0);
     setResumeStartTime(0);
+    resumeAfterAdRef.current = null;
     lastSavedProgress.current = 0;
+    lastPlaybackSecondRef.current = 0;
+    lastDurationRef.current = selectedEpisode.durationSeconds ?? 0;
     pendingResumeSecondRef.current = null;
 
     if (
@@ -201,6 +342,12 @@ export default function WatchPlayer({
     if (!videoRef.current) return;
     const t = videoRef.current.currentTime;
     const d = videoRef.current.duration;
+    const safeSecond = Math.max(0, Math.floor(t));
+    const safeDuration = Number.isFinite(d) ? Math.max(0, Math.floor(d)) : 0;
+    lastPlaybackSecondRef.current = safeSecond;
+    if (safeDuration > 0) {
+      lastDurationRef.current = safeDuration;
+    }
     const pendingSecond = pendingResumeSecondRef.current;
     if (pendingSecond && Math.abs(t - pendingSecond) < 2) {
       pendingResumeSecondRef.current = null;
@@ -211,19 +358,12 @@ export default function WatchPlayer({
 
     // MID_ROLL: Hard checkpoint at 50%, trigger once
     if (!midRollFired && d > 60 && t >= d * 0.5) {
-      const midAd = pickRandom(adsForEpisode.midRoll);
+      const midAd = pickHighestPriority(adsForEpisode.midRoll);
       if (midAd) {
         setMidRollFired(true);
         setMidRollTimestamp(t);
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setCurrentAd(midAd);
-        setAdPhase("MID_ROLL");
-        advertisementService.trackView({
-          advertisementId: midAd.id,
-          movieId: movie.id,
-          episodeId: selectedEpisode.id,
-        });
+        void saveProgress(true);
+        showAd(midAd, "MID_ROLL", t);
       }
     }
 
@@ -234,18 +374,11 @@ export default function WatchPlayer({
       const postRollEnd = d - 600; // 10 minutes before end
 
       if (t >= postRollStart && t <= postRollEnd) {
-        const postAd = pickRandom(adsForEpisode.postRoll);
+        const postAd = pickHighestPriority(adsForEpisode.postRoll);
         if (postAd) {
           setPostRollFired(true);
-          videoRef.current.pause();
-          setIsPlaying(false);
-          setCurrentAd(postAd);
-          setAdPhase("POST_ROLL");
-          advertisementService.trackView({
-            advertisementId: postAd.id,
-            movieId: movie.id,
-            episodeId: selectedEpisode.id,
-          });
+          void saveProgress(true);
+          showAd(postAd, "POST_ROLL", t);
         }
       }
     }
@@ -255,8 +388,8 @@ export default function WatchPlayer({
     postRollFired,
     midRollTimestamp,
     adsForEpisode,
-    selectedEpisode.id,
-    movie.id,
+    saveProgress,
+    showAd,
   ]);
 
   const handleVideoEnded = useCallback(() => {
@@ -280,13 +413,14 @@ export default function WatchPlayer({
   }, [episodes, selectedEpisode, duration, isAuthenticated, movie.id]);
 
   const handleAdSkipped = useCallback(() => {
+    const shouldResume = adPhase === "PRE_ROLL" || adPhase === "MID_ROLL";
+    const resumeSecond = resumeAfterAdRef.current;
+
     setCurrentAd(null);
-    if (adPhase === "MID_ROLL" || adPhase === "PRE_ROLL") {
-      videoRef.current?.play();
-      setIsPlaying(true);
-    }
     setAdPhase(null);
-  }, [adPhase]);
+
+    window.setTimeout(() => resumeMainVideoAfterAd(resumeSecond, shouldResume), 0);
+  }, [adPhase, resumeMainVideoAfterAd]);
 
   const showControlsTemporarily = useCallback(() => {
     setShowControls(true);
@@ -313,8 +447,10 @@ export default function WatchPlayer({
   const handleSeek = useCallback(
     (value: number) => {
       if (!videoRef.current) return;
-      videoRef.current.currentTime = value;
-      setCurrentTime(value);
+      const safeValue = Math.max(0, Math.floor(value));
+      videoRef.current.currentTime = safeValue;
+      lastPlaybackSecondRef.current = safeValue;
+      setCurrentTime(safeValue);
       void saveProgress(true);
     },
     [saveProgress]
@@ -369,12 +505,41 @@ export default function WatchPlayer({
     };
   }, [saveProgress]);
 
+  const syncContinueWatchingCache = useCallback(async () => {
+    const savedItem = lastSavedItemRef.current;
+    if (savedItem) {
+      queryClient.setQueryData<ContinueWatchingItem[]>(
+        ["watch-history", "continue-watching"],
+        (items = []) => {
+          const next = items.filter(
+            (item) => item.movieId !== savedItem.movieId || item.episodeId !== savedItem.episodeId
+          );
+          return [savedItem, ...next];
+        }
+      );
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ["watch-history", "continue-watching"] });
+    await queryClient.invalidateQueries({ queryKey: ["watch-history", "me"] });
+    await queryClient.refetchQueries({
+      queryKey: ["watch-history", "continue-watching"],
+      type: "active",
+    });
+  }, [queryClient]);
+
   const handleBack = useCallback(async () => {
     if (isLeavingRef.current) return;
     isLeavingRef.current = true;
+    const video = videoRef.current;
+    if (video) {
+      updatePlaybackSnapshot();
+      video.pause();
+    }
+    setIsPlaying(false);
     await saveProgress(true);
-    router.back();
-  }, [router, saveProgress]);
+    await syncContinueWatchingCache();
+    router.push("/");
+  }, [router, saveProgress, syncContinueWatchingCache, updatePlaybackSnapshot]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -427,22 +592,21 @@ export default function WatchPlayer({
         userSelect: "none",
       }}
     >
-      {!currentAd && (
-        <HlsPlayer
-          videoRef={videoRef}
-          src={selectedEpisode.videoUrl ?? ""}
-          startTime={resumeStartTime}
-          onTimeUpdate={handleTimeUpdate}
-          onDurationChange={(d) => setDuration(d)}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => {
-            setIsPlaying(false);
-            saveProgress(true);
-          }}
-          onEnded={handleVideoEnded}
-          onLoaded={handleVideoLoaded}
-        />
-      )}
+      <HlsPlayer
+        videoRef={videoRef}
+        src={selectedEpisode.videoUrl ?? ""}
+        startTime={resumeStartTime}
+        shouldPlay={!currentAd}
+        onTimeUpdate={handleTimeUpdate}
+        onDurationChange={(d) => setDuration(d)}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => {
+          setIsPlaying(false);
+          saveProgress(true);
+        }}
+        onEnded={handleVideoEnded}
+        onLoaded={handleVideoLoaded}
+      />
 
       {currentAd && <AdOverlay ad={currentAd} onSkip={handleAdSkipped} onEnded={handleAdSkipped} />}
 
