@@ -102,9 +102,10 @@ function DetailAction({ onClick, label }: { onClick: () => void; label: string }
       id="movie-detail-play-button"
       onClick={onClick}
       sx={{
-        minWidth: 176,
-        height: 58,
-        px: 2.8,
+        width: { xs: "auto", sm: "auto" },
+        minWidth: { xs: 118, sm: 176 },
+        height: { xs: 46, md: 58 },
+        px: { xs: 1.8, md: 2.8 },
         borderRadius: 1,
         color: theme.palette.common.white,
         background: theme.palette.primary.main,
@@ -112,6 +113,7 @@ function DetailAction({ onClick, label }: { onClick: () => void; label: string }
         boxShadow: "none",
         backdropFilter: "blur(16px)",
         display: "inline-flex",
+        justifyContent: "center",
         gap: 1.1,
         fontWeight: 900,
         letterSpacing: "0.02em",
@@ -126,7 +128,7 @@ function DetailAction({ onClick, label }: { onClick: () => void; label: string }
       }}
       aria-label={label}
     >
-      <PlayArrowRoundedIcon sx={{ fontSize: 28 }} />
+      <PlayArrowRoundedIcon sx={{ fontSize: { xs: 24, md: 28 } }} />
       <Box component="span">Phát</Box>
     </ButtonBase>
   );
@@ -143,8 +145,8 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
       sx={{
         position: "relative",
         minHeight: { xs: "auto", md: "78vh" },
-        pt: { xs: 10, md: 13 },
-        pb: { xs: 5, md: 5 },
+        pt: { xs: 9, sm: 10, md: 13 },
+        pb: { xs: 4, sm: 5, md: 5 },
         overflow: "hidden",
         backgroundColor: "background.default",
       }}
@@ -153,7 +155,10 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
         sx={{
           position: "absolute",
           inset: 0,
-          backgroundImage: `linear-gradient(90deg, ${theme.palette.background.default} 0%, ${alpha(theme.palette.background.default, 0.86)} 35%, ${alpha(theme.palette.background.default, 0.24)} 100%), linear-gradient(0deg, ${theme.palette.background.default} 0%, transparent 35%), url(${movie.bannerUrl || fallbackImage})`,
+          backgroundImage: {
+            xs: `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.24)} 0%, ${alpha(theme.palette.background.default, 0.86)} 52%, ${theme.palette.background.default} 100%), url(${movie.bannerUrl || fallbackImage})`,
+            md: `linear-gradient(90deg, ${theme.palette.background.default} 0%, ${alpha(theme.palette.background.default, 0.86)} 35%, ${alpha(theme.palette.background.default, 0.24)} 100%), linear-gradient(0deg, ${theme.palette.background.default} 0%, transparent 35%), url(${movie.bannerUrl || fallbackImage})`,
+          },
           backgroundSize: "cover",
           backgroundPosition: "center",
           filter: "saturate(1.15) contrast(1.05)",
@@ -166,13 +171,14 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
           background: `radial-gradient(circle at 18% 20%, ${alpha(theme.palette.primary.main, 0.36)}, transparent 31%), radial-gradient(circle at 86% 16%, ${alpha(theme.palette.text.primary, 0.14)}, transparent 24%)`,
         }}
       />
-      <Container maxWidth="xl" sx={{ position: "relative" }}>
-        <Grid container spacing={{ xs: 3, md: 6 }} alignItems="center">
+      <Container maxWidth="xl" sx={{ position: "relative", px: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid container spacing={{ xs: 2.5, sm: 3, md: 6 }} alignItems="center">
           <Grid item xs={12} md={4} lg={3.2}>
             <Box
               sx={{
                 position: "relative",
-                width: { xs: 196, sm: 246, md: "100%" },
+                width: { xs: 148, sm: 210, md: "100%" },
+                maxWidth: { xs: 180, sm: 246, md: "none" },
                 mx: { xs: "auto", md: 0 },
                 aspectRatio: "2/3",
                 borderRadius: 1.5,
@@ -205,7 +211,12 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                   component="h1"
                   fontWeight={950}
                   letterSpacing={{ xs: "-0.035em", md: "-0.045em" }}
-                  sx={{ fontSize: { xs: "3rem", md: "6.2rem" }, lineHeight: 0.98, maxWidth: 1040 }}
+                  sx={{
+                    fontSize: { xs: "clamp(2.2rem, 13vw, 3.6rem)", sm: "4.2rem", md: "6.2rem" },
+                    lineHeight: { xs: 1.02, md: 0.98 },
+                    maxWidth: 1040,
+                    overflowWrap: "anywhere",
+                  }}
                 >
                   {movie.title}
                 </Typography>
@@ -218,11 +229,21 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
               <Typography
                 variant="h6"
                 color="text.secondary"
-                sx={{ maxWidth: 840, lineHeight: 1.65, fontWeight: 400 }}
+                sx={{
+                  maxWidth: 840,
+                  lineHeight: { xs: 1.55, md: 1.65 },
+                  fontWeight: 400,
+                  fontSize: { xs: "1rem", sm: "1.08rem", md: "1.25rem" },
+                }}
               >
                 {movie.description || "Thông tin phim đang được cập nhật."}
               </Typography>
-              <Stack direction="row" spacing={2} alignItems="center">
+              <Stack
+                direction="row"
+                spacing={{ xs: 1.25, sm: 2 }}
+                alignItems="center"
+                justifyContent={{ xs: "space-between", sm: "flex-start" }}
+              >
                 <DetailAction
                   onClick={() =>
                     navigateToWatch({
@@ -235,9 +256,14 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                   }
                   label="Phát phim"
                 />
-                <WatchlistToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
-                <FavoriteToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
-                <Typography color="text.secondary" sx={{ maxWidth: 300, fontSize: "0.92rem" }}>
+                <Stack direction="row" spacing={1.25} justifyContent="flex-end">
+                  <WatchlistToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
+                  <FavoriteToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
+                </Stack>
+                <Typography
+                  color="text.secondary"
+                  sx={{ maxWidth: 300, fontSize: "0.92rem", display: { xs: "none", md: "block" } }}
+                >
                   Phát ngay, thêm vào danh sách xem sau hoặc chạm trái tim để lưu phim yêu thích.
                 </Typography>
               </Stack>
@@ -282,7 +308,13 @@ function SectionTitle({ eyebrow, title }: { eyebrow?: string; title: string }) {
           {eyebrow}
         </Typography>
       )}
-      <Typography variant="h3" component="h2" fontWeight={950} letterSpacing="-0.035em">
+      <Typography
+        variant="h3"
+        component="h2"
+        fontWeight={950}
+        letterSpacing="-0.035em"
+        sx={{ fontSize: { xs: "2rem", sm: "2.35rem", md: "3rem" }, lineHeight: 1.08 }}
+      >
         {title}
       </Typography>
     </Box>
@@ -319,7 +351,7 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
             <SectionTitle eyebrow="Hồ sơ phim" title="Tín hiệu quan trọng" />
             <Grid container spacing={2}>
               {facts.map(([label, value]) => (
-                <Grid item xs={6} md={2.4} key={label}>
+                <Grid item xs={12} sm={6} md={4} lg={2.4} key={label}>
                   <Typography variant="caption" color="text.secondary">
                     {label}
                   </Typography>
@@ -370,7 +402,12 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
                 movie.persons.map((person) => (
                   <Box
                     key={`${person.id}-${person.role}`}
-                    sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "row" },
+                      justifyContent: "space-between",
+                      gap: { xs: 0.3, sm: 2 },
+                    }}
                   >
                     <Typography fontWeight={850}>{person.name}</Typography>
                     <Typography color="text.secondary">{person.role}</Typography>
@@ -395,7 +432,7 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
       <SectionTitle eyebrow="Xem thôi nào" title="Tập phim" />
       <Grid container spacing={2}>
         {episodes.map((episode) => (
-          <Grid item xs={12} md={6} lg={4} key={episode.id}>
+          <Grid item xs={12} sm={6} lg={4} key={episode.id}>
             <Paper
               elevation={0}
               onClick={() =>
@@ -410,7 +447,7 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
               sx={{
                 position: "relative",
                 overflow: "hidden",
-                minHeight: 230,
+                minHeight: { xs: 190, sm: 220, md: 230 },
                 borderRadius: 1.5,
                 border: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
                 backgroundColor: "background.paper",
@@ -432,7 +469,12 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
                 }}
               />
               <Stack
-                sx={{ position: "relative", minHeight: 230, p: 2.4, justifyContent: "flex-end" }}
+                sx={{
+                  position: "relative",
+                  minHeight: { xs: 190, sm: 220, md: 230 },
+                  p: { xs: 2, md: 2.4 },
+                  justifyContent: "flex-end",
+                }}
               >
                 <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                   <Chip
@@ -474,7 +516,7 @@ function ReviewSection({ reviews }: { reviews: MovieReview[] }) {
             display: "flex",
             gap: 2,
             width: "max-content",
-            animation: "reviewFloat 5s linear infinite",
+            animation: { xs: "none", md: "reviewFloat 5s linear infinite" },
             "@keyframes reviewFloat": {
               from: { transform: "translateX(0)" },
               to: { transform: "translateX(-50%)" },
@@ -487,7 +529,7 @@ function ReviewSection({ reviews }: { reviews: MovieReview[] }) {
               key={`${review.id}-${index}`}
               elevation={0}
               sx={{
-                width: { xs: 300, md: 420 },
+                width: { xs: "calc(100vw - 32px)", sm: 340, md: 420 },
                 ml: index === 0 ? { xs: 2, md: 4 } : 0,
                 p: 2.5,
                 borderRadius: 1.5,
