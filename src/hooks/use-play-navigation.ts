@@ -31,11 +31,6 @@ export function usePlayNavigation() {
           router.push("/pricing");
           return;
         }
-      } else {
-        if (!isFreePreview && !isAuthenticated) {
-          router.push(`/auth/login?redirect=/watch/${movieSlug}`);
-          return;
-        }
       }
 
       const url = episodeId ? `/watch/${movieSlug}?episode=${episodeId}` : `/watch/${movieSlug}`;
