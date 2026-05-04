@@ -20,7 +20,7 @@ export function usePlayNavigation() {
 
   const navigateToWatch = useCallback(
     (options: PlayOptions) => {
-      const { movieSlug, isPremiumOnly, episodeId, isFreePreview } = options;
+      const { movieSlug, isPremiumOnly, episodeId } = options;
 
       if (isPremiumOnly) {
         if (!isAuthenticated) {
