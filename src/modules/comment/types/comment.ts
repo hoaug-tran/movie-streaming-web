@@ -1,18 +1,20 @@
 /* Comment Domain Types */
 export interface Comment {
-  id: string;
-  userId: string;
-  movieId: string;
+  id: number;
+  userId: number;
+  movieId: number;
   movieSlug?: string;
   movieTitle?: string;
-  parentCommentId?: string;
+  episodeId?: number | null;
+  parentCommentId?: number | null;
   content: string;
+  likeCount: number;
+  replyCount: number;
+  status: string;
   createdAt: string;
-  updatedAt?: string;
-  likeCount?: number;
-  replyCount?: number;
+  updatedAt: string;
   user?: {
-    id: string;
+    id: number;
     fullName: string;
     avatar?: string;
   };
@@ -20,8 +22,10 @@ export interface Comment {
 }
 
 export interface CreateCommentRequest {
+  movieId?: number | string;
+  episodeId?: number | string;
   content: string;
-  parentCommentId?: string;
+  parentCommentId?: number | string;
 }
 
 export interface UpdateCommentRequest {

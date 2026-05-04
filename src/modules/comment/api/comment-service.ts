@@ -4,17 +4,11 @@ import {
   CreateCommentRequest,
   UpdateCommentRequest,
 } from "@/modules/comment/types/comment";
-import { PaginatedResponse, PaginationParams } from "@/types/api";
 
 class CommentService {
-  async getMovieComments(
-    movieId: string,
-    params?: PaginationParams
-  ): Promise<PaginatedResponse<Comment>> {
+  async getMovieComments(movieId: string): Promise<Comment[]> {
     try {
-      return await apiClient.get<PaginatedResponse<Comment>>(`/movies/${movieId}/comments`, {
-        params,
-      });
+      return await apiClient.get<Comment[]>(`/comments/movie/${movieId}`);
     } catch (error) {
       throw this.handleError(error);
     }
@@ -22,27 +16,42 @@ class CommentService {
 
   async createComment(movieId: string, data: CreateCommentRequest): Promise<Comment> {
     try {
-      return await apiClient.post<Comment>(`/movies/${movieId}/comments`, data);
+      return await apiClient.post<Comment>("/comments", {
+        ...data,
+        movieId: Number(movieId),
+        parentCommentId: data.parentCommentId ? Number(data.parentCommentId) : undefined,
+        episodeId: data.episodeId ? Number(data.episodeId) : undefined,
+      });
     } catch (error) {
       throw this.handleError(error);
     }
   }
 
   async updateComment(
-    movieId: string,
+    _movieId: string,
     commentId: string,
     data: UpdateCommentRequest
   ): Promise<Comment> {
     try {
-      return await apiClient.put<Comment>(`/movies/${movieId}/comments/${commentId}`, data);
+      return await apiClient.put<Comment>(`/comments/${commentId}`, data);
     } catch (error) {
       throw this.handleError(error);
     }
   }
 
-  async deleteComment(movieId: string, commentId: string): Promise<void> {
+  async deleteComment(_movieId: string, commentId: string): Promise<void> {
     try {
-      await apiClient.delete(`/movies/${movieId}/comments/${commentId}`);
+      await apiClient.delete(`/comments/${commentId}`);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async toggleLike(commentId: string): Promise<{ commentId: number; liked: boolean }> {
+    try {
+      return await apiClient.post<{ commentId: number; liked: boolean }>(
+        `/comment-likes/${commentId}`
+      );
     } catch (error) {
       throw this.handleError(error);
     }

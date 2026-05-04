@@ -18,10 +18,11 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { useMovieDetailPage } from "@/modules/movie/hooks/useMovieDetailPage";
-import { Episode, MovieComment, MovieDetail, MovieReview } from "@/modules/movie/types/movie";
+import { Episode, MovieDetail, MovieReview } from "@/modules/movie/types/movie";
 import { usePlayNavigation } from "@/hooks/use-play-navigation";
 import { FavoriteToggleButton } from "@/modules/favorite/components/FavoriteToggleButton";
 import { WatchlistToggleButton } from "@/modules/watchlist/components/WatchlistToggleButton";
+import { MovieCommentsSection } from "@/modules/comment/components/MovieCommentsSection";
 
 type MovieDetailPageProps = {
   slug: string;
@@ -43,13 +44,6 @@ function formatNumber(value?: number) {
   return new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(
     value
   );
-}
-
-function findEpisodeLabel(comment: MovieComment, episodes: Episode[]) {
-  if (!comment.episodeId) return "Toàn phim";
-  const episode = episodes.find((item) => item.id === comment.episodeId);
-  if (!episode) return `Tập ${comment.episodeId}`;
-  return `Tập ${episode.episodeNumber ?? "?"}: ${episode.title ?? "Chưa có tiêu đề"}`;
 }
 
 function DetailSkeleton() {
@@ -574,64 +568,6 @@ function ReviewSection({ reviews }: { reviews: MovieReview[] }) {
   );
 }
 
-function CommentSection({ comments, episodes }: { comments: MovieComment[]; episodes: Episode[] }) {
-  const theme = useTheme();
-  return (
-    <Container maxWidth="xl" sx={{ py: { xs: 4, md: 7 } }}>
-      <SectionTitle eyebrow="Bình luận" title="Bình luận của cộng đồng" />
-      <Stack spacing={1.5}>
-        {comments.length ? (
-          comments.map((comment) => (
-            <Paper
-              key={comment.id}
-              elevation={0}
-              sx={{
-                p: { xs: 2.2, md: 2.8 },
-                borderRadius: 1.5,
-                border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-                background: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.9)}, ${alpha(theme.palette.primary.main, 0.06)})`,
-              }}
-            >
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                <Chip
-                  size="small"
-                  label={findEpisodeLabel(comment, episodes)}
-                  color={comment.episodeId ? "primary" : "default"}
-                />
-                <Typography variant="caption" color="text.secondary">
-                  Người xem
-                </Typography>
-              </Stack>
-              <Typography sx={{ fontSize: "1.02rem", lineHeight: 1.75 }}>
-                {comment.content}
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mt: 1.5, display: "block" }}
-              >
-                {comment.likeCount} lượt thích · {comment.replyCount} phản hồi
-              </Typography>
-            </Paper>
-          ))
-        ) : (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 1.5,
-              border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-              backgroundColor: "background.paper",
-            }}
-          >
-            <Typography color="text.secondary">Chưa có bình luận nào cho phim này.</Typography>
-          </Paper>
-        )}
-      </Stack>
-    </Container>
-  );
-}
-
 export default function MovieDetailPage({ slug }: MovieDetailPageProps) {
   const { data, isLoading, isError } = useMovieDetailPage(slug);
   const comments = useMemo(() => data?.comments ?? [], [data?.comments]);
@@ -670,7 +606,12 @@ export default function MovieDetailPage({ slug }: MovieDetailPageProps) {
       <InfoSection movie={data.movie} />
       <EpisodeSection episodes={data.movie.episodes || []} movie={data.movie} />
       <ReviewSection reviews={reviews} />
-      <CommentSection comments={comments} episodes={data.movie.episodes || []} />
+      <MovieCommentsSection
+        movieId={data.movie.id}
+        slug={slug}
+        initialComments={comments}
+        episodes={data.movie.episodes || []}
+      />
     </Box>
   );
 }
