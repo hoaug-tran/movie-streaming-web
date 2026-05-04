@@ -77,7 +77,7 @@ export default function WatchPlayer({
 
   const getFiniteDuration = useCallback(() => {
     const videoDuration = videoRef.current?.duration;
-    if (Number.isFinite(videoDuration) && videoDuration > 0) {
+    if (typeof videoDuration === "number" && Number.isFinite(videoDuration) && videoDuration > 0) {
       return Math.floor(videoDuration);
     }
     return lastDurationRef.current || selectedEpisodeRef.current.durationSeconds || 0;
@@ -413,7 +413,8 @@ export default function WatchPlayer({
   }, [episodes, selectedEpisode, duration, isAuthenticated, movie.id]);
 
   const handleAdSkipped = useCallback(() => {
-    const shouldResume = adPhase === "PRE_ROLL" || adPhase === "MID_ROLL";
+    const shouldResume =
+      adPhase === "PRE_ROLL" || adPhase === "MID_ROLL" || adPhase === "POST_ROLL";
     const resumeSecond = resumeAfterAdRef.current;
 
     setCurrentAd(null);
