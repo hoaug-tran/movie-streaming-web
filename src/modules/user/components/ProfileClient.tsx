@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { memo, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Avatar,
@@ -31,6 +31,8 @@ import {
   Slider,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -44,6 +46,9 @@ import {
   Tablet as TabletIcon,
 } from "@mui/icons-material";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
+import authService from "@/modules/auth/api/auth-service";
+import { PasswordInput } from "@/modules/auth/components/PasswordInput";
+import { useNotification } from "@/context/notification-context";
 import { PaymentTransaction, UserSubscription } from "@/modules/subscription/types/subscription";
 import {
   AutoplayMode,
@@ -130,16 +135,345 @@ const getSubscriptionAmountLabel = (
 const canVerifyPendingPayment = (payment?: PaymentTransaction) =>
   payment?.status === "PENDING" && Boolean(payment.providerTransactionId);
 
+const AccountProfileForm = memo(function AccountProfileForm({
+  username,
+  email,
+  initialFullName,
+  onSave,
+}: {
+  username: string;
+  email: string;
+  initialFullName: string;
+  onSave: (name: string) => Promise<void>;
+}) {
+  const [draftName, setDraftName] = useState(initialFullName);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraftName(initialFullName);
+  }, [initialFullName]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(draftName.trim());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <TextField label="Username" value={username} disabled fullWidth size="small" />
+      <TextField
+        label="Tên hiển thị"
+        value={draftName}
+        onChange={(e) => setDraftName(e.target.value)}
+        fullWidth
+        size="small"
+      />
+      <TextField label="Email" value={email} disabled fullWidth size="small" />
+      <Button
+        variant="contained"
+        onClick={handleSave}
+        disabled={saving || draftName.trim() === initialFullName}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Lưu thay đổi
+      </Button>
+    </Stack>
+  );
+});
+
+const EmailChangeForm = memo(function EmailChangeForm({
+  step,
+  onStart,
+  onVerifyCurrent,
+  onVerifyNew,
+}: {
+  step: "idle" | "current" | "new";
+  onStart: (email: string) => Promise<void>;
+  onVerifyCurrent: (otp: string) => Promise<void>;
+  onVerifyNew: (otp: string) => Promise<void>;
+}) {
+  const [email, setEmail] = useState("");
+  const [currentOtp, setCurrentOtp] = useState("");
+  const [newOtp, setNewOtp] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const run = async (action: () => Promise<void>) => {
+    setLoading(true);
+    try {
+      await action();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (step === "current") {
+    return (
+      <Stack spacing={2}>
+        <Typography variant="body2" color="text.secondary">
+          Nhập mã xác nhận từ email hiện tại.
+        </Typography>
+        <TextField
+          size="small"
+          placeholder="OTP email hiện tại"
+          value={currentOtp}
+          onChange={(e) => setCurrentOtp(e.target.value)}
+          fullWidth
+        />
+        <Button
+          variant="contained"
+          disabled={loading || !currentOtp}
+          onClick={() => run(() => onVerifyCurrent(currentOtp))}
+        >
+          Xác nhận
+        </Button>
+      </Stack>
+    );
+  }
+
+  if (step === "new") {
+    return (
+      <Stack spacing={2}>
+        <Typography variant="body2" color="text.secondary">
+          Nhập mã xác nhận từ email mới.
+        </Typography>
+        <TextField
+          size="small"
+          placeholder="OTP email mới"
+          value={newOtp}
+          onChange={(e) => setNewOtp(e.target.value)}
+          fullWidth
+        />
+        <Button
+          variant="contained"
+          disabled={loading || !newOtp}
+          onClick={() => run(() => onVerifyNew(newOtp))}
+        >
+          Hoàn tất
+        </Button>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack spacing={2}>
+      <Typography variant="body2" color="text.secondary">
+        Nhập email mới để nhận mã xác nhận hai bước.
+      </Typography>
+      <TextField
+        size="small"
+        placeholder="Email mới"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        fullWidth
+      />
+      <Button
+        variant="contained"
+        disabled={loading || !email}
+        onClick={() => run(() => onStart(email.trim()))}
+      >
+        Gửi mã
+      </Button>
+    </Stack>
+  );
+});
+
+const PasswordChangeForm = memo(function PasswordChangeForm({
+  onPasswordChanged,
+}: {
+  onPasswordChanged: () => void;
+}) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [challengeToken, setChallengeToken] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [expiresInSeconds, setExpiresInSeconds] = useState(0);
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!challengeToken) return;
+    const timer = window.setInterval(() => {
+      setExpiresInSeconds((value) => Math.max(value - 1, 0));
+      setResendCooldownSeconds((value) => Math.max(value - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [challengeToken]);
+
+  const validatePasswords = () => {
+    const nextErrors: Record<string, string> = {};
+    if (!currentPassword) nextErrors.currentPassword = "Vui lòng nhập mật khẩu hiện tại";
+    if (!newPassword) nextErrors.newPassword = "Vui lòng nhập mật khẩu mới";
+    else if (newPassword.length < 6) nextErrors.newPassword = "Mật khẩu phải có ít nhất 6 ký tự";
+    if (!confirmNewPassword) nextErrors.confirmNewPassword = "Vui lòng xác nhận mật khẩu mới";
+    else if (newPassword !== confirmNewPassword) {
+      nextErrors.confirmNewPassword = "Mật khẩu không khớp";
+    }
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const requestOtp = async () => {
+    if (!validatePasswords()) return;
+
+    setLoading(true);
+    try {
+      const challenge = await authService.startChangePassword(currentPassword);
+      setChallengeToken(challenge.challengeToken ?? "");
+      setMaskedEmail(challenge.email ?? "email của bạn");
+      setExpiresInSeconds(challenge.expiresInSeconds ?? 600);
+      setResendCooldownSeconds(challenge.resendAfterSeconds ?? 60);
+      setOtp("");
+      setErrors({});
+    } catch (err) {
+      setErrors({ currentPassword: err instanceof Error ? err.message : "Không thể gửi OTP" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!validatePasswords()) return;
+    if (!challengeToken) {
+      setErrors({ otp: "Vui lòng gửi OTP trước" });
+      return;
+    }
+    if (!otp) {
+      setErrors({ otp: "Vui lòng nhập mã OTP" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authService.changePassword({
+        currentPassword,
+        newPassword,
+        confirmNewPassword,
+        challengeToken,
+        otp,
+      });
+      onPasswordChanged();
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setOtp("");
+      setChallengeToken("");
+    } catch (err) {
+      setErrors({ otp: err instanceof Error ? err.message : "Đổi mật khẩu thất bại" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const expiryLabel = `${Math.floor(expiresInSeconds / 60)}:${String(expiresInSeconds % 60).padStart(2, "0")}`;
+
+  return (
+    <Stack spacing={2}>
+      <Typography variant="body2" color="text.secondary">
+        Nhập mật khẩu hiện tại, mật khẩu mới, rồi xác minh OTP qua email trước khi cập nhật.
+      </Typography>
+      <PasswordInput
+        label="Mật khẩu hiện tại"
+        value={currentPassword}
+        onChange={setCurrentPassword}
+        error={!!errors.currentPassword}
+        helperText={errors.currentPassword}
+        placeholder="Mật khẩu hiện tại"
+        size="small"
+      />
+      <PasswordInput
+        label="Mật khẩu mới"
+        value={newPassword}
+        onChange={setNewPassword}
+        error={!!errors.newPassword}
+        helperText={errors.newPassword}
+        placeholder="Mật khẩu mới"
+        size="small"
+      />
+      <PasswordInput
+        label="Xác nhận mật khẩu mới"
+        value={confirmNewPassword}
+        onChange={setConfirmNewPassword}
+        error={!!errors.confirmNewPassword}
+        helperText={errors.confirmNewPassword}
+        placeholder="Xác nhận mật khẩu mới"
+        size="small"
+      />
+      {challengeToken && (
+        <Stack spacing={1.5}>
+          <Typography variant="body2" color="text.secondary">
+            OTP đã gửi đến {maskedEmail}. Mã hết hạn sau {expiryLabel}.
+          </Typography>
+          <TextField
+            label="Mã OTP"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            error={!!errors.otp}
+            helperText={errors.otp}
+            placeholder="000000"
+            fullWidth
+            size="small"
+          />
+        </Stack>
+      )}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+        <Button
+          variant={challengeToken ? "outlined" : "contained"}
+          disabled={loading || (challengeToken ? resendCooldownSeconds > 0 : false)}
+          onClick={requestOtp}
+          sx={{ alignSelf: "flex-start" }}
+        >
+          {challengeToken
+            ? resendCooldownSeconds > 0
+              ? `Gửi lại sau ${resendCooldownSeconds}s`
+              : "Gửi lại OTP"
+            : loading
+              ? "Đang gửi..."
+              : "Gửi OTP"}
+        </Button>
+        {challengeToken && (
+          <Button
+            variant="contained"
+            disabled={loading || !otp || expiresInSeconds <= 0}
+            onClick={handleChangePassword}
+            sx={{ alignSelf: "flex-start" }}
+          >
+            {loading ? "Đang xử lý..." : "Đổi mật khẩu"}
+          </Button>
+        )}
+      </Stack>
+    </Stack>
+  );
+});
+
 export function ProfileClient() {
   const router = useRouter();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, logout } = useAuth();
+  const { notify } = useNotification();
   const d = useProfileData();
+  const [profileTab, setProfileTab] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.replace("/auth/login?redirect=/profile");
     }
   }, [authLoading, isAuthenticated, router]);
+
+  const handlePasswordChanged = () => {
+    notify({
+      message: "Mật khẩu đã được cập nhật. Bạn sẽ được đăng xuất sau 5 giây.",
+      severity: "success",
+    });
+    window.setTimeout(() => {
+      void logout();
+    }, 5000);
+  };
 
   if (authLoading || (!authLoading && !isAuthenticated)) {
     return (
@@ -196,8 +530,8 @@ export function ProfileClient() {
       }}
     >
       <Container maxWidth="xl">
-        <Grid container spacing={3} alignItems="stretch">
-          <Grid item xs={12} lg={4} xl={3.5}>
+        <Grid container spacing={3} alignItems="flex-start">
+          <Grid item xs={12} lg={4} xl={3.5} sx={{ alignSelf: "flex-start" }}>
             <Stack spacing={3} sx={{ position: { lg: "sticky" }, top: 96 }}>
               <Paper sx={{ ...cardSx, overflow: "hidden", minHeight: { lg: 318 } }}>
                 <Box
@@ -337,14 +671,42 @@ export function ProfileClient() {
                 </Typography>
               </Box>
 
+              <Box
+                sx={{
+                  borderBottom: 1,
+                  borderColor: "rgba(255,255,255,0.07)",
+                  px: { xs: 1.5, md: 2.5 },
+                }}
+              >
+                <Tabs
+                  value={profileTab}
+                  onChange={(_, value) => setProfileTab(value)}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  aria-label="Nhóm cài đặt hồ sơ"
+                  sx={{
+                    "& .MuiTab-root": {
+                      minHeight: 58,
+                      fontWeight: 900,
+                      textTransform: "none",
+                    },
+                  }}
+                >
+                  <Tab label="Thông tin tài khoản" id="profile-tab-account" />
+                  <Tab label="Bảo mật" id="profile-tab-security" />
+                  <Tab label="Trải nghiệm" id="profile-tab-experience" />
+                  <Tab label="Đăng ký" id="profile-tab-subscription" />
+                </Tabs>
+              </Box>
+
               <Grid container>
                 <Grid
                   item
                   xs={12}
-                  md={6}
+                  md={12}
                   sx={{
+                    display: profileTab === 0 ? "block" : "none",
                     p: { xs: 2.5, md: 3 },
-                    boxShadow: { md: "inset -1px 0 rgba(255,255,255,0.06)" },
                     borderBottom: 1,
                     borderColor: "rgba(255,255,255,0.07)",
                   }}
@@ -356,45 +718,18 @@ export function ProfileClient() {
                     sx={{ mb: 2 }}
                   >
                     <Box>
-                      <Typography variant="overline" color="text.secondary">
-                        Thông tin tài khoản
-                      </Typography>
                       <Typography variant="h5" fontWeight={900}>
                         Danh tính hiển thị
                       </Typography>
                     </Box>
                     <EditRounded color="primary" />
                   </Stack>
-                  <Stack spacing={2}>
-                    <TextField
-                      label="Username"
-                      value={profile.username ?? ""}
-                      disabled
-                      fullWidth
-                      size="small"
-                    />
-                    <TextField
-                      label="Tên hiển thị"
-                      value={d.fullName}
-                      onChange={(e) => d.setFullName(e.target.value)}
-                      fullWidth
-                      size="small"
-                    />
-                    <TextField
-                      label="Email"
-                      value={profile.email}
-                      disabled
-                      fullWidth
-                      size="small"
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={d.saveProfile}
-                      sx={{ alignSelf: "flex-start" }}
-                    >
-                      Lưu thay đổi
-                    </Button>
-                  </Stack>
+                  <AccountProfileForm
+                    username={profile.username ?? ""}
+                    email={profile.email}
+                    initialFullName={d.fullName}
+                    onSave={d.saveProfile}
+                  />
                 </Grid>
 
                 <Grid
@@ -402,72 +737,21 @@ export function ProfileClient() {
                   xs={12}
                   md={6}
                   sx={{
+                    display: profileTab === 1 ? "block" : "none",
                     p: { xs: 2.5, md: 3 },
                     borderBottom: 1,
                     borderColor: "rgba(255,255,255,0.07)",
                   }}
                 >
-                  <Typography variant="overline" color="text.secondary">
-                    Bảo mật
-                  </Typography>
                   <Typography variant="h5" fontWeight={900} gutterBottom>
                     Thay đổi email
                   </Typography>
-                  {d.emailStep === "idle" && (
-                    <Stack spacing={2}>
-                      <Typography variant="body2" color="text.secondary">
-                        Nhập email mới để nhận mã xác nhận hai bước.
-                      </Typography>
-                      <TextField
-                        size="small"
-                        placeholder="Email mới"
-                        value={d.newEmail}
-                        onChange={(e) => d.setNewEmail(e.target.value)}
-                        fullWidth
-                      />
-                      <Button
-                        variant="contained"
-                        onClick={d.startEmailChange}
-                        disabled={!d.newEmail}
-                      >
-                        Gửi mã
-                      </Button>
-                    </Stack>
-                  )}
-                  {d.emailStep === "current" && (
-                    <Stack spacing={2}>
-                      <Typography variant="body2" color="text.secondary">
-                        Nhập mã xác nhận từ email hiện tại.
-                      </Typography>
-                      <TextField
-                        size="small"
-                        placeholder="OTP email hiện tại"
-                        value={d.currentOtp}
-                        onChange={(e) => d.setCurrentOtp(e.target.value)}
-                        fullWidth
-                      />
-                      <Button variant="contained" onClick={d.verifyCurrentEmail}>
-                        Xác nhận
-                      </Button>
-                    </Stack>
-                  )}
-                  {d.emailStep === "new" && (
-                    <Stack spacing={2}>
-                      <Typography variant="body2" color="text.secondary">
-                        Nhập mã xác nhận từ email mới.
-                      </Typography>
-                      <TextField
-                        size="small"
-                        placeholder="OTP email mới"
-                        value={d.newOtp}
-                        onChange={(e) => d.setNewOtp(e.target.value)}
-                        fullWidth
-                      />
-                      <Button variant="contained" onClick={d.verifyNewEmail}>
-                        Hoàn tất
-                      </Button>
-                    </Stack>
-                  )}
+                  <EmailChangeForm
+                    step={d.emailStep}
+                    onStart={d.startEmailChange}
+                    onVerifyCurrent={d.verifyCurrentEmail}
+                    onVerifyNew={d.verifyNewEmail}
+                  />
                 </Grid>
 
                 <Grid
@@ -475,15 +759,29 @@ export function ProfileClient() {
                   xs={12}
                   md={6}
                   sx={{
+                    display: profileTab === 1 ? "block" : "none",
                     p: { xs: 2.5, md: 3 },
-                    boxShadow: { md: "inset -1px 0 rgba(255,255,255,0.06)" },
                     borderBottom: 1,
                     borderColor: "rgba(255,255,255,0.07)",
                   }}
                 >
-                  <Typography variant="overline" color="text.secondary">
-                    Trải nghiệm xem
+                  <Typography variant="h5" fontWeight={900} gutterBottom>
+                    Đổi mật khẩu
                   </Typography>
+                  <PasswordChangeForm onPasswordChanged={handlePasswordChanged} />
+                </Grid>
+
+                <Grid
+                  item
+                  xs={12}
+                  md={6}
+                  sx={{
+                    display: profileTab === 2 ? "block" : "none",
+                    p: { xs: 2.5, md: 3 },
+                    borderBottom: 1,
+                    borderColor: "rgba(255,255,255,0.07)",
+                  }}
+                >
                   <Typography variant="h5" fontWeight={900} gutterBottom>
                     Tùy chỉnh phát phim
                   </Typography>
@@ -542,14 +840,12 @@ export function ProfileClient() {
                   xs={12}
                   md={6}
                   sx={{
+                    display: profileTab === 2 ? "block" : "none",
                     p: { xs: 2.5, md: 3 },
                     borderBottom: 1,
                     borderColor: "rgba(255,255,255,0.07)",
                   }}
                 >
-                  <Typography variant="overline" color="text.secondary">
-                    Thông báo email
-                  </Typography>
                   <Typography variant="h5" fontWeight={900} gutterBottom>
                     Nhịp phim của bạn
                   </Typography>
@@ -593,6 +889,7 @@ export function ProfileClient() {
                   xs={12}
                   md={6}
                   sx={{
+                    display: profileTab === 1 ? "block" : "none",
                     p: { xs: 2.5, md: 3 },
                     boxShadow: { md: "inset -1px 0 rgba(255,255,255,0.06)" },
                     borderColor: "rgba(255,255,255,0.07)",
@@ -605,9 +902,6 @@ export function ProfileClient() {
                     sx={{ mb: 2 }}
                   >
                     <Box>
-                      <Typography variant="overline" color="text.secondary">
-                        Bảo mật
-                      </Typography>
                       <Typography variant="h5" fontWeight={900}>
                         Thiết bị đã đăng nhập
                       </Typography>
@@ -658,7 +952,12 @@ export function ProfileClient() {
                   )}
                 </Grid>
 
-                <Grid item xs={12} md={6} sx={{ p: { xs: 2.5, md: 3 } }}>
+                <Grid
+                  item
+                  xs={12}
+                  md={12}
+                  sx={{ display: profileTab === 3 ? "block" : "none", p: { xs: 2.5, md: 3 } }}
+                >
                   <Stack
                     direction="row"
                     justifyContent="space-between"
@@ -666,9 +965,6 @@ export function ProfileClient() {
                     sx={{ mb: 2 }}
                   >
                     <Box>
-                      <Typography variant="overline" color="text.secondary">
-                        Lịch sử thanh toán
-                      </Typography>
                       <Typography variant="h5" fontWeight={900}>
                         Gói đã đăng ký
                       </Typography>
@@ -796,12 +1092,17 @@ export function ProfileClient() {
           </Grid>
         </Grid>
 
-        <Dialog open={!!d.crop} onClose={() => d.setCrop(null)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={!!d.crop}
+          onClose={() => !d.avatarUploading && d.setCrop(null)}
+          maxWidth="sm"
+          fullWidth
+        >
           <DialogTitle
             sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
           >
             Chỉnh ảnh đại diện
-            <IconButton size="small" onClick={() => d.setCrop(null)}>
+            <IconButton size="small" disabled={d.avatarUploading} onClick={() => d.setCrop(null)}>
               <CloseIcon />
             </IconButton>
           </DialogTitle>
@@ -862,11 +1163,23 @@ export function ProfileClient() {
                     Kéo ảnh để căn mặt vào giữa khung tròn, sau đó lưu ảnh.
                   </Typography>
                 </Box>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                  <Button variant="contained" fullWidth onClick={d.uploadCroppedAvatar}>
-                    Lưu ảnh đại diện
+                <Stack direction="row" spacing={1.25} justifyContent="center">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={d.uploadCroppedAvatar}
+                    disabled={d.avatarUploading}
+                    sx={{ minWidth: 96 }}
+                  >
+                    {d.avatarUploading ? "Đang lưu..." : "Lưu"}
                   </Button>
-                  <Button variant="outlined" fullWidth onClick={() => d.setCrop(null)}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={d.avatarUploading}
+                    onClick={() => d.setCrop(null)}
+                    sx={{ minWidth: 88 }}
+                  >
                     Hủy
                   </Button>
                 </Stack>

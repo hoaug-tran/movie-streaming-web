@@ -94,7 +94,7 @@ class UserService {
     if (error.data?.message) {
       return new Error(error.data.message);
     }
-    return new Error(error.message || "An error occurred");
+    return new Error(error.message || "Đã xảy ra lỗi, vui lòng thử lại");
   }
 }
 

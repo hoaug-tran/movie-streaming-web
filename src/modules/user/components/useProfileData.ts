@@ -36,6 +36,8 @@ type ProfileSettings = {
 };
 
 const SETTINGS_KEY = "giophim.profile.settings";
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const defaultSettings: ProfileSettings = {
   newsletter: true,
@@ -156,6 +158,7 @@ export type {
 export function useProfileData() {
   const { notify } = useNotification();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cropMoveRef = useRef({ x: 0, y: 0, frame: 0 });
   const [state, setState] = useState<LoadState>("loading");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<UserSubscription | null>(null);
@@ -173,6 +176,7 @@ export function useProfileData() {
   const [emailStep, setEmailStep] = useState<EmailStep>("idle");
   const [settings, setSettings] = useState<ProfileSettings>(defaultSettings);
   const [crop, setCrop] = useState<CropSelection | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [verifyingOrderCode, setVerifyingOrderCode] = useState<string | null>(null);
 
   const [selectedSubscription, setSelectedSubscription] = useState<UserSubscription | null>(null);
@@ -231,12 +235,14 @@ export function useProfileData() {
   useEffect(() => {
     return () => {
       if (crop?.previewUrl) URL.revokeObjectURL(crop.previewUrl);
+      if (cropMoveRef.current.frame) cancelAnimationFrame(cropMoveRef.current.frame);
     };
   }, [crop?.previewUrl]);
 
-  const saveProfile = async () => {
-    const updated = await userService.updateProfile({ fullName });
+  const saveProfile = async (name = fullName) => {
+    const updated = await userService.updateProfile({ fullName: name });
     setProfile(updated);
+    setFullName(updated.fullName ?? name);
     notify({ message: "Đã cập nhật tên hiển thị.", severity: "success" });
   };
 
@@ -248,7 +254,16 @@ export function useProfileData() {
 
   const selectAvatar = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
+    if (!AVATAR_TYPES.has(file.type)) {
+      notify({ message: "Ảnh đại diện chỉ hỗ trợ JPG, PNG hoặc WEBP.", severity: "error" });
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      notify({ message: "Ảnh đại diện không được vượt quá 5MB.", severity: "error" });
+      return;
+    }
     if (crop?.previewUrl) URL.revokeObjectURL(crop.previewUrl);
     setCrop({
       file,
@@ -258,7 +273,6 @@ export function useProfileData() {
       offsetY: 0,
       isDragging: false,
     });
-    event.target.value = "";
   };
 
   const updateCrop = (next: Partial<CropSelection>) => {
@@ -266,29 +280,42 @@ export function useProfileData() {
   };
 
   const moveCrop = (movementX: number, movementY: number) => {
-    setCrop((prev) => {
-      if (!prev || !prev.isDragging) return prev;
-      const limit = 120 * prev.zoom;
-      return {
-        ...prev,
-        offsetX: Math.max(-limit, Math.min(limit, prev.offsetX + movementX)),
-        offsetY: Math.max(-limit, Math.min(limit, prev.offsetY + movementY)),
-      };
+    cropMoveRef.current.x += movementX;
+    cropMoveRef.current.y += movementY;
+    if (cropMoveRef.current.frame) return;
+
+    cropMoveRef.current.frame = requestAnimationFrame(() => {
+      const deltaX = cropMoveRef.current.x;
+      const deltaY = cropMoveRef.current.y;
+      cropMoveRef.current.x = 0;
+      cropMoveRef.current.y = 0;
+      cropMoveRef.current.frame = 0;
+      setCrop((prev) => {
+        if (!prev || !prev.isDragging) return prev;
+        const limit = 120 * prev.zoom;
+        return {
+          ...prev,
+          offsetX: Math.max(-limit, Math.min(limit, prev.offsetX + deltaX)),
+          offsetY: Math.max(-limit, Math.min(limit, prev.offsetY + deltaY)),
+        };
+      });
     });
   };
 
   const uploadCroppedAvatar = async () => {
-    if (!crop) return;
-    const cropped = await createCroppedAvatar(
-      crop.previewUrl,
-      crop.zoom,
-      crop.offsetX,
-      crop.offsetY
-    );
-    const updated = await userService.uploadAvatar(cropped);
-    setProfile(updated);
-    setCrop(null);
-    notify({ message: "Đã cập nhật ảnh đại diện.", severity: "success" });
+    if (!crop || avatarUploading) return;
+    setAvatarUploading(true);
+    const previewUrl = crop.previewUrl;
+    try {
+      const cropped = await createCroppedAvatar(previewUrl, crop.zoom, crop.offsetX, crop.offsetY);
+      const updated = await userService.uploadAvatar(cropped);
+      setProfile(updated);
+      setCrop(null);
+      URL.revokeObjectURL(previewUrl);
+      notify({ message: "Đã cập nhật ảnh đại diện.", severity: "success" });
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const toggleAutoRenew = async () => {
@@ -301,22 +328,24 @@ export function useProfileData() {
     });
   };
 
-  const startEmailChange = async () => {
-    const response = await userService.startEmailChange(newEmail);
+  const startEmailChange = async (email = newEmail) => {
+    const response = await userService.startEmailChange(email);
+    setNewEmail(email);
     setEmailFlow(response);
     setEmailStep("current");
     notify({ message: "Mã xác nhận đã gửi tới email hiện tại.", severity: "success" });
   };
 
-  const verifyCurrentEmail = async () => {
-    const response = await userService.verifyCurrentEmailChange(currentOtp);
+  const verifyCurrentEmail = async (otp = currentOtp) => {
+    const response = await userService.verifyCurrentEmailChange(otp);
+    setCurrentOtp(otp);
     setEmailFlow(response);
     setEmailStep("new");
     notify({ message: "Đã xác minh. Mã mới đã gửi tới email mới.", severity: "success" });
   };
 
-  const verifyNewEmail = async () => {
-    const response = await userService.verifyNewEmailChange(newOtp);
+  const verifyNewEmail = async (otp = newOtp) => {
+    const response = await userService.verifyNewEmailChange(otp);
     setEmailFlow(response);
     setEmailStep("idle");
     setNewEmail("");
@@ -382,6 +411,7 @@ export function useProfileData() {
     emailStep,
     settings,
     crop,
+    avatarUploading,
     setCrop,
     selectedSubscription,
     setSelectedSubscription,
