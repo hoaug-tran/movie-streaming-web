@@ -100,17 +100,17 @@ export function SingleFilmSection() {
           sx={{
             position: "relative",
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.9fr) minmax(360px, 1.1fr)" },
-            minHeight: { xs: "auto", lg: 540 },
+            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.82fr) minmax(340px, 1.18fr)" },
+            minHeight: { xs: "auto", lg: 470 },
           }}
         >
           <Box
             sx={{
-              p: { xs: 2.25, sm: 3, lg: 4 },
+              p: { xs: 2, sm: 2.5, lg: 3.25 },
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
-              gap: { xs: 3, md: 4 },
+              gap: { xs: 2.25, md: 3 },
             }}
           >
             <Box>
@@ -145,11 +145,11 @@ export function SingleFilmSection() {
               <Typography
                 component="h2"
                 sx={{
-                  maxWidth: 560,
-                  fontSize: { xs: "2.15rem", sm: "3rem", lg: "4.6rem" },
-                  fontWeight: 950,
-                  letterSpacing: "-0.075em",
-                  lineHeight: { xs: 0.96, md: 0.9 },
+                  maxWidth: 440,
+                  fontSize: { xs: "1.75rem", sm: "2.35rem", lg: "3.25rem" },
+                  fontWeight: 900,
+                  letterSpacing: "-0.055em",
+                  lineHeight: { xs: 1.02, md: 0.96 },
                   color: "text.primary",
                 }}
               >
@@ -159,8 +159,8 @@ export function SingleFilmSection() {
                   sx={{
                     display: "block",
                     color: "primary.main",
-                    transform: { xs: "translateX(24px)", sm: "translateX(42px)" },
-                    textShadow: `0 18px 50px ${alpha(theme.palette.primary.main, 0.22)}`,
+                    transform: { xs: "translateX(14px)", sm: "translateX(26px)" },
+                    textShadow: `0 14px 34px ${alpha(theme.palette.primary.main, 0.18)}`,
                   }}
                 >
                   một đêm.
@@ -169,11 +169,11 @@ export function SingleFilmSection() {
 
               <Typography
                 sx={{
-                  mt: { xs: 2, md: 2.5 },
-                  maxWidth: 470,
+                  mt: { xs: 1.5, md: 2 },
+                  maxWidth: 420,
                   color: "text.secondary",
-                  fontSize: { xs: "0.92rem", md: "1rem" },
-                  lineHeight: 1.8,
+                  fontSize: { xs: "0.86rem", md: "0.94rem" },
+                  lineHeight: 1.7,
                 }}
               >
                 Một lựa chọn đủ mạnh cho cả buổi tối: ít phân vân, nhiều cảm xúc, bấm xem là vào
@@ -269,8 +269,8 @@ export function SingleFilmSection() {
           <Box
             sx={{
               position: "relative",
-              minHeight: { xs: 430, sm: 500, lg: "auto" },
-              m: { xs: 1.25, sm: 1.75, lg: 2 },
+              minHeight: { xs: 380, sm: 440, lg: "auto" },
+              m: { xs: 1, sm: 1.5, lg: 1.75 },
               borderRadius: { xs: 2.5, md: 3.5 },
               overflow: "hidden",
               isolation: "isolate",

@@ -259,18 +259,9 @@ export default function CinematicBrowsePage({
     },
   });
 
-  const { data: popularMovies = [] } = useQuery({
-    queryKey: ["cinematic-browse", movieType, "popular", selectedCategory || "all"],
-    queryFn: async () => {
-      const movies = await movieService.getBrowseMoviesByType(movieType, {
-        categoryId: selectedCategory,
-        sortBy: "viewCount",
-        sortDirection: "DESC",
-        size: 12,
-      });
-
-      return movies.filter((movie) => movie.movieType === movieType);
-    },
+  const { data: spotlightStats } = useQuery({
+    queryKey: ["cinematic-browse", movieType, "spotlight-stats", selectedCategory || "all"],
+    queryFn: () => movieService.getBrowseSpotlightStats(movieType, selectedCategory),
   });
 
   const heroMovie = pickHeroMovie(heroMovies);
@@ -329,16 +320,16 @@ export default function CinematicBrowsePage({
           component="section"
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.88fr) minmax(360px, 0.62fr)" },
-            gap: { xs: 2, md: 3 },
+            gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.82fr) minmax(320px, 0.52fr)" },
+            gap: { xs: 1.75, md: 2.25 },
             alignItems: "stretch",
           }}
         >
           <Box
             sx={{
               position: "relative",
-              minHeight: { xs: 420, md: 520 },
-              p: { xs: 3, sm: 4, md: 6 },
+              minHeight: { xs: 360, md: 440 },
+              p: { xs: 2.5, sm: 3.25, md: 4.5 },
               borderRadius: { xs: 3, md: 4 },
               overflow: "hidden",
               border: "1px solid",
@@ -384,7 +375,7 @@ export default function CinematicBrowsePage({
                 component="h1"
                 variant="h1"
                 sx={{
-                  fontSize: { xs: "2.45rem", sm: "3.75rem", md: "5.25rem" },
+                  fontSize: { xs: "2.15rem", sm: "3.15rem", md: "4.35rem" },
                   lineHeight: { xs: 1.04, md: 0.98 },
                   fontWeight: 950,
                   letterSpacing: { xs: "-0.045em", md: "-0.065em" },
@@ -397,7 +388,7 @@ export default function CinematicBrowsePage({
                   color: "text.secondary",
                   mt: 2.5,
                   maxWidth: 660,
-                  fontSize: { xs: "1rem", md: "1.14rem" },
+                  fontSize: { xs: "0.95rem", md: "1.04rem" },
                   lineHeight: 1.72,
                 }}
               >
@@ -407,7 +398,7 @@ export default function CinematicBrowsePage({
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={1.5}
-              sx={{ position: "relative", zIndex: 1, mt: { xs: 5, md: 8 } }}
+              sx={{ position: "relative", zIndex: 1, mt: { xs: 4, md: 6 } }}
             >
               <Button
                 variant="contained"
@@ -424,7 +415,7 @@ export default function CinematicBrowsePage({
             onClick={() => router.push(getDetailPath(heroMovie))}
             sx={{
               position: "relative",
-              minHeight: { xs: 440, md: 520 },
+              minHeight: { xs: 360, md: 440 },
               borderRadius: { xs: 3, md: 4 },
               overflow: "hidden",
               cursor: "pointer",
@@ -485,9 +476,12 @@ export default function CinematicBrowsePage({
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mt: 3 }}>
           {[
-            [`${heroMovies.length}+`, `${label} tuyển chọn`],
-            [formatCompactNumber(popularMovies[0]?.viewCount), "lượt xem dẫn đầu"],
-            [`${(heroMovie.averageRating || 0).toFixed(1)}`, "điểm spotlight"],
+            [spotlightStats ? `${spotlightStats.curatedCount}+` : "—", `${label} tuyển chọn`],
+            [
+              spotlightStats ? formatCompactNumber(spotlightStats.leadingViewCount) : "—",
+              "lượt xem dẫn đầu",
+            ],
+            [spotlightStats ? spotlightStats.spotlightScore.toFixed(1) : "—", "điểm spotlight"],
           ].map(([value, caption]) => (
             <Box
               key={caption}

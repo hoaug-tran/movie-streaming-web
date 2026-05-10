@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Box, Typography, Skeleton, useTheme, alpha, ButtonBase, Chip } from "@mui/material";
+import { Box, Typography, Skeleton, useTheme, alpha, ButtonBase } from "@mui/material";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,9 +33,6 @@ export function BingeUniverseSection() {
 
   const active = allSeries[activeIdx] || allSeries[0];
   const activeImage = active?.bannerUrl || active?.posterUrl;
-  const activeCategories =
-    active?.categories?.slice(0, 3).flatMap((category) => (category.name ? [category.name] : [])) ||
-    [];
 
   const openDetail = (slug?: string) => {
     if (slug) router.push(`/movies/${slug}`);
@@ -51,12 +48,12 @@ export function BingeUniverseSection() {
   };
 
   return (
-    <Box sx={{ width: "100%", px: { xs: 2, md: 4 } }}>
+    <Box sx={{ width: "100%", px: { xs: 2, md: 3 } }}>
       <Box
         sx={{
           position: "relative",
           overflow: "hidden",
-          borderRadius: { xs: 2, md: 2.5 },
+          borderRadius: { xs: 1.75, md: 2 },
           border: "1px solid",
           borderColor: alpha(theme.palette.text.primary, isDark ? 0.1 : 0.08),
           background: isDark
@@ -98,177 +95,117 @@ export function BingeUniverseSection() {
         <Box
           sx={{
             position: "relative",
-            p: { xs: 2.25, sm: 3, lg: 4 },
+            p: { xs: 1.25, sm: 1.5, lg: 1.75 },
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", lg: "360px minmax(0, 1fr)" },
-            gap: { xs: 3, lg: 4 },
-            alignItems: "stretch",
+            gap: { xs: 1.1, lg: 1.25 },
           }}
         >
           <Box
             sx={{
               display: "flex",
-              flexDirection: "column",
+              alignItems: "center",
               justifyContent: "space-between",
-              minHeight: { xs: "auto", lg: 420 },
-              gap: 3,
+              gap: 1.25,
+              px: 0.25,
             }}
           >
-            <Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                <Box
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: "50%",
-                    display: "grid",
-                    placeItems: "center",
-                    color: "primary.main",
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.22)}`,
-                  }}
-                >
-                  <Tv2 size={16} />
-                </Box>
-                <Typography
-                  sx={{
-                    fontSize: "0.72rem",
-                    fontWeight: 900,
-                    letterSpacing: "0.16em",
-                    textTransform: "uppercase",
-                    color: "primary.main",
-                  }}
-                >
-                  Phim bộ marathon
-                </Typography>
-              </Box>
-
-              <Typography
-                component="h2"
-                sx={{
-                  fontSize: { xs: "1.85rem", sm: "2.35rem", lg: "3rem" },
-                  fontWeight: 950,
-                  letterSpacing: "-0.065em",
-                  lineHeight: 0.96,
-                  color: "text.primary",
-                }}
-              >
-                Thế nào gọi là
-                <Box
-                  component="span"
-                  sx={{
-                    display: "block",
-                    width: "fit-content",
-                    mt: 0.5,
-                    px: 1.1,
-                    pb: 0.35,
-                    color: "primary.main",
-                    fontStyle: "italic",
-                    borderBottom: `3px solid ${alpha(theme.palette.primary.main, 0.34)}`,
-                  }}
-                >
-                  dàiiiiiiii?
-                </Box>
-              </Typography>
-
-              <Typography
-                sx={{
-                  mt: 2,
-                  color: "text.secondary",
-                  fontSize: { xs: "0.9rem", md: "0.96rem" },
-                  lineHeight: 1.75,
-                }}
-              >
-                Một hàng phim bộ đủ dài để xem theo nhịp riêng: chọn poster, xem nhanh, hoặc mở
-                trang chi tiết khi muốn theo dõi trọn mùa.
-              </Typography>
-            </Box>
-
-            {active && !isLoading && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
               <Box
                 sx={{
-                  p: 1.5,
-                  borderRadius: 2.5,
-                  border: `1px solid ${alpha(theme.palette.text.primary, isDark ? 0.12 : 0.08)}`,
-                  backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.54 : 0.72),
-                  backdropFilter: "blur(14px)",
+                  width: 20,
+                  height: 20,
+                  borderRadius: 1,
+                  display: "grid",
+                  placeItems: "center",
+                  color: "primary.main",
+                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`,
+                  flexShrink: 0,
                 }}
               >
-                <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", mb: 1 }}>
-                  {activeCategories.map((category) => (
-                    <Typography
-                      key={category}
-                      sx={{
-                        color: "primary.main",
-                        fontSize: "0.64rem",
-                        fontWeight: 900,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                      }}
-                    >
-                      {category}
-                    </Typography>
-                  ))}
-                </Box>
+                <Tv2 size={11} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
                 <Typography
+                  component="h2"
                   sx={{
                     color: "text.primary",
-                    fontWeight: 950,
-                    letterSpacing: "-0.035em",
-                    fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                    fontSize: { xs: "0.86rem", sm: "0.95rem" },
+                    fontWeight: 850,
+                    letterSpacing: "-0.015em",
                     lineHeight: 1.1,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
                   }}
                 >
-                  {active.title}
+                  Series xem dài hơi
                 </Typography>
-                <Box sx={{ display: "flex", gap: 1, mt: 1.5 }}>
-                  <ButtonBase
-                    onClick={playActive}
+                {active && !isLoading && (
+                  <Typography
                     sx={{
-                      px: 1.6,
-                      py: 0.95,
-                      borderRadius: 99,
-                      gap: 0.8,
-                      color: theme.palette.primary.contrastText,
-                      backgroundColor: "primary.main",
-                      fontWeight: 900,
-                      fontSize: "0.82rem",
-                      boxShadow: `0 14px 30px ${alpha(theme.palette.primary.main, 0.3)}`,
-                      transition: "transform 0.2s ease",
-                      "&:hover": { transform: "translateY(-2px)" },
+                      display: { xs: "none", sm: "block" },
+                      color: "text.secondary",
+                      fontSize: "0.68rem",
+                      fontWeight: 650,
+                      mt: 0.2,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: 340,
                     }}
                   >
-                    <Play size={15} fill="currentColor" />
-                    Xem ngay
-                  </ButtonBase>
-                  <Box
-                    component={NextLink}
-                    href="/movies?type=series"
-                    sx={{
-                      px: 1.45,
-                      py: 0.95,
-                      borderRadius: 99,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.7,
-                      color: "text.primary",
-                      textDecoration: "none",
-                      fontWeight: 850,
-                      fontSize: "0.82rem",
-                      border: `1px solid ${alpha(theme.palette.text.primary, isDark ? 0.14 : 0.1)}`,
-                      backgroundColor: alpha(theme.palette.background.paper, 0.48),
-                      "&:hover": { color: "primary.main" },
-                    }}
-                  >
-                    Tất cả <ArrowRight size={15} />
-                  </Box>
-                </Box>
+                    Đang chọn: {active.title}
+                  </Typography>
+                )}
               </Box>
-            )}
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexShrink: 0 }}>
+              {active && !isLoading && (
+                <ButtonBase
+                  onClick={playActive}
+                  sx={{
+                    px: 1,
+                    py: 0.55,
+                    borderRadius: 99,
+                    gap: 0.5,
+                    color: theme.palette.primary.contrastText,
+                    backgroundColor: "primary.main",
+                    fontWeight: 850,
+                    fontSize: "0.7rem",
+                    boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.22)}`,
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                    "&:hover": {
+                      transform: "translateY(-1px)",
+                      boxShadow: `0 12px 26px ${alpha(theme.palette.primary.main, 0.28)}`,
+                    },
+                  }}
+                >
+                  <Play size={12} fill="currentColor" />
+                  Xem
+                </ButtonBase>
+              )}
+
+              <Box
+                component={NextLink}
+                href="/movies?type=series"
+                sx={{
+                  px: 0.95,
+                  py: 0.52,
+                  borderRadius: 99,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.45,
+                  color: "text.primary",
+                  textDecoration: "none",
+                  fontWeight: 800,
+                  fontSize: "0.7rem",
+                  border: `1px solid ${alpha(theme.palette.text.primary, isDark ? 0.14 : 0.1)}`,
+                  backgroundColor: alpha(theme.palette.background.paper, 0.5),
+                  "&:hover": { color: "primary.main" },
+                }}
+              >
+                Tất cả <ArrowRight size={12} />
+              </Box>
+            </Box>
           </Box>
 
           <Box>
@@ -277,11 +214,11 @@ export function BingeUniverseSection() {
                 sx={{
                   display: "grid",
                   gridTemplateColumns: {
-                    xs: "repeat(2, minmax(0, 1fr))",
-                    sm: "repeat(3, minmax(0, 1fr))",
-                    lg: "repeat(4, minmax(0, 1fr))",
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(3, minmax(0, 1fr))",
                   },
-                  gap: { xs: 1, sm: 1.25, lg: 1.35 },
+                  gap: { xs: 0.8, sm: 1, lg: 1 },
                 }}
               >
                 {EPISODE_LABELS.map((label) => (
@@ -289,8 +226,8 @@ export function BingeUniverseSection() {
                     key={`binge-${label}`}
                     variant="rounded"
                     sx={{
-                      height: { xs: 190, sm: 224, lg: 260 },
-                      borderRadius: { xs: 1.25, md: 1.5 },
+                      height: { xs: 112, sm: 128, lg: 138 },
+                      borderRadius: 1.25,
                     }}
                   />
                 ))}
@@ -300,15 +237,17 @@ export function BingeUniverseSection() {
                 sx={{
                   display: "grid",
                   gridTemplateColumns: {
-                    xs: "repeat(2, minmax(0, 1fr))",
-                    sm: "repeat(3, minmax(0, 1fr))",
-                    lg: "repeat(4, minmax(0, 1fr))",
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    lg: "repeat(3, minmax(0, 1fr))",
                   },
-                  gap: { xs: 1, sm: 1.25, lg: 1.35 },
+                  gap: { xs: 0.8, sm: 1, lg: 1 },
                 }}
               >
                 {allSeries.map((movie, index) => {
                   const isActive = index === activeIdx;
+                  const cardImage = movie.bannerUrl || movie.posterUrl;
+
                   return (
                     <ButtonBase
                       key={movie.id}
@@ -319,26 +258,26 @@ export function BingeUniverseSection() {
                       sx={{
                         position: "relative",
                         display: "block",
-                        height: { xs: 190, sm: 224, lg: 260 },
-                        borderRadius: { xs: 1.25, md: 1.5 },
+                        height: { xs: 112, sm: 128, lg: 138 },
+                        borderRadius: 1.25,
                         overflow: "hidden",
-                        transform: isActive ? "translateY(-4px)" : "translateY(0)",
+                        transform: isActive ? "translateY(-2px)" : "translateY(0)",
                         transition:
-                          "transform 0.22s ease, box-shadow 0.22s ease, outline-color 0.22s ease",
+                          "transform 0.2s ease, box-shadow 0.2s ease, outline-color 0.2s ease",
                         boxShadow: isActive
-                          ? `0 20px 48px ${alpha(theme.palette.primary.main, 0.2)}`
-                          : `0 12px 30px ${alpha(theme.palette.common.black, isDark ? 0.22 : 0.1)}`,
+                          ? `0 14px 32px ${alpha(theme.palette.primary.main, 0.18)}`
+                          : `0 8px 20px ${alpha(theme.palette.common.black, isDark ? 0.2 : 0.08)}`,
                         outline: isActive
-                          ? `2px solid ${alpha(theme.palette.primary.main, 0.55)}`
-                          : `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
+                          ? `2px solid ${alpha(theme.palette.primary.main, 0.5)}`
+                          : `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
                       }}
                     >
-                      {movie.posterUrl ? (
+                      {cardImage ? (
                         <Image
-                          src={movie.posterUrl}
+                          src={cardImage}
                           alt={movie.title}
                           fill
-                          sizes="(max-width: 600px) 46vw, (max-width: 1200px) 30vw, 160px"
+                          sizes="(max-width: 600px) 92vw, (max-width: 1200px) 44vw, 28vw"
                           style={{ objectFit: "cover" }}
                         />
                       ) : (
@@ -348,58 +287,50 @@ export function BingeUniverseSection() {
                         sx={{
                           position: "absolute",
                           inset: 0,
-                          background: `linear-gradient(to top, ${alpha(
+                          background: `linear-gradient(90deg, ${alpha(
                             theme.palette.common.black,
                             0.82
-                          )}, transparent 64%)`,
+                          )} 0%, ${alpha(theme.palette.common.black, 0.35)} 58%, ${alpha(
+                            theme.palette.common.black,
+                            0.08
+                          )} 100%)`,
                         }}
                       />
                       <Box
                         sx={{
                           position: "absolute",
-                          top: 12,
-                          left: 12,
-                          display: "flex",
-                          gap: 0.75,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Chip
-                          label={EPISODE_LABELS[index] || "EP"}
-                          size="small"
-                          sx={{
-                            height: 23,
-                            borderRadius: 99,
-                            backgroundColor: alpha(theme.palette.primary.main, 0.94),
-                            color: theme.palette.primary.contrastText,
-                            fontSize: "0.62rem",
-                            fontWeight: 950,
-                          }}
-                        />
-                      </Box>
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          left: { xs: 11, sm: 14 },
-                          right: { xs: 11, sm: 14 },
-                          bottom: { xs: 11, sm: 14 },
+                          left: { xs: 12, sm: 14 },
+                          right: { xs: 12, sm: 14 },
+                          bottom: { xs: 10, sm: 12 },
                           textAlign: "left",
                         }}
                       >
                         <Typography
                           sx={{
                             color: theme.palette.common.white,
-                            fontWeight: 950,
-                            fontSize: { xs: "0.86rem", sm: "1rem" },
-                            lineHeight: 1.08,
-                            letterSpacing: "-0.035em",
+                            fontWeight: 900,
+                            fontSize: { xs: "0.84rem", sm: "0.92rem" },
+                            lineHeight: 1.1,
+                            letterSpacing: "-0.025em",
                             display: "-webkit-box",
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: "vertical",
                             overflow: "hidden",
+                            maxWidth: "78%",
                           }}
                         >
                           {movie.title}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            mt: 0.45,
+                            color: alpha(theme.palette.common.white, 0.78),
+                            fontSize: "0.62rem",
+                            fontWeight: 800,
+                            letterSpacing: "0.08em",
+                          }}
+                        >
+                          {EPISODE_LABELS[index] || "SERIES"}
                         </Typography>
                       </Box>
                     </ButtonBase>

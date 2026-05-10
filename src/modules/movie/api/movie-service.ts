@@ -5,6 +5,7 @@ import {
   MovieDetailAggregate,
   CreateMovieRequest,
   CategoryItem,
+  BrowseSpotlightStats,
 } from "@/modules/movie/types/movie";
 import { PaginatedResponse, PaginationParams } from "@/types/api";
 
@@ -261,6 +262,45 @@ class MovieService {
     return data.content || [];
   }
 
+  async getBrowseSpotlightStats(
+    movieType: "SINGLE" | "SERIES",
+    categoryId?: number
+  ): Promise<BrowseSpotlightStats> {
+    const [curatedPage, popularPage, spotlightPage] = await Promise.all([
+      this.getBrowsePageByType(movieType, {
+        categoryId,
+        sortBy: "createdAt",
+        sortDirection: "DESC",
+        size: 1,
+      }),
+      this.getBrowsePageByType(movieType, {
+        categoryId,
+        sortBy: "viewCount",
+        sortDirection: "DESC",
+        size: 1,
+      }),
+      this.getBrowsePageByType(movieType, {
+        categoryId,
+        sortBy: "averageRating",
+        sortDirection: "DESC",
+        size: 12,
+      }),
+    ]);
+
+    const spotlightMovies = spotlightPage.content || [];
+    const ratedMovies = spotlightMovies.filter((movie) => (movie.averageRating || 0) > 0);
+    const averageSpotlightScore = ratedMovies.length
+      ? ratedMovies.reduce((sum, movie) => sum + (movie.averageRating || 0), 0) / ratedMovies.length
+      : 0;
+
+    return {
+      curatedCount: curatedPage.totalElements ?? curatedPage.content?.length ?? 0,
+      leadingViewCount: popularPage.content?.[0]?.viewCount ?? 0,
+      spotlightScore: Number(averageSpotlightScore.toFixed(1)),
+      source: "DYNAMIC_BACKEND_AGGREGATE",
+    };
+  }
+
   async getBrowsePageByType(
     movieType: "SINGLE" | "SERIES",
     options: Omit<import("./../types/movie").SearchMovieRequest, "movieType"> = {}
@@ -277,7 +317,7 @@ class MovieService {
     if (error.data?.message) {
       return new Error(error.data.message);
     }
-    return new Error(error.message || "An error occurred");
+    return new Error(error.message || "Đã xảy ra lỗi, vui lòng thử lại");
   }
 }
 

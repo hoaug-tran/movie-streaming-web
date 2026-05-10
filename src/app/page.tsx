@@ -9,7 +9,6 @@ import { CategoriesSection } from "@/components/Homepage/CategoriesSection";
 import { DiscoverySection } from "@/components/Homepage/DiscoverySection";
 import { RegionalDiscovery } from "@/components/Homepage/RegionalDiscovery";
 import { SocialEngagementSection } from "@/components/Homepage/SocialEngagementSection";
-import { GenrePulseSection } from "@/components/Homepage/GenrePulseSection";
 import { BingeUniverseSection } from "@/components/Homepage/BingeUniverseSection";
 import { SingleFilmSection } from "@/components/Homepage/SingleFilmSection";
 import { Footer } from "@/components/Layout/Footer";
@@ -59,7 +58,7 @@ export default function Home() {
 
         <SingleFilmSection />
 
-        <GenrePulseSection />
+        <CategoriesSection />
 
         <BingeUniverseSection />
 
@@ -71,8 +70,6 @@ export default function Home() {
           isError={topRatedMovies.isError}
           href="/movies?sort=rating"
         />
-
-        <CategoriesSection />
 
         <RegionalDiscovery />
 

@@ -62,6 +62,7 @@ export interface MovieDetailAggregate {
 
 export interface MovieReview {
   id: number;
+  userId?: number;
   movieId: number;
   rating: number;
   title?: string;
@@ -69,6 +70,10 @@ export interface MovieReview {
   isEdited?: boolean;
   status?: string;
   likeCount?: number;
+  likedByCurrentUser?: boolean;
+  authorUsername?: string | null;
+  authorFullName?: string | null;
+  authorAvatarUrl?: string | null;
   createdAt?: string;
 }
 
@@ -119,6 +124,13 @@ export interface MovieFilter {
 }
 
 export type Movie = MovieSummary;
+
+export interface BrowseSpotlightStats {
+  curatedCount: number;
+  leadingViewCount: number;
+  spotlightScore: number;
+  source?: string;
+}
 
 export interface CreateMovieRequest {
   title: string;

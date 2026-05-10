@@ -1,21 +1,38 @@
 "use client";
 
 import {
+  Avatar,
   alpha,
   Box,
+  Button,
   ButtonBase,
   Chip,
   Container,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Grid,
+  IconButton,
   LinearProgress,
+  Menu,
+  MenuItem,
+  Pagination,
   Paper,
   Stack,
+  TextField,
   Typography,
   useTheme,
 } from "@mui/material";
+import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useMovieDetailPage } from "@/modules/movie/hooks/useMovieDetailPage";
 import { Episode, MovieDetail, MovieReview } from "@/modules/movie/types/movie";
@@ -23,6 +40,14 @@ import { usePlayNavigation } from "@/hooks/use-play-navigation";
 import { FavoriteToggleButton } from "@/modules/favorite/components/FavoriteToggleButton";
 import { WatchlistToggleButton } from "@/modules/watchlist/components/WatchlistToggleButton";
 import { MovieCommentsSection } from "@/modules/comment/components/MovieCommentsSection";
+import {
+  useCreateMovieReview,
+  useMovieReviewsPage,
+  useToggleReviewLike,
+} from "@/modules/review/hooks/useMovieReviews";
+import { useMyWatchHistories } from "@/modules/watch-history/hooks/useWatchHistory";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { ReportContentDialog } from "@/modules/report/components/ReportContentDialog";
 
 type MovieDetailPageProps = {
   slug: string;
@@ -30,6 +55,13 @@ type MovieDetailPageProps = {
 };
 
 const fallbackImage = "http://localhost/stream/test/banner.jpg";
+const reviewMaxLength = 800;
+const reviewMinLength = 8;
+const reviewEligibilityPercent = 80;
+const compactViFormatter = new Intl.NumberFormat("vi-VN", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 function formatRuntime(seconds?: number) {
   if (!seconds) return "Đang cập nhật";
@@ -41,9 +73,7 @@ function formatRuntime(seconds?: number) {
 
 function formatNumber(value?: number) {
   if (!value) return "0";
-  return new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(
-    value
-  );
+  return compactViFormatter.format(value);
 }
 
 function DetailSkeleton() {
@@ -495,60 +525,321 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
   );
 }
 
-function ReviewSection({ reviews }: { reviews: MovieReview[] }) {
+function ReviewSection({
+  movie,
+  reviews,
+  slug,
+}: {
+  movie: MovieDetail;
+  reviews: MovieReview[];
+  slug: string;
+}) {
   const theme = useTheme();
+  const [rating, setRating] = useState(5);
+  const [content, setContent] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [selectedReview, setSelectedReview] = useState<MovieReview | null>(null);
+  const [reportReview, setReportReview] = useState<MovieReview | null>(null);
+  const [allReviewsOpen, setAllReviewsOpen] = useState(false);
+  const [reviewPage, setReviewPage] = useState(0);
+  const createReview = useCreateMovieReview(movie.id, slug);
+  const toggleLike = useToggleReviewLike(slug);
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [likedReviewIds, setLikedReviewIds] = useState<Set<number>>(
+    () => new Set(reviews.filter((review) => review.likedByCurrentUser).map((review) => review.id))
+  );
+  const { data: watchHistories = [] } = useMyWatchHistories(true);
+  const eligibleHistory = watchHistories.find(
+    (history) =>
+      history.movieId === movie.id &&
+      (history.isCompleted || Number(history.progressPercent || 0) >= reviewEligibilityPercent)
+  );
+  const canReview = Boolean(eligibleHistory);
+  const isSeries = movie.movieType === "SERIES";
   const track = reviews.length ? [...reviews, ...reviews] : [];
 
+  useEffect(() => {
+    setLikedReviewIds(
+      new Set(reviews.filter((review) => review.likedByCurrentUser).map((review) => review.id))
+    );
+  }, [reviews]);
+
+  const requireAuth = () => {
+    if (isAuthenticated) return true;
+    router.push(`/auth/login?returnTo=${encodeURIComponent(pathname || "/")}`);
+    return false;
+  };
+
+  const handleLike = (review: MovieReview) => {
+    if (!requireAuth()) return;
+    if (toggleLike.isPending) return;
+    const wasLiked = likedReviewIds.has(review.id);
+    setLikedReviewIds((current) => {
+      const next = new Set(current);
+      if (next.has(review.id)) {
+        next.delete(review.id);
+      } else {
+        next.add(review.id);
+      }
+      return next;
+    });
+    toggleLike.mutate(
+      { reviewId: review.id, liked: wasLiked },
+      {
+        onError: () => {
+          setLikedReviewIds((current) => {
+            const next = new Set(current);
+            if (wasLiked) {
+              next.add(review.id);
+            } else {
+              next.delete(review.id);
+            }
+            return next;
+          });
+        },
+      }
+    );
+  };
+
+  const handleOpenReport = (review: MovieReview) => {
+    if (!requireAuth()) return;
+    setReportReview(review);
+  };
+
+  const handleSubmit = async () => {
+    if (!requireAuth()) return;
+    if (!canReview) {
+      setMessage("Bạn cần xem ít nhất 80% nội dung trước khi gửi review.");
+      return;
+    }
+    setMessage(null);
+    try {
+      await createReview.mutateAsync({ movieId: movie.id, rating, content: content.trim() });
+      setContent("");
+      setMessage("Đã gửi đánh giá của bạn.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không thể gửi đánh giá lúc này.");
+    }
+  };
+
   return (
-    <Box sx={{ py: { xs: 4, md: 7 }, overflow: "hidden" }}>
+    <Box component="section" sx={{ py: { xs: 4, md: 7 }, overflow: "hidden" }}>
       <Container maxWidth="xl">
-        <SectionTitle eyebrow="Đánh giá" title="Đánh giá của khán giả" />
-      </Container>
-      {track.length ? (
-        <Box
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          spacing={1.5}
+          sx={{ mb: 3 }}
+        >
+          <SectionTitle eyebrow="Đánh giá" title="Đánh giá của khán giả" />
+          {reviews.length > 4 && (
+            <Button
+              id="movie-review-view-all"
+              variant="outlined"
+              onClick={() => setAllReviewsOpen(true)}
+              sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+            >
+              Xem tất cả review
+            </Button>
+          )}
+        </Stack>
+        <Paper
+          elevation={0}
           sx={{
-            display: "flex",
-            gap: 2,
-            width: "max-content",
-            animation: { xs: "none", md: "reviewFloat 5s linear infinite" },
-            "@keyframes reviewFloat": {
-              from: { transform: "translateX(0)" },
-              to: { transform: "translateX(-50%)" },
-            },
-            "&:hover": { animationPlayState: "paused" },
+            mb: 2.5,
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 1.5,
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.14)}, ${alpha(theme.palette.background.paper, 0.76)})`,
+            backdropFilter: "blur(18px)",
           }}
         >
-          {track.map((review, index) => (
-            <Paper
-              key={`${review.id}-${index}`}
-              elevation={0}
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <ButtonBase
+                  key={value}
+                  id={`movie-review-rating-${value}`}
+                  onClick={() => setRating(value)}
+                  disabled={!canReview}
+                  sx={{
+                    color:
+                      value <= rating ? theme.palette.primary.main : theme.palette.text.disabled,
+                    opacity: canReview ? 1 : 0.45,
+                  }}
+                  aria-label={`Chọn ${value} sao`}
+                >
+                  <StarRoundedIcon />
+                </ButtonBase>
+              ))}
+            </Stack>
+            <TextField
+              id="movie-review-content"
+              multiline
+              minRows={3}
+              value={content}
+              disabled={!canReview || createReview.isPending}
+              inputProps={{ maxLength: reviewMaxLength }}
+              onChange={(event) => setContent(event.target.value.slice(0, reviewMaxLength))}
+              placeholder={
+                canReview
+                  ? "Enter để gửi · Shift + Enter để xuống dòng"
+                  : "Bạn cần xem ít nhất 80% để có thể review"
+              }
+              fullWidth
+            />
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                {!canReview && <LockRoundedIcon fontSize="small" color="warning" />}
+                <Typography
+                  variant="caption"
+                  color={canReview ? "text.secondary" : "warning.light"}
+                  sx={{ overflowWrap: "anywhere" }}
+                >
+                  {canReview
+                    ? `Review áp dụng cho toàn phim. ${content.length}/${reviewMaxLength} ký tự.`
+                    : `Bạn cần xem ít nhất 80% ${isSeries ? "một tập" : "phim"} để mở khóa ô review.`}
+                </Typography>
+              </Stack>
+              <Button
+                id="movie-review-submit"
+                type="button"
+                variant="contained"
+                onClick={handleSubmit}
+                disabled={
+                  createReview.isPending || !canReview || content.trim().length < reviewMinLength
+                }
+              >
+                <SendRoundedIcon />
+              </Button>
+            </Stack>
+            {message && (
+              <Typography variant="body2" color={message.includes("Đã") ? "primary" : "error"}>
+                {message}
+              </Typography>
+            )}
+          </Stack>
+        </Paper>
+        {track.length ? (
+          <Box
+            sx={{
+              overflow: "hidden",
+              borderRadius: 1.5,
+              maskImage: {
+                md: "linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent)",
+              },
+            }}
+          >
+            <Box
               sx={{
-                width: { xs: "calc(100vw - 32px)", sm: 340, md: 420 },
-                ml: index === 0 ? { xs: 2, md: 4 } : 0,
-                p: 2.5,
-                borderRadius: 1.5,
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
-                background: `linear-gradient(140deg, ${alpha(theme.palette.primary.main, 0.2)}, ${alpha(theme.palette.background.paper, 0.84)})`,
-                backdropFilter: "blur(18px)",
+                display: "flex",
+                gap: 2,
+                width: "max-content",
+                willChange: "transform",
+                animation: { xs: "none", md: "reviewFloat 6s linear infinite" },
+                "@keyframes reviewFloat": {
+                  from: { transform: "translate3d(0,0,0)" },
+                  to: { transform: "translate3d(calc(-50% - 8px),0,0)" },
+                },
+                "&:hover": { animationPlayState: "paused" },
               }}
             >
-              <Typography color="primary" fontWeight={950} sx={{ mb: 1 }}>
-                {"★".repeat(Math.max(1, Math.min(5, review.rating || 0)))}
-              </Typography>
-              <Typography variant="h6" fontWeight={900} letterSpacing="-0.02em">
-                {review.title || "Review không tiêu đề"}
-              </Typography>
-              <Typography color="text.secondary" sx={{ mt: 1, lineHeight: 1.7 }}>
-                {review.content || "Người dùng chưa để lại nội dung review."}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
-                {review.likeCount || 0} lượt thích {review.isEdited ? "· đã chỉnh sửa" : ""}
-              </Typography>
-            </Paper>
-          ))}
-        </Box>
-      ) : (
-        <Container maxWidth="xl">
+              {track.map((review, index) => (
+                <Paper
+                  key={`${review.id}-${index < reviews.length ? "a" : "b"}`}
+                  elevation={0}
+                  onClick={() => setSelectedReview(review)}
+                  sx={{
+                    width: { xs: "calc(100vw - 32px)", sm: 340, md: 420 },
+                    flex: "0 0 auto",
+                    p: 2.5,
+                    borderRadius: 1.5,
+                    cursor: "pointer",
+                    pointerEvents: index >= reviews.length ? "none" : "auto",
+                    opacity: index >= reviews.length ? 0.82 : 1,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+                    background: `linear-gradient(140deg, ${alpha(theme.palette.primary.main, 0.2)}, ${alpha(theme.palette.background.paper, 0.84)})`,
+                    backdropFilter: "blur(18px)",
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 1 }}
+                  >
+                    <Typography color="primary" fontWeight={950}>
+                      {"★".repeat(Math.max(1, Math.min(5, review.rating || 0)))}
+                    </Typography>
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <ButtonBase
+                        id={`movie-review-like-${review.id}-${index}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleLike(review);
+                        }}
+                        sx={{
+                          minWidth: 46,
+                          height: 38,
+                          px: 1,
+                          borderRadius: 999,
+                          color: likedReviewIds.has(review.id)
+                            ? theme.palette.error.main
+                            : theme.palette.text.secondary,
+                          backgroundColor: alpha(theme.palette.common.white, 0.06),
+                          gap: 0.5,
+                        }}
+                        aria-label="Thích đánh giá"
+                      >
+                        {likedReviewIds.has(review.id) ? (
+                          <FavoriteRoundedIcon fontSize="small" />
+                        ) : (
+                          <FavoriteBorderRoundedIcon fontSize="small" />
+                        )}
+                        <Typography variant="caption" fontWeight={900}>
+                          {review.likeCount || 0}
+                        </Typography>
+                      </ButtonBase>
+                      <ReviewReportMenu
+                        reviewId={review.id}
+                        suffix={`card-${index}`}
+                        onReport={() => handleOpenReport(review)}
+                      />
+                    </Stack>
+                  </Stack>
+                  <Typography variant="h6" fontWeight={900} letterSpacing="-0.02em">
+                    {review.authorFullName ||
+                      review.authorUsername ||
+                      review.title ||
+                      "Khán giả ẩn danh"}
+                  </Typography>
+                  <Typography
+                    color="text.secondary"
+                    sx={{
+                      mt: 1,
+                      lineHeight: 1.7,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 4,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {review.content || "Người dùng chưa để lại nội dung review."}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="primary"
+                    sx={{ mt: 2, display: "block", fontWeight: 800 }}
+                  >
+                    Bấm để xem đầy đủ {review.isEdited ? "· đã chỉnh sửa" : ""}
+                  </Typography>
+                </Paper>
+              ))}
+            </Box>
+          </Box>
+        ) : (
           <Paper
             elevation={0}
             sx={{
@@ -559,12 +850,264 @@ function ReviewSection({ reviews }: { reviews: MovieReview[] }) {
             }}
           >
             <Typography color="text.secondary">
-              Chưa có review nào. Review chỉ nên mở khi người dùng đã xem hết nội dung.
+              Chưa có review nào. Hãy xem ít nhất 80% phim rồi để lại cảm nhận đầu tiên.
             </Typography>
           </Paper>
-        </Container>
-      )}
+        )}
+      </Container>
+      <Dialog
+        open={Boolean(selectedReview)}
+        onClose={() => setSelectedReview(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent sx={{ p: 0, backgroundColor: "background.paper" }}>
+          {selectedReview && (
+            <Box
+              sx={{
+                p: { xs: 2.5, md: 3 },
+                background: `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.16)}, transparent)`,
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                <Avatar src={selectedReview.authorAvatarUrl || undefined}>
+                  {(selectedReview.authorFullName || selectedReview.authorUsername || "U")
+                    .slice(0, 1)
+                    .toUpperCase()}
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="h6" fontWeight={950}>
+                    {selectedReview.authorFullName ||
+                      selectedReview.authorUsername ||
+                      "Khán giả ẩn danh"}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {movie.title} {isSeries ? "· review cấp phim/series" : "· review phim"}
+                  </Typography>
+                </Box>
+                <ReviewReportMenu
+                  reviewId={selectedReview.id}
+                  suffix="detail"
+                  onReport={() => handleOpenReport(selectedReview)}
+                />
+              </Stack>
+              <Typography color="primary" fontWeight={950} sx={{ mb: 1 }}>
+                {"★".repeat(Math.max(1, Math.min(5, selectedReview.rating || 0)))}
+              </Typography>
+              <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.85 }}>
+                {selectedReview.content || "Người dùng chưa để lại nội dung review."}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+                {selectedReview.likeCount || 0} lượt thích{" "}
+                {selectedReview.isEdited ? "· đã chỉnh sửa" : ""}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+      <ReviewListDialog
+        open={allReviewsOpen}
+        movie={movie}
+        page={reviewPage}
+        onPageChange={setReviewPage}
+        onClose={() => setAllReviewsOpen(false)}
+        onSelectReview={setSelectedReview}
+        onLike={handleLike}
+        likedReviewIds={likedReviewIds}
+        onReport={handleOpenReport}
+      />
+      <ReportContentDialog
+        open={Boolean(reportReview)}
+        targetType="review"
+        targetId={reportReview?.id ?? null}
+        targetLabel={reportReview?.content?.slice(0, 120) || "Review"}
+        onClose={() => setReportReview(null)}
+      />
     </Box>
+  );
+}
+
+function ReviewReportMenu({
+  reviewId,
+  suffix,
+  onReport,
+}: {
+  reviewId: number;
+  suffix: string;
+  onReport: () => void;
+}) {
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+
+  return (
+    <>
+      <IconButton
+        id={`movie-review-more-${reviewId}-${suffix}`}
+        size="small"
+        aria-label="Mở menu review"
+        aria-controls={menuAnchor ? `movie-review-menu-${reviewId}-${suffix}` : undefined}
+        aria-haspopup="true"
+        onClick={(event) => {
+          event.stopPropagation();
+          setMenuAnchor(event.currentTarget);
+        }}
+      >
+        <MoreVertRoundedIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        id={`movie-review-menu-${reviewId}-${suffix}`}
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+      >
+        <MenuItem
+          id={`movie-review-report-${reviewId}-${suffix}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            setMenuAnchor(null);
+            onReport();
+          }}
+        >
+          Báo cáo review
+        </MenuItem>
+      </Menu>
+    </>
+  );
+}
+
+function ReviewListDialog({
+  open,
+  movie,
+  page,
+  onPageChange,
+  onClose,
+  onSelectReview,
+  onLike,
+  likedReviewIds,
+  onReport,
+}: {
+  open: boolean;
+  movie: MovieDetail;
+  page: number;
+  onPageChange: (page: number) => void;
+  onClose: () => void;
+  onSelectReview: (review: MovieReview) => void;
+  onLike: (review: MovieReview) => void;
+  likedReviewIds: Set<number>;
+  onReport: (review: MovieReview) => void;
+}) {
+  const theme = useTheme();
+  const pageSize = 10;
+  const { data, isFetching } = useMovieReviewsPage(movie.id, page, pageSize);
+  const reviews = data?.content ?? [];
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Typography variant="h5" fontWeight={950} letterSpacing="-0.03em">
+          Tất cả review
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {movie.title} · {data?.totalElements ?? movie.totalReviews ?? 0} đánh giá
+        </Typography>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 1 }}>
+        {isFetching && <LinearProgress sx={{ mb: 2 }} />}
+        <Stack spacing={1.5}>
+          {reviews.map((review) => (
+            <Paper
+              key={review.id}
+              elevation={0}
+              onClick={() => onSelectReview(review)}
+              sx={{
+                p: 2,
+                borderRadius: 1.5,
+                cursor: "pointer",
+                border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
+                background: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)}, ${alpha(theme.palette.primary.main, 0.07)})`,
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <Avatar src={review.authorAvatarUrl || undefined}>
+                  {(review.authorFullName || review.authorUsername || "U")
+                    .slice(0, 1)
+                    .toUpperCase()}
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack direction="row" justifyContent="space-between" spacing={1}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography fontWeight={950} noWrap>
+                        {review.authorFullName || review.authorUsername || "Khán giả ẩn danh"}
+                      </Typography>
+                      <Typography variant="caption" color="primary" fontWeight={900}>
+                        {"★".repeat(Math.max(1, Math.min(5, review.rating || 0)))}
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <ButtonBase
+                        id={`movie-review-page-like-${review.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onLike(review);
+                        }}
+                        sx={{
+                          minWidth: 54,
+                          height: 38,
+                          px: 1,
+                          borderRadius: 999,
+                          gap: 0.5,
+                          color: likedReviewIds.has(review.id)
+                            ? theme.palette.error.main
+                            : theme.palette.text.secondary,
+                          backgroundColor: alpha(theme.palette.common.white, 0.06),
+                        }}
+                        aria-label="Thích đánh giá"
+                      >
+                        {likedReviewIds.has(review.id) ? (
+                          <FavoriteRoundedIcon fontSize="small" />
+                        ) : (
+                          <FavoriteBorderRoundedIcon fontSize="small" />
+                        )}
+                        <Typography variant="caption" fontWeight={900}>
+                          {review.likeCount || 0}
+                        </Typography>
+                      </ButtonBase>
+                      <ReviewReportMenu
+                        reviewId={review.id}
+                        suffix="page"
+                        onReport={() => onReport(review)}
+                      />
+                    </Stack>
+                  </Stack>
+                  <Typography
+                    color="text.secondary"
+                    sx={{
+                      mt: 1,
+                      lineHeight: 1.7,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {review.content || "Người dùng chưa để lại nội dung review."}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          ))}
+        </Stack>
+        {(data?.totalPages ?? 0) > 1 && (
+          <Stack alignItems="center" sx={{ mt: 2.5 }}>
+            <Pagination
+              count={data?.totalPages ?? 1}
+              page={page + 1}
+              onChange={(_, value) => onPageChange(value - 1)}
+              color="primary"
+            />
+          </Stack>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -605,7 +1148,7 @@ export default function MovieDetailPage({ slug }: MovieDetailPageProps) {
       <MovieHero movie={data.movie} />
       <InfoSection movie={data.movie} />
       <EpisodeSection episodes={data.movie.episodes || []} movie={data.movie} />
-      <ReviewSection reviews={reviews} />
+      <ReviewSection movie={data.movie} reviews={reviews} slug={slug} />
       <MovieCommentsSection
         movieId={data.movie.id}
         slug={slug}
