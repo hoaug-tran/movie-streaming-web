@@ -463,8 +463,18 @@ export default function FavoritesClient() {
         open={!!message}
         autoHideDuration={2600}
         onClose={() => setMessage(null)}
-        message={message}
-      />
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ top: { xs: 82, md: 88 } }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          onClose={() => setMessage(null)}
+          sx={{ width: "100%", borderRadius: 2, boxShadow: "0 18px 60px rgba(0,0,0,0.38)" }}
+        >
+          {message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

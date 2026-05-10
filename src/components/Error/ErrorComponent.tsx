@@ -9,7 +9,7 @@ interface ErrorProps {
 }
 
 const ErrorComponent: React.FC<ErrorProps> = ({
-  message = "An error occurred. Please try again.",
+  message = "Đã xảy ra lỗi. Vui lòng thử lại.",
   onRetry,
 }) => {
   return (
@@ -29,7 +29,7 @@ const ErrorComponent: React.FC<ErrorProps> = ({
       </Typography>
       {onRetry && (
         <Button variant="contained" onClick={onRetry}>
-          Try Again
+          Thử lại
         </Button>
       )}
     </Box>
