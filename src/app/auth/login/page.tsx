@@ -19,17 +19,26 @@ import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/modules/auth/components/AuthLayout";
 import { PasswordInput } from "@/modules/auth/components/PasswordInput";
 import { GoogleOAuthButton } from "@/modules/auth/components/GoogleOAuthButton";
+import { OtpVerifyStep } from "@/modules/auth/components/OtpVerifyStep";
 import { AuthContext } from "@/context/auth-context";
+import authService from "@/modules/auth/api/auth-service";
+import { OtpChallengeResponse } from "@/modules/auth/types/auth";
+
+type LoginStep = "credentials" | "otp";
 
 export default function LoginPage() {
   const router = useRouter();
   const theme = useTheme();
   const authContext = useContext(AuthContext);
+  const [step, setStep] = useState<LoginStep>("credentials");
+  const [challenge, setChallenge] = useState<OtpChallengeResponse | null>(null);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [identifierError, setIdentifierError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const remembered = localStorage.getItem("rememberMe");
@@ -43,13 +52,13 @@ export default function LoginPage() {
 
   if (!authContext) return null;
 
-  const { login, loading, error } = authContext;
+  const { loginWithOtpVerified, loading: contextLoading } = authContext;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setIdentifierError("");
     setPasswordError("");
+    setError("");
 
     if (!identifier) {
       setIdentifierError("Vui lòng nhập email hoặc tên đăng nhập");
@@ -61,8 +70,42 @@ export default function LoginPage() {
       return;
     }
 
+    setLoading(true);
     try {
-      await login(identifier, password);
+      const result = await authService.login({
+        usernameOrEmail: identifier,
+        password,
+        rememberMe,
+      });
+
+      if (!result.otpRequired) {
+        if (rememberMe) {
+          localStorage.setItem("rememberMe", "true");
+          localStorage.setItem("rememberedIdentifier", identifier);
+        } else {
+          localStorage.removeItem("rememberMe");
+          localStorage.removeItem("rememberedIdentifier");
+        }
+        await authContext.refreshSession?.();
+        router.push("/");
+        return;
+      }
+
+      setChallenge(result);
+      setStep("otp");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async (otp: string) => {
+    if (!challenge?.challengeToken) return;
+    setLoading(true);
+    setError("");
+    try {
+      await loginWithOtpVerified(challenge.challengeToken, otp, rememberMe);
       if (rememberMe) {
         localStorage.setItem("rememberMe", "true");
         localStorage.setItem("rememberedIdentifier", identifier);
@@ -72,7 +115,28 @@ export default function LoginPage() {
       }
       router.push("/");
     } catch (err) {
-      console.error("Login failed:", err);
+      setError(err instanceof Error ? err.message : "Mã OTP không hợp lệ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const result = await authService.login({
+        usernameOrEmail: identifier,
+        password,
+        rememberMe,
+      });
+      if (result.otpRequired && result.challengeToken) {
+        setChallenge(result);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể gửi lại OTP");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,6 +168,26 @@ export default function LoginPage() {
     },
   };
 
+  if (step === "otp" && challenge) {
+    return (
+      <AuthLayout
+        title="Xác minh OTP"
+        subtitle="Nhập mã xác nhận được gửi đến email của bạn."
+        kineticText="VERIFY"
+      >
+        <OtpVerifyStep
+          maskedEmail={challenge.email || "email của bạn"}
+          expiresInSeconds={challenge.expiresInSeconds}
+          resendAfterSeconds={challenge.resendAfterSeconds ?? 60}
+          loading={loading || contextLoading}
+          error={error}
+          onVerify={handleOtpVerify}
+          onResend={handleResendOtp}
+        />
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout
       title="Chào mừng trở lại"
@@ -127,7 +211,7 @@ export default function LoginPage() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleCredentialsSubmit}>
           <Stack spacing={3}>
             <TextField
               fullWidth
@@ -184,7 +268,7 @@ export default function LoginPage() {
                       fontWeight: 600,
                     }}
                   >
-                    Ghi nhớ tôi
+                    Ghi nhớ thiết bị này
                   </Typography>
                 }
                 disabled={loading}
@@ -233,13 +317,7 @@ export default function LoginPage() {
               {loading ? <CircularProgress size={20} color="inherit" /> : "Đăng nhập ngay"}
             </Button>
 
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Box sx={{ flex: 1, height: "1px", backgroundColor: theme.palette.divider }} />
               <Typography
                 sx={{

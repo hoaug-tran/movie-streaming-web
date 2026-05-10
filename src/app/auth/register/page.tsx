@@ -20,25 +20,34 @@ import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/modules/auth/components/AuthLayout";
 import { PasswordInput } from "@/modules/auth/components/PasswordInput";
 import { GoogleOAuthButton } from "@/modules/auth/components/GoogleOAuthButton";
+import { OtpVerifyStep } from "@/modules/auth/components/OtpVerifyStep";
 import { AuthContext } from "@/context/auth-context";
+import authService from "@/modules/auth/api/auth-service";
+import { OtpChallengeResponse } from "@/modules/auth/types/auth";
+
+type RegisterStep = "form" | "otp";
 
 export default function RegisterPage() {
   const router = useRouter();
   const theme = useTheme();
   const authContext = useContext(AuthContext);
-  const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [step, setStep] = useState<RegisterStep>("form");
+  const [challenge, setChallenge] = useState<OtpChallengeResponse | null>(null);
+  const [formData, setFormData] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  if (!authContext) {
-    return null;
-  }
+  if (!authContext) return null;
 
-  const { register, loading, error } = authContext;
+  const { registerWithOtpVerified, loading: contextLoading } = authContext;
 
   const getPasswordStrength = (pwd: string): number => {
     let strength = 0;
@@ -53,56 +62,79 @@ export default function RegisterPage() {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!fullName.trim()) {
-      newErrors.fullName = "Vui lòng nhập họ và tên";
-    }
-
-    if (!username.trim()) {
-      newErrors.username = "Vui lòng nhập tên tài khoản";
-    }
-
-    if (!email) {
-      newErrors.email = "Vui lòng nhập email";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!formData.fullName.trim()) newErrors.fullName = "Vui lòng nhập họ và tên";
+    if (!formData.username.trim()) newErrors.username = "Vui lòng nhập tên tài khoản";
+    if (!formData.email) newErrors.email = "Vui lòng nhập email";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = "Vui lòng nhập một email hợp lệ";
-    }
-
-    if (!password) {
-      newErrors.password = "Vui lòng nhập mật khẩu";
-    } else if (password.length < 8) {
-      newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự";
-    }
-
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
-    } else if (password !== confirmPassword) {
+    if (!formData.password) newErrors.password = "Vui lòng nhập mật khẩu";
+    else if (formData.password.length < 8) newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự";
+    if (!formData.confirmPassword) newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
+    else if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = "Mật khẩu không khớp";
-    }
-
-    if (!agreeTerms) {
-      newErrors.terms = "Bạn phải đồng ý với các điều khoản";
-    }
+    if (!agreeTerms) newErrors.terms = "Bạn phải đồng ý với các điều khoản";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateForm()) {
-      return;
-    }
-
+    setLoading(true);
+    setError("");
     try {
-      await register(fullName, username, email, password);
-      router.push("/");
+      const result = await authService.register({
+        fullName: formData.fullName,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      });
+      setChallenge(result);
+      setStep("otp");
     } catch (err) {
-      console.error("Registration failed:", err);
+      setError(err instanceof Error ? err.message : "Đăng ký thất bại");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const passwordStrength = getPasswordStrength(password);
+  const handleOtpVerify = async (otp: string) => {
+    if (!challenge?.challengeToken) return;
+    setLoading(true);
+    setError("");
+    try {
+      await registerWithOtpVerified(challenge.challengeToken, otp);
+      router.push("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mã OTP không hợp lệ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const result = await authService.register({
+        fullName: formData.fullName,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      });
+      if (result.challengeToken) setChallenge(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể gửi lại OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const passwordStrength = getPasswordStrength(formData.password);
   const strengthColor =
     passwordStrength < 40
       ? theme.palette.error.main
@@ -115,28 +147,39 @@ export default function RegisterPage() {
       backgroundColor: alpha(theme.palette.common.white, 0.03),
       borderRadius: 2,
       transition: "all 0.3s ease",
-      "& fieldset": {
-        borderColor: alpha(theme.palette.common.white, 0.1),
-      },
-      "&:hover fieldset": {
-        borderColor: alpha(theme.palette.common.white, 0.25),
-      },
+      "& fieldset": { borderColor: alpha(theme.palette.common.white, 0.1) },
+      "&:hover fieldset": { borderColor: alpha(theme.palette.common.white, 0.25) },
       "&.Mui-focused": {
         backgroundColor: alpha(theme.palette.common.white, 0.05),
-        "& fieldset": {
-          borderColor: theme.palette.primary.main,
-          borderWidth: "1.5px",
-        },
+        "& fieldset": { borderColor: theme.palette.primary.main, borderWidth: "1.5px" },
       },
     },
     "& .MuiInputLabel-root": {
       color: alpha(theme.palette.common.white, 0.4),
       fontSize: "0.9rem",
-      "&.Mui-focused": {
-        color: theme.palette.primary.main,
-      },
+      "&.Mui-focused": { color: theme.palette.primary.main },
     },
   };
+
+  if (step === "otp" && challenge) {
+    return (
+      <AuthLayout
+        title="Xác minh OTP"
+        subtitle="Nhập mã xác nhận để kích hoạt tài khoản của bạn."
+        kineticText="VERIFY"
+      >
+        <OtpVerifyStep
+          maskedEmail={challenge.email || formData.email}
+          expiresInSeconds={challenge.expiresInSeconds}
+          resendAfterSeconds={challenge.resendAfterSeconds ?? 60}
+          loading={loading || contextLoading}
+          error={error}
+          onVerify={handleOtpVerify}
+          onResend={handleResendOtp}
+        />
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
@@ -161,19 +204,18 @@ export default function RegisterPage() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleFormSubmit}>
           <Stack spacing={2.5}>
             <TextField
               fullWidth
               label="Họ và Tên"
-              value={fullName}
+              value={formData.fullName}
               onChange={(e) => {
-                setFullName(e.target.value);
+                setFormData({ ...formData, fullName: e.target.value });
                 setErrors({ ...errors, fullName: "" });
               }}
               error={!!errors.fullName}
               helperText={errors.fullName}
-              placeholder="Nhập họ và tên của bạn"
               disabled={loading}
               sx={inputSx}
             />
@@ -181,14 +223,13 @@ export default function RegisterPage() {
             <TextField
               fullWidth
               label="Tên tài khoản"
-              value={username}
+              value={formData.username}
               onChange={(e) => {
-                setUsername(e.target.value);
+                setFormData({ ...formData, username: e.target.value });
                 setErrors({ ...errors, username: "" });
               }}
               error={!!errors.username}
               helperText={errors.username}
-              placeholder="Nhập tên tài khoản của bạn"
               disabled={loading}
               sx={inputSx}
             />
@@ -197,23 +238,22 @@ export default function RegisterPage() {
               fullWidth
               label="Email"
               type="email"
-              value={email}
+              value={formData.email}
               onChange={(e) => {
-                setEmail(e.target.value);
+                setFormData({ ...formData, email: e.target.value });
                 setErrors({ ...errors, email: "" });
               }}
               error={!!errors.email}
               helperText={errors.email}
-              placeholder="Nhập email của bạn"
               disabled={loading}
               sx={inputSx}
             />
 
             <Box>
               <PasswordInput
-                value={password}
+                value={formData.password}
                 onChange={(value) => {
-                  setPassword(value);
+                  setFormData({ ...formData, password: value });
                   setErrors({ ...errors, password: "" });
                 }}
                 error={!!errors.password}
@@ -221,7 +261,7 @@ export default function RegisterPage() {
                 placeholder="Tạo mật khẩu mạnh"
                 sx={inputSx}
               />
-              {password && (
+              {formData.password && (
                 <Box sx={{ mt: 2 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.8 }}>
                     <LinearProgress
@@ -232,9 +272,7 @@ export default function RegisterPage() {
                         height: 4,
                         borderRadius: 1,
                         backgroundColor: alpha(theme.palette.common.white, 0.1),
-                        "& .MuiLinearProgress-bar": {
-                          backgroundColor: strengthColor,
-                        },
+                        "& .MuiLinearProgress-bar": { backgroundColor: strengthColor },
                       }}
                     />
                     <Typography
@@ -258,9 +296,9 @@ export default function RegisterPage() {
             </Box>
 
             <PasswordInput
-              value={confirmPassword}
+              value={formData.confirmPassword}
               onChange={(value) => {
-                setConfirmPassword(value);
+                setFormData({ ...formData, confirmPassword: value });
                 setErrors({ ...errors, confirmPassword: "" });
               }}
               error={!!errors.confirmPassword}
@@ -282,9 +320,7 @@ export default function RegisterPage() {
                     disabled={loading}
                     sx={{
                       color: alpha(theme.palette.common.white, 0.2),
-                      "&.Mui-checked": {
-                        color: theme.palette.primary.main,
-                      },
+                      "&.Mui-checked": { color: theme.palette.primary.main },
                     }}
                   />
                 }
@@ -360,13 +396,7 @@ export default function RegisterPage() {
               {loading ? <CircularProgress size={20} color="inherit" /> : "Tạo tài khoản ngay"}
             </Button>
 
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Box sx={{ flex: 1, height: "1px", backgroundColor: theme.palette.divider }} />
               <Typography
                 sx={{

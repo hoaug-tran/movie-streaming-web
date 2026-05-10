@@ -2,16 +2,23 @@
 
 import React, { createContext, ReactNode, useCallback, useEffect, useReducer } from "react";
 import { AuthState, UserInfo, LoginResponse } from "@/modules/auth/types/auth";
-import authService from "@/modules/auth/api/auth-service";
+import authService, { isAuthFailure } from "@/modules/auth/api/auth-service";
 import { queryClient } from "@/config/react-query";
 import { getFromLocalStorage, removeFromLocalStorage, setInLocalStorage } from "@/utils/helpers";
 
 interface AuthContextType extends Omit<AuthState, "refreshToken"> {
   login: (identifier: string, password: string) => Promise<void>;
+  loginWithOtpVerified: (
+    challengeToken: string,
+    otp: string,
+    rememberMe?: boolean
+  ) => Promise<void>;
   register: (fullName: string, username: string, email: string, password: string) => Promise<void>;
+  registerWithOtpVerified: (challengeToken: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: UserInfo | null) => void;
   refreshToken: () => Promise<void>;
+  refreshSession: () => Promise<void>;
   loginWithGoogle: (code: string) => Promise<void>;
 }
 
@@ -57,11 +64,7 @@ const unauthenticatedState: AuthState = {
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case "AUTH_START":
-      return {
-        ...state,
-        loading: true,
-        error: null,
-      };
+      return { ...state, loading: true, error: null };
 
     case "AUTH_SUCCESS":
       return {
@@ -69,16 +72,13 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isAuthenticated: true,
         user: action.payload.user,
         accessToken: action.payload.accessToken,
-        refreshToken: action.payload.refreshToken,
+        refreshToken: action.payload.refreshToken ?? null,
         loading: false,
         error: null,
       };
 
     case "AUTH_ERROR":
-      return {
-        ...unauthenticatedState,
-        error: action.payload,
-      };
+      return { ...unauthenticatedState, error: action.payload };
 
     case "RESTORE_AUTH":
       return {
@@ -106,11 +106,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       };
 
     case "SET_ERROR":
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
+      return { ...state, error: action.payload, loading: false };
 
     default:
       return state;
@@ -152,9 +148,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .then((user) => {
           dispatch({ type: "SET_USER", payload: user });
         })
-        .catch(() => {
-          clearAuthSession();
-          dispatch({ type: "LOGOUT" });
+        .catch((error) => {
+          if (isAuthFailure(error)) {
+            clearAuthSession();
+            dispatch({ type: "LOGOUT" });
+            return;
+          }
+
+          dispatch({ type: "SET_USER", payload: storedUser });
+          dispatch({
+            type: "SET_ERROR",
+            payload: "Không thể kết nối máy chủ. Phiên đăng nhập tạm thời được giữ lại.",
+          });
         });
       return;
     }
@@ -165,22 +170,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = useCallback(async (identifier: string, password: string) => {
     dispatch({ type: "AUTH_START" });
-
     try {
-      const response = await authService.login({
-        usernameOrEmail: identifier,
-        password,
-      });
-
-      const fullUser = await authService.getCurrentUser();
-
-      const loginData = {
-        ...response,
-        user: fullUser,
-      };
-
-      persistAuthSession(loginData);
-      dispatch({ type: "AUTH_SUCCESS", payload: loginData });
+      await authService.login({ usernameOrEmail: identifier, password });
+      dispatch({ type: "SET_ERROR", payload: null });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Đăng nhập thất bại";
       dispatch({ type: "AUTH_ERROR", payload: errorMessage });
@@ -188,28 +180,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  const loginWithOtpVerified = useCallback(
+    async (challengeToken: string, otp: string, rememberMe?: boolean) => {
+      dispatch({ type: "AUTH_START" });
+      try {
+        const response = await authService.verifyLoginOtp({ challengeToken, otp, rememberMe });
+        const fullUser = await authService.getCurrentUser();
+        const loginData = { ...response, user: fullUser };
+        persistAuthSession(loginData);
+        dispatch({ type: "AUTH_SUCCESS", payload: loginData });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Xác nhận OTP thất bại";
+        dispatch({ type: "AUTH_ERROR", payload: errorMessage });
+        throw error;
+      }
+    },
+    []
+  );
+
   const register = useCallback(
     async (fullName: string, username: string, email: string, password: string) => {
       dispatch({ type: "AUTH_START" });
-
       try {
-        const response = await authService.register({
+        await authService.register({
           fullName,
           username,
           email,
           password,
           confirmPassword: password,
         });
-
-        const fullUser = await authService.getCurrentUser();
-
-        const registerData = {
-          ...response,
-          user: fullUser,
-        };
-
-        persistAuthSession(registerData);
-        dispatch({ type: "AUTH_SUCCESS", payload: registerData });
+        dispatch({ type: "SET_ERROR", payload: null });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Đăng ký thất bại";
         dispatch({ type: "AUTH_ERROR", payload: errorMessage });
@@ -218,6 +218,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     },
     []
   );
+
+  const registerWithOtpVerified = useCallback(async (challengeToken: string, otp: string) => {
+    dispatch({ type: "AUTH_START" });
+    try {
+      const response = await authService.verifyRegisterOtp({ challengeToken, otp });
+      const fullUser = await authService.getCurrentUser();
+      const registerData = { ...response, user: fullUser };
+      persistAuthSession(registerData);
+      dispatch({ type: "AUTH_SUCCESS", payload: registerData });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Xác nhận OTP thất bại";
+      dispatch({ type: "AUTH_ERROR", payload: errorMessage });
+      throw error;
+    }
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -244,6 +259,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     removeFromLocalStorage("user");
   }, []);
 
+  const refreshSession = useCallback(async () => {
+    try {
+      const user = await authService.getCurrentUser();
+      dispatch({ type: "SET_USER", payload: user });
+      setInLocalStorage("user", user);
+    } catch (error) {
+      if (isAuthFailure(error)) {
+        clearAuthSession();
+        dispatch({ type: "LOGOUT" });
+        return;
+      }
+
+      const storedUser = getFromLocalStorage<UserInfo>("user");
+      if (storedUser) {
+        dispatch({ type: "SET_USER", payload: storedUser });
+      }
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Không thể kết nối máy chủ. Phiên đăng nhập tạm thời được giữ lại.",
+      });
+    }
+  }, []);
+
   const refreshToken = useCallback(async () => {
     const currentRefreshToken = state.refreshToken || getFromLocalStorage<string>("refreshToken");
 
@@ -258,8 +296,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       persistAuthSession(response);
       dispatch({ type: "AUTH_SUCCESS", payload: response });
     } catch (error) {
-      clearAuthSession();
-      dispatch({ type: "LOGOUT" });
+      if (isAuthFailure(error)) {
+        clearAuthSession();
+        dispatch({ type: "LOGOUT" });
+      }
       throw error;
     }
   }, [state.refreshToken]);
@@ -285,10 +325,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading: state.loading,
     error: state.error,
     login,
+    loginWithOtpVerified,
     register,
+    registerWithOtpVerified,
     logout,
     setUser,
     refreshToken,
+    refreshSession,
     loginWithGoogle,
   };
 

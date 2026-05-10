@@ -12,6 +12,7 @@ interface PasswordInputProps {
   label?: string;
   placeholder?: string;
   fullWidth?: boolean;
+  size?: "small" | "medium";
   sx?: any;
 }
 
@@ -23,6 +24,7 @@ const PasswordInputComponent: React.FC<PasswordInputProps> = ({
   label = "Mật Khẩu",
   placeholder = "Nhập mật khẩu",
   fullWidth = true,
+  size = "medium" as "small" | "medium",
   sx,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +43,7 @@ const PasswordInputComponent: React.FC<PasswordInputProps> = ({
   return (
     <TextField
       fullWidth={fullWidth}
+      size={size}
       type={showPassword ? "text" : "password"}
       value={value}
       onChange={handleChange}

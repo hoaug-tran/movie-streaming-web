@@ -58,7 +58,7 @@ class ApiClient {
         errorData = { message: response.statusText };
       }
 
-      const error = new Error(errorData.message || "An error occurred");
+      const error = new Error(errorData.message || "Đã xảy ra lỗi, vui lòng thử lại");
       (error as any).status = response.status;
       (error as any).data = errorData;
       throw error;

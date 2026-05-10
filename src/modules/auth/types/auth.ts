@@ -1,11 +1,21 @@
 export interface LoginRequest {
   usernameOrEmail: string;
   password: string;
+  rememberMe?: boolean;
+}
+
+export interface OtpChallengeResponse {
+  otpRequired: boolean;
+  challengeToken?: string;
+  email?: string;
+  expiresInSeconds?: number;
+  resendAfterSeconds?: number;
+  message?: string;
 }
 
 export interface LoginResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   user: UserInfo;
 }
 
@@ -44,12 +54,25 @@ export interface ForgotPasswordRequest {
   email: string;
 }
 
-export interface ResetPasswordRequest {
-  token: string;
+export interface VerifyOtpRequest {
+  challengeToken: string;
+  otp: string;
+  rememberMe?: boolean;
+}
+
+export interface VerifyPasswordResetOtpRequest extends VerifyOtpRequest {
   newPassword: string;
 }
 
 export interface VerifyEmailRequest {
   email: string;
   verificationCode: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword?: string;
+  challengeToken: string;
+  otp: string;
 }

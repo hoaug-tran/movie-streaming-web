@@ -1,10 +1,12 @@
 import {
   LoginRequest,
   LoginResponse,
+  OtpChallengeResponse,
   RegisterRequest,
   UserInfo,
-  ResetPasswordRequest,
-  VerifyEmailRequest,
+  VerifyOtpRequest,
+  VerifyPasswordResetOtpRequest,
+  ChangePasswordRequest,
 } from "@/modules/auth/types/auth";
 import deviceSessionService from "@/modules/user/api/device-session-service";
 import { ApiResponse } from "@/types/api";
@@ -75,7 +77,19 @@ const handleError = (error: any): Error => {
   if (error instanceof Error) {
     return error;
   }
-  return new Error("An error occurred");
+  return new Error("Đã xảy ra lỗi, vui lòng thử lại");
+};
+
+const createHttpError = (message: string, status: number, data?: unknown): Error => {
+  const error = new Error(message);
+  (error as Error & { status?: number; data?: unknown }).status = status;
+  (error as Error & { status?: number; data?: unknown }).data = data;
+  return error;
+};
+
+export const isAuthFailure = (error: unknown): boolean => {
+  const status = (error as { status?: number } | null)?.status;
+  return status === 401 || status === 403;
 };
 
 const fetchAPI = async <T>(
@@ -100,34 +114,34 @@ const fetchAPI = async <T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP ${response.status}`);
+    throw createHttpError(
+      errorData.message || `HTTP ${response.status}`,
+      response.status,
+      errorData
+    );
   }
 
   return response.json();
 };
 
-const executeOAuthExchange = async (code: string, provider: string): Promise<LoginResponse> => {
-  try {
-    const response = await fetchAPI<any>(`/auth/oauth/callback/${provider}`, {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    });
-
-    const authResponse = mapAuthResponse(response.data || response);
-    await ensureDeviceSession(authResponse);
-    return authResponse;
-  } catch (error) {
-    throw handleError(error);
-  }
-};
-
-const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
+const login = async (credentials: LoginRequest): Promise<OtpChallengeResponse> => {
   try {
     const data = await fetchAPI<any>("/auth/login", {
       method: "POST",
       body: JSON.stringify(credentials),
     });
+    return data.data || data;
+  } catch (error) {
+    throw handleError(error);
+  }
+};
 
+const verifyLoginOtp = async (request: VerifyOtpRequest): Promise<LoginResponse> => {
+  try {
+    const data = await fetchAPI<any>("/auth/login/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
     const authResponse = mapAuthResponse(data.data || data);
     await ensureDeviceSession(authResponse);
     return authResponse;
@@ -136,13 +150,24 @@ const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
   }
 };
 
-const register = async (data: RegisterRequest): Promise<LoginResponse> => {
+const register = async (data: RegisterRequest): Promise<OtpChallengeResponse> => {
   try {
     const response = await fetchAPI<any>("/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return response.data || response;
+  } catch (error) {
+    throw handleError(error);
+  }
+};
 
+const verifyRegisterOtp = async (request: VerifyOtpRequest): Promise<LoginResponse> => {
+  try {
+    const response = await fetchAPI<any>("/auth/register/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
     const authResponse = mapAuthResponse(response.data || response);
     await ensureDeviceSession(authResponse);
     return authResponse;
@@ -157,7 +182,6 @@ const refreshToken = async (token: string): Promise<LoginResponse> => {
       method: "POST",
       body: JSON.stringify({ refreshToken: token }),
     });
-
     return mapAuthResponse(response.data || response);
   } catch (error) {
     throw handleError(error);
@@ -175,33 +199,53 @@ const logout = async (): Promise<void> => {
   }
 };
 
-const forgotPassword = async (email: string): Promise<void> => {
+const forgotPassword = async (email: string): Promise<OtpChallengeResponse> => {
   try {
-    await fetchAPI("/auth/forgot-password", {
+    const data = await fetchAPI<any>("/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email }),
     });
+    return data.data || data;
   } catch (error) {
     throw handleError(error);
   }
 };
 
-const resetPassword = async (data: ResetPasswordRequest): Promise<void> => {
+const resetPassword = async (request: VerifyPasswordResetOtpRequest): Promise<void> => {
   try {
     await fetchAPI("/auth/reset-password", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(request),
     });
   } catch (error) {
     throw handleError(error);
   }
 };
 
-const verifyEmail = async (data: VerifyEmailRequest): Promise<void> => {
+const startChangePassword = async (currentPassword: string): Promise<OtpChallengeResponse> => {
   try {
-    await fetchAPI("/auth/verify-email", {
+    const data = await fetchAPI<any>("/auth/change-password/start", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ currentPassword }),
+      requireAuth: true,
+    });
+    return data.data || data;
+  } catch (error) {
+    throw handleError(error);
+  }
+};
+
+const changePassword = async (request: ChangePasswordRequest): Promise<void> => {
+  try {
+    await fetchAPI("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({
+        currentPassword: request.currentPassword,
+        newPassword: request.newPassword,
+        challengeToken: request.challengeToken,
+        otp: request.otp,
+      }),
+      requireAuth: true,
     });
   } catch (error) {
     throw handleError(error);
@@ -237,6 +281,21 @@ const getCurrentUser = async (): Promise<UserInfo> => {
   }
 };
 
+const executeOAuthExchange = async (code: string, provider: string): Promise<LoginResponse> => {
+  try {
+    const response = await fetchAPI<any>(`/auth/oauth/callback/${provider}`, {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+
+    const authResponse = mapAuthResponse(response.data || response);
+    await ensureDeviceSession(authResponse);
+    return authResponse;
+  } catch (error) {
+    throw handleError(error);
+  }
+};
+
 const exchangeOAuthCode = async (code: string, provider: string): Promise<LoginResponse> => {
   return executeOAuthExchange(code, provider);
 };
@@ -255,12 +314,15 @@ const getOAuthProviders = async (): Promise<Record<string, string>> => {
 
 const authService = {
   login,
+  verifyLoginOtp,
   register,
+  verifyRegisterOtp,
   refreshToken,
   logout,
   forgotPassword,
   resetPassword,
-  verifyEmail,
+  startChangePassword,
+  changePassword,
   getCurrentUser,
   exchangeOAuthCode,
   getOAuthProviders,
