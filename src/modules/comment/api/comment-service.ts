@@ -4,11 +4,26 @@ import {
   CreateCommentRequest,
   UpdateCommentRequest,
 } from "@/modules/comment/types/comment";
+import { PageResponse } from "@/types/page-response";
 
 class CommentService {
   async getMovieComments(movieId: string): Promise<Comment[]> {
     try {
       return await apiClient.get<Comment[]>(`/comments/movie/${movieId}`);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMovieCommentsPage(
+    movieId: string,
+    page: number = 0,
+    size: number = 10
+  ): Promise<PageResponse<Comment>> {
+    try {
+      return await apiClient.get<PageResponse<Comment>>(`/comments/movie/${movieId}/page`, {
+        params: { page, size },
+      });
     } catch (error) {
       throw this.handleError(error);
     }
@@ -86,7 +101,7 @@ class CommentService {
     if (error.data?.message) {
       return new Error(error.data.message);
     }
-    return new Error(error.message || "An error occurred");
+    return new Error(error.message || "Đã xảy ra lỗi, vui lòng thử lại");
   }
 }
 

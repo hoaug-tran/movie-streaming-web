@@ -10,6 +10,8 @@ type ToggleCommentLikeVariables = {
 };
 
 export const movieCommentsQueryKey = (movieId: number) => ["movie-comments", movieId] as const;
+export const movieCommentsPageQueryKey = (movieId: number, page: number, size: number) =>
+  ["movie-comments-page", movieId, page, size] as const;
 export const movieDetailQueryKey = (slug: string) => ["movie-detail", slug] as const;
 
 export function useMovieComments(movieId: number, initialComments: MovieComment[] = []) {
@@ -20,6 +22,15 @@ export function useMovieComments(movieId: number, initialComments: MovieComment[
     enabled: Number.isFinite(movieId),
     staleTime: 0,
     refetchOnMount: "always",
+  });
+}
+
+export function useMovieCommentsPage(movieId: number, page: number, size: number = 10) {
+  return useQuery({
+    queryKey: movieCommentsPageQueryKey(movieId, page, size),
+    queryFn: () => commentService.getMovieCommentsPage(String(movieId), page, size),
+    enabled: Number.isFinite(movieId),
+    staleTime: 0,
   });
 }
 

@@ -9,7 +9,12 @@ import {
   Chip,
   Collapse,
   Container,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -18,6 +23,7 @@ import {
 } from "@mui/material";
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
+import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import ReplyRoundedIcon from "@mui/icons-material/ReplyRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,6 +35,7 @@ import {
   useMovieComments,
   useToggleCommentLike,
 } from "@/modules/comment/hooks/useMovieComments";
+import { ReportContentDialog } from "@/modules/report/components/ReportContentDialog";
 
 function formatTime(value?: string) {
   if (!value) return "Vừa xong";
@@ -95,6 +102,9 @@ export function MovieCommentsSection({
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [likedCommentIds, setLikedCommentIds] = useState<Set<number>>(() => new Set());
+  const [allCommentsOpen, setAllCommentsOpen] = useState(false);
+  const [selectedComment, setSelectedComment] = useState<MovieComment | null>(null);
+  const [reportComment, setReportComment] = useState<MovieComment | null>(null);
 
   const comments = useMemo(
     () => flattenComments(commentsQuery.data ?? initialComments),
@@ -193,26 +203,45 @@ export function MovieCommentsSection({
     );
   };
 
+  const handleOpenReport = (comment: MovieComment) => {
+    if (!requireAuth()) return;
+    setReportComment(comment);
+  };
+
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 4, md: 7 } }}>
       <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="overline"
-          color="primary"
-          fontWeight={900}
-          sx={{ letterSpacing: "0.2em" }}
-        >
-          Bình luận
-        </Typography>
-        <Typography
-          variant="h3"
-          component="h2"
-          fontWeight={950}
-          letterSpacing="-0.035em"
-          sx={{ fontSize: { xs: "2rem", sm: "2.35rem", md: "3rem" }, lineHeight: 1.08 }}
-        >
-          Phòng trò chuyện sau suất chiếu
-        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
+          <Box>
+            <Typography
+              variant="overline"
+              color="primary"
+              fontWeight={900}
+              sx={{ letterSpacing: "0.2em" }}
+            >
+              Bình luận
+            </Typography>
+            <Typography
+              variant="h3"
+              component="h2"
+              fontWeight={950}
+              letterSpacing="-0.035em"
+              sx={{ fontSize: { xs: "2rem", sm: "2.35rem", md: "3rem" }, lineHeight: 1.08 }}
+            >
+              Phòng trò chuyện sau suất chiếu
+            </Typography>
+          </Box>
+          {comments.length > 8 && (
+            <Button
+              id="movie-comment-view-all"
+              variant="outlined"
+              onClick={() => setAllCommentsOpen(true)}
+              sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+            >
+              Xem tất cả bình luận
+            </Button>
+          )}
+        </Stack>
       </Box>
 
       <Paper
@@ -245,16 +274,15 @@ export function MovieCommentsSection({
           />
           <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5}>
             <Typography variant="caption" color="text.secondary">
-              Comment hiện ngay sau khi gửi. Nội dung tối đa 5000 ký tự.
+              Nội dung tối đa 5000 ký tự.
             </Typography>
             <Button
               id="movie-comment-submit"
               type="submit"
               variant="contained"
-              endIcon={<SendRoundedIcon />}
               disabled={loading || createComment.isPending || !content.trim()}
             >
-              Gửi bình luận
+              <SendRoundedIcon />
             </Button>
           </Stack>
         </Stack>
@@ -284,6 +312,7 @@ export function MovieCommentsSection({
                 }
                 likeDisabled={toggleLike.isPending}
                 liked={likedCommentIds.has(comment.id)}
+                onReport={() => handleOpenReport(comment)}
               />
 
               <Collapse in={replyingTo === comment.id} unmountOnExit>
@@ -333,6 +362,7 @@ export function MovieCommentsSection({
                         onLike={() => handleLike(reply.id)}
                         likeDisabled={toggleLike.isPending}
                         liked={likedCommentIds.has(reply.id)}
+                        onReport={() => handleOpenReport(reply)}
                         compact
                       />
                     </Box>
@@ -357,6 +387,33 @@ export function MovieCommentsSection({
           </Paper>
         )}
       </Stack>
+      <CommentListDialog
+        open={allCommentsOpen}
+        comments={comments}
+        episodes={episodes}
+        onClose={() => setAllCommentsOpen(false)}
+        onSelectComment={setSelectedComment}
+        onLike={handleLike}
+        likedCommentIds={likedCommentIds}
+        likeDisabled={toggleLike.isPending}
+        onReport={handleOpenReport}
+      />
+      <CommentDetailDialog
+        comment={selectedComment}
+        episodes={episodes}
+        liked={selectedComment ? likedCommentIds.has(selectedComment.id) : false}
+        likeDisabled={toggleLike.isPending}
+        onClose={() => setSelectedComment(null)}
+        onLike={() => selectedComment && handleLike(selectedComment.id)}
+        onReport={() => selectedComment && handleOpenReport(selectedComment)}
+      />
+      <ReportContentDialog
+        open={Boolean(reportComment)}
+        targetType="comment"
+        targetId={reportComment?.id ?? null}
+        targetLabel={reportComment?.content?.slice(0, 120) || "Bình luận"}
+        onClose={() => setReportComment(null)}
+      />
     </Container>
   );
 }
@@ -369,6 +426,7 @@ type CommentContentProps = {
   likeDisabled: boolean;
   liked: boolean;
   compact?: boolean;
+  onReport: () => void;
 };
 
 function CommentContent({
@@ -379,8 +437,10 @@ function CommentContent({
   likeDisabled,
   liked,
   compact,
+  onReport,
 }: CommentContentProps) {
   const theme = useTheme();
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
   const displayName =
     comment.authorFullName?.trim() ||
@@ -467,8 +527,136 @@ function CommentContent({
               Trả lời {comment.replyCount ? `(${comment.replyCount})` : ""}
             </Button>
           )}
+          <IconButton
+            id={`comment-more-${comment.id}`}
+            size="small"
+            aria-label="Mở menu bình luận"
+            aria-controls={menuAnchor ? `comment-menu-${comment.id}` : undefined}
+            aria-haspopup="true"
+            onClick={(event) => setMenuAnchor(event.currentTarget)}
+          >
+            <MoreVertRoundedIcon fontSize="small" />
+          </IconButton>
+          <Menu
+            id={`comment-menu-${comment.id}`}
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={() => setMenuAnchor(null)}
+          >
+            <MenuItem
+              id={`comment-report-${comment.id}`}
+              onClick={() => {
+                setMenuAnchor(null);
+                onReport();
+              }}
+            >
+              Báo cáo comment
+            </MenuItem>
+          </Menu>
         </Stack>
       </Box>
     </Stack>
+  );
+}
+
+function CommentListDialog({
+  open,
+  comments,
+  episodes,
+  onClose,
+  onSelectComment,
+  onLike,
+  likedCommentIds,
+  likeDisabled,
+  onReport,
+}: {
+  open: boolean;
+  comments: MovieComment[];
+  episodes: Episode[];
+  onClose: () => void;
+  onSelectComment: (comment: MovieComment) => void;
+  onLike: (commentId: number) => void;
+  likedCommentIds: Set<number>;
+  likeDisabled: boolean;
+  onReport: (comment: MovieComment) => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Typography variant="h5" fontWeight={950} letterSpacing="-0.03em">
+          Tất cả bình luận
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {comments.length} bình luận
+        </Typography>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 1 }}>
+        <Stack spacing={1.5}>
+          {comments.map((comment) => (
+            <Paper
+              key={comment.id}
+              elevation={0}
+              onClick={() => onSelectComment(comment)}
+              sx={{
+                p: 2,
+                borderRadius: 1.5,
+                cursor: "pointer",
+                border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
+                background: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)}, ${alpha(theme.palette.primary.main, 0.07)})`,
+              }}
+            >
+              <CommentContent
+                comment={comment}
+                episodeText={episodeLabel(comment, episodes)}
+                onLike={() => onLike(comment.id)}
+                onReply={undefined}
+                likeDisabled={likeDisabled}
+                liked={likedCommentIds.has(comment.id)}
+                onReport={() => onReport(comment)}
+                compact
+              />
+            </Paper>
+          ))}
+        </Stack>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CommentDetailDialog({
+  comment,
+  episodes,
+  liked,
+  likeDisabled,
+  onClose,
+  onLike,
+  onReport,
+}: {
+  comment: MovieComment | null;
+  episodes: Episode[];
+  liked: boolean;
+  likeDisabled: boolean;
+  onClose: () => void;
+  onLike: () => void;
+  onReport: () => void;
+}) {
+  return (
+    <Dialog open={Boolean(comment)} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogContent sx={{ p: 3 }}>
+        {comment && (
+          <CommentContent
+            comment={comment}
+            episodeText={episodeLabel(comment, episodes)}
+            onLike={onLike}
+            onReply={undefined}
+            likeDisabled={likeDisabled}
+            liked={liked}
+            onReport={onReport}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
