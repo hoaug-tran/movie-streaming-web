@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { AuthProvider } from "@/context/auth-context";
@@ -14,12 +15,18 @@ import { Box } from "@mui/material";
 import { NotificationProvider } from "@/context/notification-context";
 
 function LayoutWrapper({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const { searchOpen, searchQuery, setSearchOpen, setSearchQuery } = useSearch();
+  const isAdminRoute = pathname?.startsWith("/admin");
 
   const handleCloseSearch = () => {
     setSearchOpen(false);
     setSearchQuery("");
   };
+
+  if (isAdminRoute) {
+    return <Box>{children}</Box>;
+  }
 
   return (
     <>
