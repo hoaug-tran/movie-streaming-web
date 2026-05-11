@@ -38,9 +38,27 @@ export default function AdminPage() {
   );
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, pb: 8, maxWidth: 1600, mx: "auto" }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 950, letterSpacing: "-0.02em" }}>
+    <Box
+      sx={{
+        p: { xs: 1.5, sm: 2, md: 3 },
+        pt: { xs: 2, md: 3 },
+        pb: { xs: 6, md: 8 },
+        maxWidth: 1600,
+        mx: "auto",
+        width: "100%",
+        overflowX: "hidden",
+      }}
+    >
+      <Box sx={{ mb: { xs: 2, md: 3 } }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 950,
+            letterSpacing: "-0.02em",
+            fontSize: { xs: "1.55rem", sm: "1.9rem", md: "2.125rem" },
+            lineHeight: { xs: 1.15, md: 1.2 },
+          }}
+        >
           Trang quản trị Gió Phim / Tổng quan
         </Typography>
       </Box>
@@ -48,9 +66,10 @@ export default function AdminPage() {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" },
-          autoRows: "minmax(180px, auto)",
-          gap: 2.5,
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" },
+          autoRows: { xs: "auto", xl: "minmax(180px, auto)" },
+          gap: { xs: 1.5, sm: 2, md: 2.5 },
+          alignItems: "stretch",
         }}
       >
         <ExecutivePanel
@@ -60,7 +79,7 @@ export default function AdminPage() {
           trendSets={trendSets}
         />
 
-        <BentoContainer gridColumn={{ xs: "1fr", xl: "span 2" }} gridRow="span 2">
+        <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }} gridRow={{ xs: "auto", xl: "span 2" }}>
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <Box sx={{ mb: 2 }}>
               <Typography
@@ -72,7 +91,7 @@ export default function AdminPage() {
               </Typography>
               <Typography
                 variant="h2"
-                sx={{ fontWeight: 950, letterSpacing: "-0.06em", mt: 1, mb: 1 }}
+                sx={{ fontWeight: 950, letterSpacing: "-0.06em", mt: 1, mb: 1, fontSize: { xs: "2rem", sm: "2.5rem", md: "3.75rem" }, lineHeight: 1 }}
               >
                 {metrics[0]?.value || "0 đ"}
               </Typography>
@@ -80,13 +99,13 @@ export default function AdminPage() {
                 {metrics[0]?.delta} {metrics[0]?.helper}
               </Typography>
             </Box>
-            <Box sx={{ mx: -2.5, mb: -2.5, mt: "auto", display: "flex" }}>
+            <Box sx={{ mx: { xs: -1.5, sm: -2.5 }, mb: { xs: -1.5, sm: -2.5 }, mt: "auto", display: "flex", minWidth: 0 }}>
               <MainAreaChart data={mainTrend} height={120} />
             </Box>
           </Box>
         </BentoContainer>
 
-        <BentoContainer gridColumn={{ xs: "1fr", xl: "span 2" }} gridRow="span 2">
+        <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }} gridRow={{ xs: "auto", xl: "span 2" }}>
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <Box sx={{ mb: 2 }}>
               <Typography
@@ -98,7 +117,7 @@ export default function AdminPage() {
               </Typography>
               <Typography
                 variant="h2"
-                sx={{ fontWeight: 950, letterSpacing: "-0.06em", mt: 1, mb: 1 }}
+                sx={{ fontWeight: 950, letterSpacing: "-0.06em", mt: 1, mb: 1, fontSize: { xs: "2rem", sm: "2.5rem", md: "3.75rem" }, lineHeight: 1 }}
               >
                 {metrics[3]?.value || "0"}
               </Typography>
@@ -106,19 +125,19 @@ export default function AdminPage() {
                 {metrics[3]?.delta} {metrics[3]?.helper}
               </Typography>
             </Box>
-            <Box sx={{ mx: -2.5, mb: -2.5, mt: "auto", display: "flex" }}>
+            <Box sx={{ mx: { xs: -1.5, sm: -2.5 }, mb: { xs: -1.5, sm: -2.5 }, mt: "auto", display: "flex", minWidth: 0 }}>
               <MainAreaChart data={[...mainTrend].reverse()} height={120} />
             </Box>
           </Box>
         </BentoContainer>
 
-        <BentoContainer gridColumn={{ xs: "1fr", xl: "span 2" }}>
+        <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }}>
           <Typography variant="h6" sx={{ fontWeight: 950, mb: 3 }}>
             Công việc & Cần xử lý
           </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: { xs: 1.75, sm: 2.5, md: 3 } }}>
             {workload.slice(0, 6).map((item) => (
-              <Box key={item.name} sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <Box key={item.name} sx={{ display: "flex", gap: { xs: 1.5, sm: 2 }, alignItems: "center", minWidth: 0 }}>
                 <RadialProgress
                   value={item.value}
                   max={maxWorkload}
@@ -139,7 +158,7 @@ export default function AdminPage() {
           </Box>
         </BentoContainer>
 
-        <BentoContainer gridColumn={{ xs: "1fr", xl: "span 2" }}>
+        <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }}>
           <Typography variant="h6" sx={{ fontWeight: 950, mb: 3 }}>
             Phân bố danh mục
           </Typography>
@@ -192,8 +211,8 @@ export default function AdminPage() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)", xl: "repeat(3, 1fr)" },
-            gap: 2.5,
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
+            gap: { xs: 1.5, sm: 2, md: 2.5 },
           }}
         >
           {data?.metricGroups?.map((group) => (
@@ -204,7 +223,7 @@ export default function AdminPage() {
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
                 {group.subtitle}
               </Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
                 {group.items.map((item) => (
                   <Box
                     key={item.label}

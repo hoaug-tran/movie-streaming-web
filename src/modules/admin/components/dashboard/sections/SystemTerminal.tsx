@@ -26,15 +26,15 @@ export function SystemTerminal({
 
   return (
     <>
-      <BentoContainer gridColumn={{ xs: "span 2", lg: "span 4" }}>
+      <BentoContainer gridColumn="1 / -1">
         <Typography variant="h6" sx={{ fontWeight: 950, mb: 2 }}>
           Trạng thái vận hành
         </Typography>
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" },
-            gap: 2,
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" },
+            gap: { xs: 1.25, sm: 1.5, md: 2 },
           }}
         >
           {signals.map((signal) => {
@@ -72,7 +72,7 @@ export function SystemTerminal({
         </Box>
       </BentoContainer>
 
-      <BentoContainer gridColumn={{ xs: "span 2", lg: "span 4" }}>
+      <BentoContainer gridColumn="1 / -1">
         <Typography
           variant="h6"
           sx={{ fontWeight: 950, mb: 2, display: "flex", alignItems: "center", gap: 1 }}
@@ -91,9 +91,9 @@ export function SystemTerminal({
         </Typography>
         <Box
           sx={{
-            height: 280,
+            maxHeight: { xs: 360, md: 280 },
             overflowY: "auto",
-            pr: 1,
+            pr: { xs: 0, sm: 1 },
             "&::-webkit-scrollbar": { width: 4 },
             "&::-webkit-scrollbar-thumb": {
               bgcolor: alpha(theme.palette.divider, 0.2),
@@ -109,8 +109,8 @@ export function SystemTerminal({
                   key={activity.id}
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: "80px 1fr",
-                    gap: 2,
+                    gridTemplateColumns: { xs: "1fr", sm: "80px 1fr" },
+                    gap: { xs: 0.5, sm: 2 },
                     alignItems: "start",
                     py: 1,
                     borderBottom: `1px dashed ${alpha(theme.palette.divider, 0.2)}`,

@@ -40,7 +40,6 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import TheaterComedyRoundedIcon from "@mui/icons-material/TheaterComedyRounded";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
-import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
@@ -117,13 +116,6 @@ const navItems: AdminNavItem[] = [
     section: "catalog",
   },
   {
-    label: "Quốc gia",
-    href: "/admin/countries",
-    permission: "tags:manage",
-    icon: <PublicRoundedIcon />,
-    section: "catalog",
-  },
-  {
     label: "Bình luận",
     href: "/admin/comments",
     permission: "comments:manage",
@@ -174,7 +166,7 @@ const getSectionTitle = (pathname: string) =>
 
 export default function AdminLayoutShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const router = useRouter();
+  const { push, replace } = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
@@ -363,25 +355,6 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
         background: `radial-gradient(circle at top left, ${alpha(theme.palette.primary.main, 0.14)}, transparent 28%), ${theme.palette.background.default}`,
       }}
     >
-      {!isDesktop && (
-        <IconButton
-          id="admin-mobile-menu-button"
-          onClick={() => setMobileOpen(true)}
-          sx={{
-            position: "fixed",
-            top: 16,
-            left: 16,
-            zIndex: 1300,
-            bgcolor: alpha(theme.palette.background.paper, 0.86),
-            backdropFilter: "blur(16px)",
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 1.5,
-          }}
-          aria-label="Mở menu quản trị"
-        >
-          <MenuRoundedIcon />
-        </IconButton>
-      )}
       <Drawer
         variant="permanent"
         open
@@ -434,27 +407,65 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
             position: "sticky",
             top: 0,
             zIndex: 20,
-            minHeight: 72,
-            px: { xs: 7, md: 4 },
-            py: 1.5,
+            minHeight: { xs: 64, md: 72 },
+            px: { xs: 1.5, sm: 2, md: 4 },
+            py: { xs: 1, md: 1.5 },
             bgcolor: alpha(theme.palette.background.default, 0.86),
-            borderBottom: `1px solid ${theme.palette.divider}`,
+            borderBottom: { xs: 0, lg: `1px solid ${theme.palette.divider}` },
             backdropFilter: "blur(18px)",
+            gap: { xs: 1, sm: 1.5 },
+            minWidth: 0,
           }}
         >
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800 }}>
+          {!isDesktop && (
+            <IconButton
+              id="admin-mobile-menu-button"
+              onClick={() => setMobileOpen(true)}
+              edge="start"
+              sx={{
+                flex: "0 0 auto",
+                color: theme.palette.text.primary,
+                bgcolor: "transparent",
+                borderRadius: 1.5,
+                "&:hover": { bgcolor: alpha(theme.palette.text.primary, 0.08) },
+              }}
+              aria-label="Mở menu quản trị"
+            >
+              <MenuRoundedIcon />
+            </IconButton>
+          )}
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ fontWeight: 800, display: { xs: "none", sm: "block" } }}
+            >
               Trang quản trị Gió Phim
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.1 }} noWrap>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 900,
+                lineHeight: 1.1,
+                fontSize: { xs: "1rem", sm: "1.25rem" },
+              }}
+              noWrap
+            >
               {sectionTitle}
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={{ xs: 0.75, sm: 1.5 }}
+            alignItems="center"
+            justifyContent="flex-end"
+            sx={{ minWidth: 0, flex: "0 0 auto" }}
+          >
             <Chip
               label={roleLabel}
               size="small"
               sx={{
+                display: { xs: "none", sm: "inline-flex" },
                 bgcolor: alpha(theme.palette.primary.main, 0.12),
                 color: theme.palette.primary.light,
                 border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
@@ -471,27 +482,50 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
                   sx={{
                     width: 32,
                     height: 32,
-                    bgcolor: theme.palette.primary.main,
-                    fontWeight: 900,
+                    bgcolor: "text.primary",
+                    color: "background.default",
+                    fontWeight: 500,
                     fontSize: "0.875rem",
+                    borderRadius: 1,
+                    border: "1px solid rgba(255,255,255,0.1)",
                   }}
                 >
                   {userInitial}
                 </Avatar>
               }
               sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
                 color: theme.palette.text.primary,
-                border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-                borderRadius: 2,
-                fontWeight: 700,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1.5,
+                bgcolor: "transparent",
+                boxShadow: "none",
+                fontWeight: 500,
                 textTransform: "none",
-                pl: 1,
-                pr: 1.5,
-                py: 0.5,
-                "&:hover": { bgcolor: alpha(theme.palette.text.primary, 0.08) },
+                minWidth: 0,
+                maxWidth: { xs: 58, sm: 220, md: 280 },
+                px: { xs: 0.75, sm: 1.5 },
+                py: 0.75,
+                "& .MuiButton-startIcon": { mr: 0, ml: 0 },
+                "&:hover": {
+                  bgcolor: "action.hover",
+                  borderColor: "divider",
+                },
               }}
             >
-              {displayName}
+              <Box
+                component="span"
+                sx={{
+                  display: { xs: "none", sm: "inline" },
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {displayName}
+              </Box>
             </Button>
           </Stack>
         </Stack>
@@ -526,7 +560,7 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
           id="admin-profile-account-item"
           onClick={() => {
             closeProfileMenu();
-            router.push("/profile");
+            push("/profile");
           }}
         >
           <ListItemIcon>
@@ -539,7 +573,7 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
           onClick={() => {
             closeProfileMenu();
             logout?.();
-            router.replace("/");
+            replace("/");
           }}
         >
           <ListItemIcon>

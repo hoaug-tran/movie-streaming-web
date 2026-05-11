@@ -18,6 +18,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 
@@ -56,6 +57,7 @@ export interface AdminFormDrawerProps<TForm extends Record<string, unknown>> {
   error?: ReactNode;
   onClose: () => void;
   onSubmit: (values: TForm) => void;
+  meta?: Array<{ label: string; value: ReactNode; helperText?: ReactNode }>;
 }
 
 function coerceValue(value: unknown): string | number | boolean {
@@ -63,6 +65,8 @@ function coerceValue(value: unknown): string | number | boolean {
     return value;
   return "";
 }
+
+const EMPTY_META: Array<{ label: string; value: ReactNode; helperText?: ReactNode }> = [];
 
 export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
   open,
@@ -75,6 +79,7 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
   error,
   onClose,
   onSubmit,
+  meta = EMPTY_META,
 }: AdminFormDrawerProps<TForm>) {
   const theme = useTheme();
   const [values, setValues] = useState<TForm>(initialValues);
@@ -163,6 +168,43 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
         <DialogContent sx={{ p: 3, maxHeight: "72vh" }}>
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
+            {meta.length > 0 && (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+                  gap: 1.25,
+                }}
+              >
+                {meta.map((item) => (
+                  <Box
+                    key={String(item.label)}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 1.5,
+                      border: `1px solid ${theme.palette.divider}`,
+                      bgcolor: theme.palette.background.paper,
+                      minWidth: 0,
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <InfoOutlinedIcon fontSize="small" color="primary" />
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>
+                        {item.label}
+                      </Typography>
+                    </Stack>
+                    <Typography sx={{ mt: 0.5, fontWeight: 900 }} noWrap>
+                      {item.value}
+                    </Typography>
+                    {item.helperText && (
+                      <Typography variant="caption" color="text.secondary">
+                        {item.helperText}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            )}
             {fields.map((field) => {
               const value = values[field.name];
               if (field.type === "switch") {

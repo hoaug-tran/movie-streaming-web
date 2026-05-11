@@ -17,21 +17,23 @@ export function BentoContainer({
         gridColumn,
         gridRow,
         height: "100%",
+        minWidth: 0,
         background: theme.palette.background.paper,
         border: `1px solid ${theme.palette.divider}`,
         boxShadow: "none",
-        borderRadius: 2,
+        borderRadius: { xs: 1.75, md: 2 },
         overflow: "hidden",
         position: "relative",
       }}
     >
       <CardContent
         sx={{
-          p: 2.5,
+          p: { xs: 1.5, sm: 2, md: 2.5 },
           height: "100%",
+          minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          "&:last-child": { pb: 2.5 },
+          "&:last-child": { pb: { xs: 1.5, sm: 2, md: 2.5 } },
         }}
       >
         {children}

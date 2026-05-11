@@ -34,26 +34,28 @@ export function ContentRadar({
       {rankings.slice(0, 2).map((card) => {
         const color = toneColorMap[card.accent] ?? theme.palette.primary.main;
         return (
-          <BentoContainer key={card.title} gridColumn="span 2">
+          <BentoContainer key={card.title} gridColumn={{ xs: "1 / -1", xl: "span 2" }}>
             <Typography variant="h6" sx={{ fontWeight: 950, mb: 0.5, color }}>
               {card.title}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
               {card.subtitle}
             </Typography>
-            <Stack spacing={1}>
+            <Stack spacing={{ xs: 0.75, sm: 1 }}>
               {card.items.slice(0, 10).map((item, index) => {
                 const row = (
                   <Box
                     sx={{
                       display: "flex",
                       alignItems: "center",
-                      p: 1.5,
+                      gap: { xs: 1, sm: 0 },
+                      p: { xs: 1.15, sm: 1.5 },
                       borderRadius: 2,
                       bgcolor: alpha(theme.palette.background.paper, 0.4),
                       border: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
                       transition: "all 0.2s",
                       cursor: item.href ? "pointer" : "default",
+                      minWidth: 0,
                       "&:hover": {
                         bgcolor: alpha(color, 0.1),
                         borderColor: alpha(color, 0.3),
@@ -62,11 +64,17 @@ export function ContentRadar({
                   >
                     <Typography
                       variant="h6"
-                      sx={{ fontWeight: 900, color: alpha(color, 0.8), width: 32 }}
+                      sx={{
+                        fontWeight: 900,
+                        color: alpha(color, 0.8),
+                        width: { xs: 26, sm: 32 },
+                        flexShrink: 0,
+                        fontSize: { xs: "1rem", sm: "1.25rem" },
+                      }}
                     >
                       {String(index + 1).padStart(2, "0")}
                     </Typography>
-                    <Box sx={{ flex: 1, minWidth: 0, mr: 2 }}>
+                    <Box sx={{ flex: 1, minWidth: 0, mr: { xs: 0.5, sm: 2 } }}>
                       <Typography noWrap variant="subtitle2" sx={{ fontWeight: 800 }}>
                         {item.title}
                       </Typography>
@@ -74,7 +82,7 @@ export function ContentRadar({
                         {item.detail}
                       </Typography>
                     </Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 950, color }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 950, color, flexShrink: 0 }}>
                       {item.value}
                     </Typography>
                   </Box>

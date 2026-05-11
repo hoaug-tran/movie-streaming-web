@@ -12,10 +12,10 @@ type CommentFormValues = AdminCommentPayload & Record<string, unknown>;
 
 const fields: AdminFormField<CommentFormValues>[] = [
   { name: "content", label: "Nội dung", required: true, type: "textarea", maxLength: 5000 },
-  { name: "userId", label: "User ID", type: "number", required: true, min: 1 },
-  { name: "movieId", label: "Movie ID", type: "number", required: true, min: 1 },
-  { name: "episodeId", label: "Episode ID", type: "number", min: 1 },
-  { name: "parentCommentId", label: "Parent Comment ID", type: "number", min: 1 },
+  { name: "userId", label: "Người dùng (ID kỹ thuật)", type: "number", required: true, min: 1 },
+  { name: "movieId", label: "Phim (ID kỹ thuật)", type: "number", required: true, min: 1 },
+  { name: "episodeId", label: "Tập phim (ID kỹ thuật)", type: "number", min: 1 },
+  { name: "parentCommentId", label: "Bình luận cha (ID kỹ thuật)", type: "number", min: 1 },
   {
     name: "status",
     label: "Trạng thái",
@@ -51,7 +51,7 @@ export default function AdminCommentsPage() {
       description="Kiểm duyệt nội dung người dùng, ẩn/xóa bình luận vi phạm."
       queryKey={["admin", "comments"]}
       queryFn={adminService.getComments}
-      searchPlaceholder="Tìm nội dung, userId, movieId..."
+      searchPlaceholder="Tìm nội dung, người dùng, tên phim..."
       getSearchText={(comment) =>
         `${comment.content ?? ""} ${comment.authorUsername ?? ""} ${comment.authorFullName ?? ""} ${comment.movieTitle ?? ""} ${comment.userId ?? ""} ${comment.movieId ?? ""} ${comment.status ?? ""}`
       }
@@ -119,20 +119,41 @@ export default function AdminCommentsPage() {
       }
       renderForm={
         isAdmin
-          ? ({ mode, item, open, submitting, error, onClose, onSubmit }) => (
-              <AdminFormDrawer<CommentFormValues>
-                open={open}
-                mode={mode}
-                title={mode === "create" ? "Thêm bình luận" : `Sửa bình luận #${item?.id ?? ""}`}
-                description="Admin có thể tạo/sửa bình luận. Moderator chỉ xóa."
-                fields={fields}
-                initialValues={toForm(item)}
-                submitting={submitting}
-                error={error}
-                onClose={onClose}
-                onSubmit={onSubmit}
-              />
-            )
+          ? ({ mode, item, open, submitting, error, onClose, onSubmit }) => {
+              const authorLabel = item?.authorFullName || item?.authorUsername || "Chưa có tên người dùng";
+              const movieLabel = item?.movieTitle || "Chưa có tên phim";
+
+              return (
+                <AdminFormDrawer<CommentFormValues>
+                  open={open}
+                  mode={mode}
+                  title={mode === "create" ? "Thêm bình luận" : `Sửa bình luận #${item?.id ?? ""}`}
+                  description="Admin có thể tạo/sửa bình luận. Moderator chỉ xóa."
+                  fields={fields}
+                  initialValues={toForm(item)}
+                  meta={
+                    mode === "edit"
+                      ? [
+                          {
+                            label: "Người dùng",
+                            value: authorLabel,
+                            helperText: `User ID: ${item?.userId ?? "—"}`,
+                          },
+                          {
+                            label: "Phim",
+                            value: movieLabel,
+                            helperText: `Movie ID: ${item?.movieId ?? "—"}`,
+                          },
+                        ]
+                      : []
+                  }
+                  submitting={submitting}
+                  error={error}
+                  onClose={onClose}
+                  onSubmit={onSubmit}
+                />
+              );
+            }
           : undefined
       }
     />
