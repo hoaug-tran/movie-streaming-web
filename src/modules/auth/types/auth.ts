@@ -36,7 +36,7 @@ export interface UserInfo {
   email: string;
   fullName: string;
   avatarUrl?: string;
-  role: "ROLE_USER" | "ROLE_ADMIN";
+  role: "ROLE_USER" | "ROLE_ADMIN" | "ROLE_MODERATOR";
   createdAt: string;
   updatedAt?: string;
 }

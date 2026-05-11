@@ -356,7 +356,6 @@ export default function WatchPlayer({
 
     if (hasAdsFree) return;
 
-    // MID_ROLL: Hard checkpoint at 50%, trigger once
     if (!midRollFired && d > 60 && t >= d * 0.5) {
       const midAd = pickHighestPriority(adsForEpisode.midRoll);
       if (midAd) {
@@ -367,11 +366,9 @@ export default function WatchPlayer({
       }
     }
 
-    // POST_ROLL: Between (mid-roll + 10min) and (end - 10min)
-    // Only if video is long enough and mid-roll already fired
     if (!postRollFired && midRollFired && d > 1200) {
-      const postRollStart = midRollTimestamp + 600; // 10 minutes after mid-roll
-      const postRollEnd = d - 600; // 10 minutes before end
+      const postRollStart = midRollTimestamp + 600;
+      const postRollEnd = d - 600;
 
       if (t >= postRollStart && t <= postRollEnd) {
         const postAd = pickHighestPriority(adsForEpisode.postRoll);
@@ -405,7 +402,6 @@ export default function WatchPlayer({
         .catch(() => {});
     }
 
-    // Auto-play next episode if available
     const currentIdx = episodes.findIndex((e) => e.id === selectedEpisode.id);
     if (currentIdx >= 0 && currentIdx < episodes.length - 1) {
       setSelectedEpisode(episodes[currentIdx + 1]);

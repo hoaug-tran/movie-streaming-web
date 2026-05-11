@@ -125,9 +125,6 @@ const clearAuthSession = () => {
   removeFromLocalStorage("user");
   removeFromLocalStorage("accessToken");
   removeFromLocalStorage("refreshToken");
-  removeFromLocalStorage("rememberMe");
-  removeFromLocalStorage("rememberedEmail");
-  removeFromLocalStorage("rememberedIdentifier");
 
   if (typeof window !== "undefined") {
     window.sessionStorage.removeItem("google_oauth_state");
