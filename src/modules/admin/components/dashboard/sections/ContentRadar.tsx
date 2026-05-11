@@ -31,7 +31,7 @@ export function ContentRadar({
 
   return (
     <>
-      {rankings.slice(0, 2).map((card) => {
+      {rankings.map((card) => {
         const color = toneColorMap[card.accent] ?? theme.palette.primary.main;
         return (
           <BentoContainer key={card.title} gridColumn={{ xs: "1 / -1", xl: "span 2" }}>

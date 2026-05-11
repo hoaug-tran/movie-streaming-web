@@ -40,8 +40,9 @@ export interface AdminQuickAction<T> {
   id: string;
   label: string;
   tone?: Tone;
+  href?: (item: T) => string;
   disabled?: (item: T) => boolean;
-  run: (item: T) => Promise<unknown>;
+  run?: (item: T) => Promise<unknown>;
 }
 
 interface AdminManagementPageProps<T extends { id: number }> {
@@ -114,7 +115,8 @@ export default function AdminManagementPage<T extends { id: number }>({
 
   const listQuery = useQuery({ queryKey, queryFn });
   const actionMutation = useMutation({
-    mutationFn: ({ item, action }: { item: T; action: AdminQuickAction<T> }) => action.run(item),
+    mutationFn: ({ item, action }: { item: T; action: AdminQuickAction<T> }) =>
+      action.run ? action.run(item) : Promise.resolve(),
     onSuccess: (_data, variables) => {
       setNotice(`Đã thực hiện: ${variables.action.label}`);
       queryClient.invalidateQueries({ queryKey });
@@ -406,29 +408,35 @@ export default function AdminManagementPage<T extends { id: number }>({
                               Xóa
                             </Button>
                           )}
-                          {quickActions.map((action) => (
-                            <Button
-                              key={action.id}
-                              id={`${queryKey.join("-")}-${action.id}-${item.id}`}
-                              size="small"
-                              variant="outlined"
-                              color={
-                                action.tone === "rose"
-                                  ? "error"
-                                  : action.tone === "emerald"
-                                    ? "success"
-                                    : "primary"
-                              }
-                              disabled={action.disabled?.(item) || actionMutation.isPending}
-                              onClick={() => actionMutation.mutate({ item, action })}
-                              startIcon={
-                                action.tone === "rose" ? <DeleteRoundedIcon /> : <LockRoundedIcon />
-                              }
-                              sx={{ borderRadius: 1.25, fontWeight: 800 }}
-                            >
-                              {action.label}
-                            </Button>
-                          ))}
+                          {quickActions.map((action) => {
+                            const href = action.href?.(item);
+                            return (
+                              <Button
+                                key={action.id}
+                                id={`${queryKey.join("-")}-${action.id}-${item.id}`}
+                                size="small"
+                                variant="outlined"
+                                color={
+                                  action.tone === "rose"
+                                    ? "error"
+                                    : action.tone === "emerald"
+                                      ? "success"
+                                      : "primary"
+                                }
+                                disabled={action.disabled?.(item) || actionMutation.isPending}
+                                onClick={() => {
+                                  if (!href && action.run) actionMutation.mutate({ item, action });
+                                }}
+                                href={href}
+                                startIcon={
+                                  action.tone === "rose" ? <DeleteRoundedIcon /> : <LockRoundedIcon />
+                                }
+                                sx={{ borderRadius: 1.25, fontWeight: 800 }}
+                              >
+                                {action.label}
+                              </Button>
+                            );
+                          })}
                         </Stack>
                       </Box>
                     </Box>

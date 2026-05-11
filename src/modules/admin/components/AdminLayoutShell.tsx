@@ -95,6 +95,13 @@ const navItems: AdminNavItem[] = [
     section: "catalog",
   },
   {
+    label: "Thẻ nội dung",
+    href: "/admin/tags",
+    permission: "tags:manage",
+    icon: <CategoryRoundedIcon />,
+    section: "catalog",
+  },
+  {
     label: "Diễn viên",
     href: "/admin/cast",
     permission: "persons:manage",

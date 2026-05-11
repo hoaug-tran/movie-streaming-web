@@ -159,6 +159,12 @@ export default function AdminMoviesPage() {
       ]}
       quickActions={[
         {
+          id: "detail",
+          label: "Chi tiết",
+          tone: "cyan",
+          href: (movie) => `/admin/movies/${movie.id}`,
+        },
+        {
           id: "publish",
           label: "Publish",
           tone: "emerald",

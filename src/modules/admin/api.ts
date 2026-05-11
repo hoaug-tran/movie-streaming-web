@@ -117,9 +117,52 @@ export interface AdminMovie {
   movieStatus?: AdminMovieStatus | null;
   isPremiumOnly?: boolean | null;
   viewCount?: number | null;
+  favoriteCount?: number | null;
   averageRating?: number | string | null;
+  totalRatings?: number | null;
   totalReviews?: number | null;
   publishedAt?: string | null;
+  commentsLocked?: boolean | null;
+  reviewsLocked?: boolean | null;
+}
+
+export interface AdminMoviePerson {
+  id: number;
+  person: AdminPerson;
+  role?: string | null;
+  characterName?: string | null;
+  displayOrder?: number | null;
+}
+
+export interface AdminMovieStudio {
+  id: number;
+  studio: AdminStudio;
+  role?: string | null;
+}
+
+export interface AdminMovieDetail extends AdminMovie {
+  episodes?: AdminEpisode[] | null;
+  categories?: AdminCategory[] | null;
+  tags?: AdminTag[] | null;
+  persons?: AdminMoviePerson[] | null;
+  studios?: AdminMovieStudio[] | null;
+}
+
+export interface AdminMovieInteractionLocksPayload {
+  commentsLocked: boolean;
+  reviewsLocked: boolean;
+}
+
+export interface AdminMoviePersonPayload {
+  personId: number;
+  role: string;
+  characterName?: string | null;
+  displayOrder?: number | null;
+}
+
+export interface AdminMovieStudioPayload {
+  studioId: number;
+  role: string;
 }
 
 export interface AdminMoviePayload {
@@ -145,6 +188,15 @@ export interface AdminEpisodePayload {
   durationSeconds: number;
   isFreePreview: boolean;
   status: string;
+}
+
+export interface AdminEpisode extends AdminEpisodePayload {
+  id: number;
+  movieId?: number | null;
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface AdminCategory {
@@ -327,6 +379,10 @@ export const adminService = {
     return apiClient.get<AdminMovie[]>("/movies");
   },
 
+  getMovieDetail(movieId: number): Promise<AdminMovieDetail> {
+    return apiClient.get<AdminMovieDetail>(`/movies/${movieId}`);
+  },
+
   createMovie(payload: AdminMoviePayload): Promise<AdminMovie> {
     return apiClient.post<AdminMovie>("/admin/movies", payload);
   },
@@ -335,12 +391,53 @@ export const adminService = {
     return apiClient.put<AdminMovie>(`/admin/movies/${movieId}`, payload);
   },
 
-  createEpisode(movieId: number, payload: AdminEpisodePayload): Promise<any> {
-    return apiClient.post<any>(`/admin/movies/${movieId}/episodes`, payload);
+  createEpisode(movieId: number, payload: AdminEpisodePayload): Promise<AdminEpisode> {
+    return apiClient.post<AdminEpisode>(`/admin/movies/${movieId}/episodes`, payload);
   },
 
   updateMovieStatus(movieId: number, movieStatus: string): Promise<AdminMovie> {
     return apiClient.patch<AdminMovie>(`/admin/movies/${movieId}/status`, { movieStatus });
+  },
+
+  updateMovieInteractionLocks(
+    movieId: number,
+    payload: AdminMovieInteractionLocksPayload
+  ): Promise<AdminMovieDetail> {
+    return apiClient.patch<AdminMovieDetail>(`/admin/movies/${movieId}/interaction-locks`, payload);
+  },
+
+  addMovieCategory(movieId: number, categoryId: number): Promise<AdminCategory> {
+    return apiClient.post<AdminCategory>(`/admin/movies/${movieId}/categories`, { categoryId });
+  },
+
+  removeMovieCategory(movieId: number, categoryId: number): Promise<void> {
+    return apiClient.delete<void>(`/admin/movies/${movieId}/categories/${categoryId}`);
+  },
+
+  addMovieTag(movieId: number, tagId: number): Promise<AdminTag> {
+    return apiClient.post<AdminTag>(`/admin/movies/${movieId}/tags`, { tagId });
+  },
+
+  removeMovieTag(movieId: number, tagId: number): Promise<void> {
+    return apiClient.delete<void>(`/admin/movies/${movieId}/tags/${tagId}`);
+  },
+
+  addMoviePerson(movieId: number, payload: AdminMoviePersonPayload): Promise<AdminMoviePerson> {
+    return apiClient.post<AdminMoviePerson>(`/admin/movies/${movieId}/persons`, payload);
+  },
+
+  removeMoviePerson(movieId: number, moviePersonId: number): Promise<void> {
+    void movieId;
+    return apiClient.delete<void>(`/admin/movies/movie-persons/${moviePersonId}`);
+  },
+
+  addMovieStudio(movieId: number, payload: AdminMovieStudioPayload): Promise<AdminMovieStudio> {
+    return apiClient.post<AdminMovieStudio>(`/admin/movies/${movieId}/studios`, payload);
+  },
+
+  removeMovieStudio(movieId: number, movieStudioId: number): Promise<void> {
+    void movieId;
+    return apiClient.delete<void>(`/admin/movies/movie-studios/${movieStudioId}`);
   },
 
   deleteMovie(movieId: number): Promise<void> {
