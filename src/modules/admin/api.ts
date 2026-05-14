@@ -64,6 +64,8 @@ export interface AdminServerPerformance {
   label: string;
   color: string;
   data: number[];
+  value?: string;
+  unit?: string;
 }
 
 export interface AdminDashboardSummary {
@@ -77,6 +79,8 @@ export interface AdminDashboardSummary {
   systemSignals?: AdminSystemSignal[];
   rankingCards?: AdminRankingCard[];
   serverPerformance?: AdminServerPerformance[];
+  userActivities?: AdminActivity[];
+  adminActivities?: AdminActivity[];
 }
 
 export type AdminReportStatus = "PENDING" | "RESOLVED" | "REJECTED" | string;

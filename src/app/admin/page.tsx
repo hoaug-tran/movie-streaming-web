@@ -25,7 +25,8 @@ export default function AdminPage() {
   const distributions = data?.distributions ?? [];
   const workload = data?.workload ?? [];
   const signals = data?.systemSignals ?? [];
-  const activities = data?.activities ?? [];
+  const activities = data?.userActivities ?? data?.activities ?? [];
+  const adminActivities = data?.adminActivities ?? [];
 
   const maxWorkload = useMemo(
     () => Math.max(1, ...(data?.workload ?? []).map((item) => item.value)),
@@ -66,7 +67,11 @@ export default function AdminPage() {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" },
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            md: "repeat(2, minmax(0, 1fr))",
+            xl: "repeat(4, minmax(0, 1fr))",
+          },
           autoRows: { xs: "auto", xl: "minmax(180px, auto)" },
           gap: { xs: 1.5, sm: 2, md: 2.5 },
           alignItems: "stretch",
@@ -79,7 +84,10 @@ export default function AdminPage() {
           trendSets={trendSets}
         />
 
-        <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }} gridRow={{ xs: "auto", xl: "span 2" }}>
+        <BentoContainer
+          gridColumn={{ xs: "1 / -1", xl: "span 2" }}
+          gridRow={{ xs: "auto", xl: "span 2" }}
+        >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <Box sx={{ mb: 2 }}>
               <Typography
@@ -91,7 +99,14 @@ export default function AdminPage() {
               </Typography>
               <Typography
                 variant="h2"
-                sx={{ fontWeight: 950, letterSpacing: "-0.06em", mt: 1, mb: 1, fontSize: { xs: "2rem", sm: "2.5rem", md: "3.75rem" }, lineHeight: 1 }}
+                sx={{
+                  fontWeight: 950,
+                  letterSpacing: "-0.06em",
+                  mt: 1,
+                  mb: 1,
+                  fontSize: { xs: "2rem", sm: "2.5rem", md: "3.75rem" },
+                  lineHeight: 1,
+                }}
               >
                 {metrics[0]?.value || "0 đ"}
               </Typography>
@@ -99,13 +114,24 @@ export default function AdminPage() {
                 {metrics[0]?.delta} {metrics[0]?.helper}
               </Typography>
             </Box>
-            <Box sx={{ mx: { xs: -1.5, sm: -2.5 }, mb: { xs: -1.5, sm: -2.5 }, mt: "auto", display: "flex", minWidth: 0 }}>
+            <Box
+              sx={{
+                mx: { xs: -1.5, sm: -2.5 },
+                mb: { xs: -1.5, sm: -2.5 },
+                mt: "auto",
+                display: "flex",
+                minWidth: 0,
+              }}
+            >
               <MainAreaChart data={mainTrend} height={120} />
             </Box>
           </Box>
         </BentoContainer>
 
-        <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }} gridRow={{ xs: "auto", xl: "span 2" }}>
+        <BentoContainer
+          gridColumn={{ xs: "1 / -1", xl: "span 2" }}
+          gridRow={{ xs: "auto", xl: "span 2" }}
+        >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <Box sx={{ mb: 2 }}>
               <Typography
@@ -117,7 +143,14 @@ export default function AdminPage() {
               </Typography>
               <Typography
                 variant="h2"
-                sx={{ fontWeight: 950, letterSpacing: "-0.06em", mt: 1, mb: 1, fontSize: { xs: "2rem", sm: "2.5rem", md: "3.75rem" }, lineHeight: 1 }}
+                sx={{
+                  fontWeight: 950,
+                  letterSpacing: "-0.06em",
+                  mt: 1,
+                  mb: 1,
+                  fontSize: { xs: "2rem", sm: "2.5rem", md: "3.75rem" },
+                  lineHeight: 1,
+                }}
               >
                 {metrics[3]?.value || "0"}
               </Typography>
@@ -125,7 +158,15 @@ export default function AdminPage() {
                 {metrics[3]?.delta} {metrics[3]?.helper}
               </Typography>
             </Box>
-            <Box sx={{ mx: { xs: -1.5, sm: -2.5 }, mb: { xs: -1.5, sm: -2.5 }, mt: "auto", display: "flex", minWidth: 0 }}>
+            <Box
+              sx={{
+                mx: { xs: -1.5, sm: -2.5 },
+                mb: { xs: -1.5, sm: -2.5 },
+                mt: "auto",
+                display: "flex",
+                minWidth: 0,
+              }}
+            >
               <MainAreaChart data={[...mainTrend].reverse()} height={120} />
             </Box>
           </Box>
@@ -135,9 +176,18 @@ export default function AdminPage() {
           <Typography variant="h6" sx={{ fontWeight: 950, mb: 3 }}>
             Công việc & Cần xử lý
           </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: { xs: 1.75, sm: 2.5, md: 3 } }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+              gap: { xs: 1.75, sm: 2.5, md: 3 },
+            }}
+          >
             {workload.slice(0, 6).map((item) => (
-              <Box key={item.name} sx={{ display: "flex", gap: { xs: 1.5, sm: 2 }, alignItems: "center", minWidth: 0 }}>
+              <Box
+                key={item.name}
+                sx={{ display: "flex", gap: { xs: 1.5, sm: 2 }, alignItems: "center", minWidth: 0 }}
+              >
                 <RadialProgress
                   value={item.value}
                   max={maxWorkload}
@@ -200,8 +250,6 @@ export default function AdminPage() {
         </BentoContainer>
 
         <ContentRadar rankings={rankings} />
-
-        <SystemTerminal signals={signals} activities={activities} />
       </Box>
 
       <Box sx={{ mt: 3 }}>
@@ -211,7 +259,11 @@ export default function AdminPage() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
+            gridTemplateColumns: {
+              xs: "minmax(0, 1fr)",
+              md: "repeat(2, minmax(0, 1fr))",
+              xl: "repeat(3, minmax(0, 1fr))",
+            },
             gap: { xs: 1.5, sm: 2, md: 2.5 },
           }}
         >
@@ -223,7 +275,13 @@ export default function AdminPage() {
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
                 {group.subtitle}
               </Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                  gap: 1.5,
+                }}
+              >
                 {group.items.map((item) => (
                   <Box
                     key={item.label}
@@ -255,11 +313,45 @@ export default function AdminPage() {
           <BentoContainer>
             <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 0.5 }}>
-                Hiệu năng Server (Tải API & DB)
+                Hiệu năng Server (API & DB)
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
-                Tải trung bình CPU / RAM
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 1.5 }}
+              >
+                Số hiện tại: CPU/RAM theo %, DB theo số kết nối, API theo ms.
               </Typography>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "repeat(2, minmax(0, 1fr))",
+                    sm: "repeat(4, minmax(0, 1fr))",
+                  },
+                  gap: 1,
+                  mb: 1.5,
+                }}
+              >
+                {(data?.serverPerformance || []).map((item) => (
+                  <Box
+                    key={item.label}
+                    sx={{ p: 1, borderRadius: 2, bgcolor: "rgba(255,255,255,0.03)" }}
+                  >
+                    <Typography
+                      noWrap
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontWeight: 800 }}
+                    >
+                      {item.label}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 950, color: item.color }}>
+                      {item.value ?? `${item.data.at(-1) ?? 0}${item.unit ?? ""}`}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
               <Box sx={{ flex: 1, display: "flex", alignItems: "center" }}>
                 <Box sx={{ width: "100%" }}>
                   <MultiLineChart datasets={data?.serverPerformance || []} height={120} />
@@ -268,6 +360,11 @@ export default function AdminPage() {
             </Box>
           </BentoContainer>
         </Box>
+        <SystemTerminal
+          signals={signals}
+          activities={activities}
+          adminActivities={adminActivities}
+        />
       </Box>
     </Box>
   );
