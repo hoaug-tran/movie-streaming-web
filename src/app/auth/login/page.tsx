@@ -22,7 +22,12 @@ import { GoogleOAuthButton } from "@/modules/auth/components/GoogleOAuthButton";
 import { OtpVerifyStep } from "@/modules/auth/components/OtpVerifyStep";
 import { AuthContext } from "@/context/auth-context";
 import authService from "@/modules/auth/api/auth-service";
-import { OtpChallengeResponse } from "@/modules/auth/types/auth";
+import { LoginResult, OtpChallengeResponse } from "@/modules/auth/types/auth";
+
+const isOtpChallengeResponse = (result: LoginResult): result is OtpChallengeResponse =>
+  "otpRequired" in result;
+
+const isDirectLoginResponse = (result: LoginResult) => "accessToken" in result;
 
 type LoginStep = "credentials" | "otp";
 
@@ -78,7 +83,7 @@ export default function LoginPage() {
         rememberMe,
       });
 
-      if (!result.otpRequired) {
+      if (isDirectLoginResponse(result)) {
         if (rememberMe) {
           localStorage.setItem("rememberMe", "true");
           localStorage.setItem("rememberedIdentifier", identifier);
@@ -91,8 +96,10 @@ export default function LoginPage() {
         return;
       }
 
-      setChallenge(result);
-      setStep("otp");
+      if (isOtpChallengeResponse(result)) {
+        setChallenge(result);
+        setStep("otp");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
@@ -130,7 +137,7 @@ export default function LoginPage() {
         password,
         rememberMe,
       });
-      if (result.otpRequired && result.challengeToken) {
+      if (isOtpChallengeResponse(result) && result.challengeToken) {
         setChallenge(result);
       }
     } catch (err) {

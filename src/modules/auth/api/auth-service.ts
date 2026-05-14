@@ -124,13 +124,26 @@ const fetchAPI = async <T>(
   return response.json();
 };
 
-const login = async (credentials: LoginRequest): Promise<OtpChallengeResponse> => {
+const isDirectAuthResponse = (value: unknown): boolean => {
+  const data = value as { accessToken?: unknown } | null;
+  return !!data && typeof data === "object" && typeof data.accessToken === "string";
+};
+
+const login = async (credentials: LoginRequest): Promise<OtpChallengeResponse | LoginResponse> => {
   try {
     const data = await fetchAPI<any>("/auth/login", {
       method: "POST",
       body: JSON.stringify(credentials),
     });
-    return data.data || data;
+    const payload = data.data || data;
+
+    if (isDirectAuthResponse(payload)) {
+      const authResponse = mapAuthResponse(payload);
+      await ensureDeviceSession(authResponse);
+      return authResponse;
+    }
+
+    return payload;
   } catch (error) {
     throw handleError(error);
   }

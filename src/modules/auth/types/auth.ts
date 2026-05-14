@@ -19,6 +19,8 @@ export interface LoginResponse {
   user: UserInfo;
 }
 
+export type LoginResult = OtpChallengeResponse | LoginResponse;
+
 export interface RegisterRequest {
   fullName: string;
   username: string;

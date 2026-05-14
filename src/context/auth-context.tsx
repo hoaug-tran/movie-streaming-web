@@ -168,7 +168,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = useCallback(async (identifier: string, password: string) => {
     dispatch({ type: "AUTH_START" });
     try {
-      await authService.login({ usernameOrEmail: identifier, password });
+      const response = await authService.login({ usernameOrEmail: identifier, password });
+      if ("accessToken" in response) {
+        const fullUser = await authService.getCurrentUser();
+        const loginData = { ...response, user: fullUser };
+        persistAuthSession(loginData);
+        dispatch({ type: "AUTH_SUCCESS", payload: loginData });
+        return;
+      }
+
       dispatch({ type: "SET_ERROR", payload: null });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Đăng nhập thất bại";
