@@ -24,6 +24,7 @@ import { useSearch } from "@/context/search-context";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { Compass, Tv, Film, Bookmark, ShieldCheck, LogIn, Heart, History } from "lucide-react";
+import NotificationBell from "@/components/Notification/NotificationBell";
 
 const Navbar: React.FC = () => {
   const theme = useTheme();
@@ -192,7 +193,7 @@ const Navbar: React.FC = () => {
             />
 
             {isAuthenticated && !loading ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {user?.role === "ROLE_ADMIN" && (
                   <Box sx={{ display: { xs: "none", md: "block" } }}>
                     <Link href="/admin" style={{ textDecoration: "none" }}>
@@ -202,6 +203,9 @@ const Navbar: React.FC = () => {
                     </Link>
                   </Box>
                 )}
+                <Box sx={{ display: { xs: "none", sm: "flex" } }}>
+                  <NotificationBell isScrolled={isScrolled} />
+                </Box>
                 <UserProfileDropdown onLogout={logout} />
               </Box>
             ) : !loading ? (
@@ -252,7 +256,9 @@ const Navbar: React.FC = () => {
           },
         }}
       >
-        <Box sx={{ p: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box
+          sx={{ p: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}
+        >
           <Typography variant="h6" fontWeight={900} letterSpacing="-0.04em">
             Gió Phim
           </Typography>
@@ -301,6 +307,11 @@ const Navbar: React.FC = () => {
               </ListItemButton>
             </ListItem>
           ))}
+          {isAuthenticated && !loading && (
+            <ListItem disablePadding sx={{ mb: 0.5, display: { xs: "block", sm: "none" } }}>
+              <NotificationBell variant="drawer" />
+            </ListItem>
+          )}
         </List>
         {!isAuthenticated && (
           <Box sx={{ p: 2, mt: "auto", mb: 4 }}>

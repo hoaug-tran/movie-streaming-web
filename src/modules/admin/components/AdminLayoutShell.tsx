@@ -42,6 +42,7 @@ import TheaterComedyRoundedIcon from "@mui/icons-material/TheaterComedyRounded";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { AdminPermission, hasAdminPermission } from "../permissions";
 
@@ -148,6 +149,13 @@ const navItems: AdminNavItem[] = [
     href: "/admin/ads",
     permission: "ads:manage",
     icon: <CampaignRoundedIcon />,
+    section: "system",
+  },
+  {
+    label: "Thông báo",
+    href: "/admin/notifications",
+    permission: "notifications:manage",
+    icon: <NotificationsRoundedIcon />,
     section: "system",
   },
   {

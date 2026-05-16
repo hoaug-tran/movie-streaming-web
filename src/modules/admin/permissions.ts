@@ -13,6 +13,7 @@ export type AdminPermission =
   | "comments:manage"
   | "subscriptions:manage"
   | "ads:manage"
+  | "notifications:manage"
   | "settings:manage";
 
 const ADMIN_PERMISSIONS: AdminPermission[] = [
@@ -27,6 +28,7 @@ const ADMIN_PERMISSIONS: AdminPermission[] = [
   "comments:manage",
   "subscriptions:manage",
   "ads:manage",
+  "notifications:manage",
   "settings:manage",
 ];
 

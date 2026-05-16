@@ -329,7 +329,7 @@ export default function CinematicBrowsePage({
             sx={{
               position: "relative",
               minHeight: { xs: 360, md: 440 },
-              p: { xs: 2.5, sm: 3.25, md: 4.5 },
+              p: { xs: 1.5, sm: 2.25, md: 3.5 },
               borderRadius: { xs: 3, md: 4 },
               overflow: "hidden",
               border: "1px solid",

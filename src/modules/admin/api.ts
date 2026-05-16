@@ -366,6 +366,44 @@ export interface AdminSubscriptionPlan {
   isActive?: boolean | null;
 }
 
+export type AdminNotificationType =
+  | "PAYMENT_SUCCESS"
+  | "PAYMENT_FAILED"
+  | "PREMIUM_EXPIRING"
+  | "NEW_EPISODE"
+  | "SYSTEM"
+  | string;
+
+export interface AdminNotification {
+  id: number;
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+  isRead: boolean;
+  actionUrl?: string | null;
+  referenceId?: number | null;
+  createdAt?: string | null;
+}
+
+export interface AdminNotificationPayload {
+  userId: number;
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+}
+
+export interface AdminNotificationUpdatePayload {
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+}
+
+export interface AdminBroadcastPayload {
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+}
+
 export const adminService = {
   getDashboardSummary(): Promise<AdminDashboardSummary> {
     return apiClient.get<AdminDashboardSummary>("/admin/dashboard/summary");
@@ -585,5 +623,28 @@ export const adminService = {
 
   deleteSubscriptionPlan(planId: number): Promise<void> {
     return apiClient.delete<void>(`/subscriptions/plans/${planId}`);
+  },
+
+  getNotifications(): Promise<AdminNotification[]> {
+    return apiClient.get<AdminNotification[]>("/notifications/admin");
+  },
+
+  createNotification(payload: AdminNotificationPayload): Promise<AdminNotification> {
+    return apiClient.post<AdminNotification>("/notifications", payload);
+  },
+
+  updateNotification(
+    notificationId: number,
+    payload: AdminNotificationUpdatePayload
+  ): Promise<AdminNotification> {
+    return apiClient.put<AdminNotification>(`/notifications/admin/${notificationId}`, payload);
+  },
+
+  deleteNotification(notificationId: number): Promise<void> {
+    return apiClient.delete<void>(`/notifications/admin/${notificationId}`);
+  },
+
+  broadcastNotification(payload: AdminBroadcastPayload): Promise<number> {
+    return apiClient.post<number>("/notifications/admin/broadcast", payload);
   },
 };
