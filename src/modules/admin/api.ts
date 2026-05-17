@@ -101,7 +101,7 @@ export interface ResolveReportPayload {
   status: "RESOLVED" | "REJECTED";
 }
 
-export type AdminMovieType = "MOVIE" | "SERIES" | string;
+export type AdminMovieType = "SINGLE" | "SERIES" | string;
 export type AdminMovieStatus = "DRAFT" | "REVIEWING" | "PUBLISHED" | "ARCHIVED" | string;
 
 export interface AdminMovie {
@@ -192,9 +192,11 @@ export interface AdminEpisodePayload {
   durationSeconds: number;
   isFreePreview: boolean;
   status: string;
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
 }
 
-export interface AdminEpisode extends AdminEpisodePayload {
+export interface AdminEpisode extends Omit<AdminEpisodePayload, "videoUrl" | "thumbnailUrl"> {
   id: number;
   movieId?: number | null;
   videoUrl?: string | null;
@@ -223,9 +225,11 @@ export interface AdminUser {
   email: string;
   fullName?: string | null;
   avatarUrl?: string | null;
-  role: "ROLE_ADMIN" | "ROLE_MODERATOR" | "ROLE_USER" | string;
-  accountStatus: "ACTIVE" | "LOCKED" | "DISABLED" | "PENDING" | string;
+  role: "ROLE_ADMIN" | "ROLE_USER";
+  accountStatus: "ACTIVE" | "PENDING" | "BLOCKED" | "DELETED";
   premiumExpiryDate?: string | null;
+  currentPlanCode?: string | null;
+  currentPlanName?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   lastLoginAt?: string | null;
@@ -238,6 +242,15 @@ export interface AdminUserPayload {
   role: AdminUser["role"];
   accountStatus: AdminUser["accountStatus"];
   premiumExpiryDate?: string | null;
+}
+
+export interface AdminCreateUserPayload {
+  username: string;
+  email: string;
+  password: string;
+  fullName: string;
+  avatarUrl?: string | null;
+  role: AdminUser["role"];
 }
 
 export interface AdminAd {
@@ -376,6 +389,7 @@ export type AdminNotificationType =
 
 export interface AdminNotification {
   id: number;
+  userId?: number | null;
   title: string;
   content: string;
   type: AdminNotificationType;
@@ -422,7 +436,7 @@ export const adminService = {
   },
 
   getMovieDetail(movieId: number): Promise<AdminMovieDetail> {
-    return apiClient.get<AdminMovieDetail>(`/movies/${movieId}`);
+    return apiClient.get<AdminMovieDetail>(`/admin/movies/${movieId}`);
   },
 
   createMovie(payload: AdminMoviePayload): Promise<AdminMovie> {
@@ -435,6 +449,18 @@ export const adminService = {
 
   createEpisode(movieId: number, payload: AdminEpisodePayload): Promise<AdminEpisode> {
     return apiClient.post<AdminEpisode>(`/admin/movies/${movieId}/episodes`, payload);
+  },
+
+  updateEpisode(
+    movieId: number,
+    episodeId: number,
+    payload: AdminEpisodePayload
+  ): Promise<AdminEpisode> {
+    return apiClient.put<AdminEpisode>(`/admin/movies/${movieId}/episodes/${episodeId}`, payload);
+  },
+
+  deleteEpisode(movieId: number, episodeId: number): Promise<void> {
+    return apiClient.delete<void>(`/admin/movies/${movieId}/episodes/${episodeId}`);
   },
 
   updateMovieStatus(movieId: number, movieStatus: string): Promise<AdminMovie> {
@@ -473,6 +499,10 @@ export const adminService = {
     return apiClient.delete<void>(`/admin/movies/movie-persons/${moviePersonId}`);
   },
 
+  updateMoviePerson(moviePersonId: number, payload: Partial<AdminMoviePersonPayload>): Promise<AdminMoviePerson> {
+    return apiClient.put<AdminMoviePerson>(`/admin/movies/movie-persons/${moviePersonId}`, payload);
+  },
+
   addMovieStudio(movieId: number, payload: AdminMovieStudioPayload): Promise<AdminMovieStudio> {
     return apiClient.post<AdminMovieStudio>(`/admin/movies/${movieId}/studios`, payload);
   },
@@ -480,6 +510,10 @@ export const adminService = {
   removeMovieStudio(movieId: number, movieStudioId: number): Promise<void> {
     void movieId;
     return apiClient.delete<void>(`/admin/movies/movie-studios/${movieStudioId}`);
+  },
+
+  updateMovieStudio(movieStudioId: number, payload: Partial<AdminMovieStudioPayload>): Promise<AdminMovieStudio> {
+    return apiClient.put<AdminMovieStudio>(`/admin/movies/movie-studios/${movieStudioId}`, payload);
   },
 
   deleteMovie(movieId: number): Promise<void> {
@@ -506,23 +540,27 @@ export const adminService = {
     return apiClient.get<AdminUser[]>("/users/");
   },
 
-  updateUserStatus(userId: number, accountStatus: string): Promise<AdminUser> {
+  createUser(payload: AdminCreateUserPayload): Promise<AdminUser> {
+    return apiClient.post<AdminUser>("/users/admin/create", payload);
+  },
+
+  assignSubscription(userId: number, planId: number): Promise<unknown> {
+    return apiClient.post(`/subscriptions/admin/assign/${userId}`, { planId, autoRenew: false });
+  },
+
+  updateUserStatus(
+    userId: number,
+    accountStatus: "ACTIVE" | "BLOCKED" | "PENDING" | "DELETED"
+  ): Promise<AdminUser> {
     return apiClient.patch<AdminUser>(`/users/${userId}/status`, { accountStatus });
   },
 
-  updateUserRole(userId: number, role: string): Promise<AdminUser> {
+  updateUserRole(userId: number, role: "ROLE_ADMIN" | "ROLE_USER"): Promise<AdminUser> {
     return apiClient.patch<AdminUser>(`/users/${userId}/role`, { role });
   },
 
   updateUser(userId: number, payload: AdminUserPayload): Promise<AdminUser> {
     return apiClient.put<AdminUser>(`/users/${userId}`, payload);
-  },
-
-  updateUserAccess(userId: number, payload: AdminUserPayload): Promise<AdminUser[]> {
-    return Promise.all([
-      this.updateUserRole(userId, payload.role),
-      this.updateUserStatus(userId, payload.accountStatus),
-    ]);
   },
 
   deleteUser(userId: number): Promise<void> {
@@ -646,5 +684,29 @@ export const adminService = {
 
   broadcastNotification(payload: AdminBroadcastPayload): Promise<number> {
     return apiClient.post<number>("/notifications/admin/broadcast", payload);
+  },
+
+  uploadImage(file: File): Promise<{ videoUrl: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiClient.post<{ videoUrl: string }>("/admin/media/images", fd);
+  },
+
+  uploadEpisodeSource(episodeId: number, file: File): Promise<{ videoUrl: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiClient.post<{ videoUrl: string }>(`/admin/media/episodes/${episodeId}/source`, fd);
+  },
+
+  uploadMovieSource(movieId: number, file: File): Promise<{ videoUrl: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiClient.post<{ videoUrl: string }>(`/admin/media/movies/${movieId}/source`, fd);
+  },
+
+  uploadVideo(file: File): Promise<{ videoUrl: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiClient.post<{ videoUrl: string }>("/admin/media/videos", fd);
   },
 };

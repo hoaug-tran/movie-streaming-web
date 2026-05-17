@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -21,6 +22,8 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
+import { convertToWebPObjectUrl } from "@/utils/convert-to-webp";
+import { adminService } from "@/modules/admin/api";
 
 export type AdminFieldType =
   | "text"
@@ -29,7 +32,8 @@ export type AdminFieldType =
   | "select"
   | "switch"
   | "datetime"
-  | "image";
+  | "image"
+  | "video";
 
 export interface AdminFormField<TForm extends Record<string, unknown>> {
   name: keyof TForm & string;
@@ -58,6 +62,7 @@ export interface AdminFormDrawerProps<TForm extends Record<string, unknown>> {
   onClose: () => void;
   onSubmit: (values: TForm) => void;
   meta?: Array<{ label: string; value: ReactNode; helperText?: ReactNode }>;
+  extraHeader?: ReactNode;
 }
 
 function coerceValue(value: unknown): string | number | boolean {
@@ -80,15 +85,24 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
   onClose,
   onSubmit,
   meta = EMPTY_META,
+  extraHeader,
 }: AdminFormDrawerProps<TForm>) {
   const theme = useTheme();
   const [values, setValues] = useState<TForm>(initialValues);
+  const [localStrings, setLocalStrings] = useState<Record<string, string>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (open) {
       setValues(initialValues);
       setValidationErrors({});
+      const strings: Record<string, string> = {};
+      fields.forEach((f) => {
+        if (f.type === "number") strings[f.name] = String(initialValues[f.name] ?? "");
+      });
+      setLocalStrings(strings);
     }
   }, [initialValues, open]);
 
@@ -137,6 +151,7 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
       onClose={onClose}
       fullWidth
       maxWidth="md"
+      scroll="paper"
       PaperProps={{
         sx: {
           bgcolor: theme.palette.background.default,
@@ -163,9 +178,10 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
             {description}
           </Typography>
         </DialogTitle>
+        {extraHeader && <Box sx={{ pt: 1 }}>{extraHeader}</Box>}
         <Divider />
 
-        <DialogContent sx={{ p: 3, maxHeight: "72vh" }}>
+        <DialogContent sx={{ p: 3 }}>
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
             {meta.length > 0 && (
@@ -229,72 +245,216 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
               if (field.type === "image") {
                 const previewUrl = typeof value === "string" ? value : "";
                 return (
-                  <Stack key={field.name} spacing={1.25}>
-                    <Stack direction="row" justifyContent="space-between" spacing={2}>
-                      <Typography fontWeight={900}>{field.label}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {field.imageSizeHint ?? "Upload ảnh, crop/resize theo khung trước khi lưu."}
-                      </Typography>
-                    </Stack>
-                    <Box
-                      sx={{
-                        position: "relative",
-                        aspectRatio: field.imageAspectRatio ?? "16 / 9",
-                        borderRadius: 1.5,
-                        overflow: "hidden",
-                        border: `1px dashed ${theme.palette.divider}`,
-                        bgcolor: theme.palette.background.paper,
-                        display: "grid",
-                        placeItems: "center",
-                      }}
-                    >
-                      {previewUrl ? (
-                        <Box
-                          component="img"
-                          src={previewUrl}
-                          alt={field.label}
-                          sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <Stack alignItems="center" spacing={1} color="text.secondary">
-                          <CloudUploadRoundedIcon />
-                          <Typography variant="body2" fontWeight={800}>
-                            Chọn ảnh upload
-                          </Typography>
-                        </Stack>
+                  <Stack key={field.name} spacing={1}>
+                    <Typography fontWeight={900} variant="body2">
+                      {field.label}
+                      {field.imageSizeHint && (
+                        <Typography
+                          component="span"
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ ml: 1 }}
+                        >
+                          {field.imageSizeHint}
+                        </Typography>
                       )}
-                    </Box>
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      startIcon={<CloudUploadRoundedIcon />}
-                      sx={{ alignSelf: "flex-start", borderRadius: 1.5, fontWeight: 900 }}
-                    >
-                      Upload ảnh
-                      <input
-                        hidden
-                        accept="image/*"
-                        type="file"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          const objectUrl = URL.createObjectURL(file);
-                          setValues((current) => ({ ...current, [field.name]: objectUrl }));
+                    </Typography>
+                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                      <Box
+                        sx={{
+                          flexShrink: 0,
+                          width: 120,
+                          aspectRatio: field.imageAspectRatio ?? "16 / 9",
+                          borderRadius: 1,
+                          overflow: "hidden",
+                          border: `1px dashed ${theme.palette.divider}`,
+                          bgcolor: theme.palette.background.paper,
+                          display: "grid",
+                          placeItems: "center",
                         }}
-                      />
-                    </Button>
-                    <TextField
-                      id={`admin-form-${field.name}`}
-                      label={`${field.label} URL sau upload/crop`}
-                      value={previewUrl}
-                      onChange={(event) =>
-                        setValues((current) => ({ ...current, [field.name]: event.target.value }))
-                      }
-                      helperText={validationErrors[field.name] || field.helperText}
-                      error={Boolean(validationErrors[field.name])}
-                      fullWidth
-                    />
+                      >
+                        {previewUrl ? (
+                          <Box
+                            component="img"
+                            src={previewUrl}
+                            alt={field.label}
+                            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <Stack alignItems="center" spacing={0.5} color="text.disabled">
+                            <CloudUploadRoundedIcon fontSize="small" />
+                            <Typography variant="caption" fontWeight={700} textAlign="center">
+                              Chưa có ảnh
+                            </Typography>
+                          </Stack>
+                        )}
+                      </Box>
+                      <Stack spacing={1} flex={1}>
+                        <TextField
+                          id={`admin-form-${field.name}`}
+                          label={`${field.label} URL`}
+                          value={previewUrl}
+                          size="small"
+                          onChange={(event) =>
+                            setValues((current) => ({
+                              ...current,
+                              [field.name]: event.target.value,
+                            }))
+                          }
+                          helperText={validationErrors[field.name] || field.helperText}
+                          error={Boolean(validationErrors[field.name])}
+                          fullWidth
+                        />
+                         <Button
+                          component="label"
+                          variant="outlined"
+                          size="small"
+                          startIcon={uploadingField === field.name ? <CircularProgress size={14} /> : <CloudUploadRoundedIcon />}
+                          disabled={uploadingField === field.name}
+                          sx={{ alignSelf: "flex-start", borderRadius: 1, fontWeight: 800 }}
+                        >
+                          {uploadingField === field.name ? "Đang upload..." : "Upload ảnh"}
+                          <input
+                            hidden
+                            accept="image/*"
+                            type="file"
+                            ref={(el) => { fileInputRefs.current[field.name] = el; }}
+                            onChange={async (event) => {
+                              const file = event.target.files?.[0];
+                              if (!file) return;
+                              event.target.value = "";
+                              setUploadingField(field.name);
+                              try {
+                                const { file: webpFile } = await convertToWebPObjectUrl(file);
+                                const res = await adminService.uploadImage(webpFile);
+                                setValues((current) => ({ ...current, [field.name]: res.videoUrl }));
+                              } catch {
+                                // keep existing value on error
+                              } finally {
+                                setUploadingField(null);
+                              }
+                            }}
+                          />
+                        </Button>
+                      </Stack>
+                    </Stack>
                   </Stack>
+                );
+              }
+              if (field.type === "video") {
+                const videoUrl = typeof value === "string" ? value : "";
+                return (
+                  <Stack key={field.name} spacing={1}>
+                    <Typography fontWeight={900} variant="body2">
+                      {field.label}
+                    </Typography>
+                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                      <Box
+                        sx={{
+                          flexShrink: 0,
+                          width: 160,
+                          aspectRatio: "16 / 9",
+                          borderRadius: 1,
+                          overflow: "hidden",
+                          border: `1px dashed ${theme.palette.divider}`,
+                          bgcolor: theme.palette.background.paper,
+                          display: "grid",
+                          placeItems: "center",
+                        }}
+                      >
+                        {videoUrl ? (
+                          <Box
+                            component="video"
+                            src={videoUrl}
+                            controls={false}
+                            muted
+                            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <Stack alignItems="center" spacing={0.5} color="text.disabled">
+                            <CloudUploadRoundedIcon fontSize="small" />
+                            <Typography variant="caption" fontWeight={700} textAlign="center">
+                              Chưa có video
+                            </Typography>
+                          </Stack>
+                        )}
+                      </Box>
+                      <Stack spacing={1} flex={1}>
+                        <TextField
+                          id={`admin-form-${field.name}`}
+                          label={`${field.label} URL`}
+                          value={videoUrl}
+                          size="small"
+                          onChange={(event) =>
+                            setValues((current) => ({
+                              ...current,
+                              [field.name]: event.target.value,
+                            }))
+                          }
+                          helperText={validationErrors[field.name] || field.helperText}
+                          error={Boolean(validationErrors[field.name])}
+                          fullWidth
+                        />
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          size="small"
+                          startIcon={uploadingField === field.name ? <CircularProgress size={14} /> : <CloudUploadRoundedIcon />}
+                          disabled={uploadingField === field.name}
+                          sx={{ alignSelf: "flex-start", borderRadius: 1, fontWeight: 800 }}
+                        >
+                          {uploadingField === field.name ? "Đang upload..." : "Upload video"}
+                          <input
+                            hidden
+                            accept="video/*"
+                            type="file"
+                            ref={(el) => { fileInputRefs.current[field.name] = el; }}
+                            onChange={async (event) => {
+                              const file = event.target.files?.[0];
+                              if (!file) return;
+                              event.target.value = "";
+                              setUploadingField(field.name);
+                              try {
+                                const res = await adminService.uploadVideo(file);
+                                setValues((current) => ({ ...current, [field.name]: res.videoUrl }));
+                              } catch {
+                                // keep existing value on error
+                              } finally {
+                                setUploadingField(null);
+                              }
+                            }}
+                          />
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Stack>
+                );
+              }
+
+              if (field.type === "number") {
+                const strVal = localStrings[field.name] ?? String(value ?? "");
+                return (
+                  <TextField
+                    key={field.name}
+                    id={`admin-form-${field.name}`}
+                    fullWidth
+                    label={field.label}
+                    required={field.required}
+                    value={strVal}
+                    error={Boolean(validationErrors[field.name])}
+                    helperText={validationErrors[field.name] || field.helperText}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: field.maxLength }}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      setLocalStrings((s) => ({ ...s, [field.name]: raw }));
+                      const n = parseInt(raw, 10);
+                      if (!isNaN(n)) setValues((current) => ({ ...current, [field.name]: n }));
+                    }}
+                    onBlur={() => {
+                      setLocalStrings((s) => ({ ...s, [field.name]: String(values[field.name] ?? "") }));
+                    }}
+                  />
                 );
               }
 
@@ -306,24 +466,16 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                   select={field.type === "select"}
                   multiline={field.type === "textarea"}
                   rows={field.type === "textarea" ? 4 : undefined}
-                  type={
-                    field.type === "number"
-                      ? "number"
-                      : field.type === "datetime"
-                        ? "datetime-local"
-                        : "text"
-                  }
+                  type={field.type === "datetime" ? "datetime-local" : "text"}
                   label={field.label}
                   required={field.required}
                   value={coerceValue(value)}
                   error={Boolean(validationErrors[field.name])}
                   helperText={validationErrors[field.name] || field.helperText}
                   InputLabelProps={{ shrink: field.type === "datetime" ? true : undefined }}
-                  inputProps={{ min: field.min, max: field.max, maxLength: field.maxLength }}
+                  inputProps={{ maxLength: field.maxLength }}
                   onChange={(event) => {
-                    const nextValue =
-                      field.type === "number" ? Number(event.target.value) : event.target.value;
-                    setValues((current) => ({ ...current, [field.name]: nextValue }));
+                    setValues((current) => ({ ...current, [field.name]: event.target.value }));
                   }}
                 >
                   {field.options?.map((option) => (

@@ -34,6 +34,7 @@ export function DiscoverySection({
   const router = useRouter();
 
   if (isError) return null;
+  if (!isLoading && movies.length === 0) return null;
 
   return (
     <Box
@@ -76,9 +77,7 @@ export function DiscoverySection({
                     rating: hideRating ? undefined : movie.averageRating,
                     ranking: variant === "ranked" ? index + 1 : undefined,
                     variant: variant === "ranked" ? "ranked" : "default",
-                    releaseDate:
-                      movie.publishedAt ||
-                      (movie.releaseYear ? `${movie.releaseYear}-01-01` : undefined),
+                    releaseDate: movie.releaseYear ? `${movie.releaseYear}-01-01` : undefined,
                   })}
                 />
               </Box>

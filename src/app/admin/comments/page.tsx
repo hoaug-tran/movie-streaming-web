@@ -128,7 +128,7 @@ export default function AdminCommentsPage() {
                   open={open}
                   mode={mode}
                   title={mode === "create" ? "Thêm bình luận" : `Sửa bình luận #${item?.id ?? ""}`}
-                  description="Admin có thể tạo/sửa bình luận. Moderator chỉ xóa."
+                  description="Chỉnh sửa nội dung hoặc trạng thái bình luận."
                   fields={fields}
                   initialValues={toForm(item)}
                   meta={

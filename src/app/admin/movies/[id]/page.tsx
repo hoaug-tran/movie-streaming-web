@@ -1,0 +1,2305 @@
+"use client";
+
+import { useParams, useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Box,
+  Typography,
+  Chip,
+  IconButton,
+  Tooltip,
+  CircularProgress,
+  TextField,
+  MenuItem,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Stack,
+  Paper,
+  Select,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import {
+  ArrowBack,
+  Add,
+  Delete,
+  Person,
+  Category,
+  LocalOffer,
+  Business,
+  VideoLibrary,
+  Edit,
+} from "@mui/icons-material";
+import {
+  adminService,
+  AdminMovieDetail,
+  AdminMovieType,
+  AdminMovieStatus,
+  AdminCategory,
+  AdminTag,
+  AdminTagPayload,
+  AdminPerson,
+  AdminPersonPayload,
+  AdminStudio,
+  AdminStudioPayload,
+  AdminMoviePersonPayload,
+  AdminMovieStudioPayload,
+  AdminEpisodePayload,
+  AdminMoviePayload,
+} from "@/modules/admin/api";
+import AvatarCropUpload from "@/components/Common/AvatarCropUpload";
+import { useState, useRef } from "react";
+import { convertToWebPObjectUrl } from "@/utils/convert-to-webp";
+import LinearProgress from "@mui/material/LinearProgress";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
+
+const PERSON_ROLES = [
+  "ACTOR",
+  "ACTRESS",
+  "DIRECTOR",
+  "WRITER",
+  "PRODUCER",
+  "VOICE_ACTOR",
+  "CAMEO",
+  "COMPOSER",
+  "CINEMATOGRAPHER",
+  "EDITOR",
+];
+const STUDIO_ROLES = ["PRODUCTION", "DISTRIBUTION", "NETWORK", "ANIMATION_STUDIO"];
+
+export default function AdminMovieDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const movieId = Number(id);
+  const router = useRouter();
+  const qc = useQueryClient();
+
+  const { data: movie, isLoading } = useQuery<AdminMovieDetail>({
+    queryKey: ["admin", "movie", movieId],
+    queryFn: () => adminService.getMovieDetail(movieId),
+  });
+
+  const { data: allCategories = [] } = useQuery<AdminCategory[]>({
+    queryKey: ["admin", "categories"],
+    queryFn: () => adminService.getCategories(),
+  });
+
+  const { data: allTags = [] } = useQuery<AdminTag[]>({
+    queryKey: ["admin", "tags"],
+    queryFn: () => adminService.getTags(),
+  });
+
+  const { data: allPersons = [] } = useQuery<AdminPerson[]>({
+    queryKey: ["admin", "persons"],
+    queryFn: () => adminService.getPersons(),
+  });
+
+  const { data: allStudios = [] } = useQuery<AdminStudio[]>({
+    queryKey: ["admin", "studios"],
+    queryFn: () => adminService.getStudios(),
+  });
+
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["admin", "movie", movieId], refetchType: "active" });
+
+  const addCat = useMutation({
+    mutationFn: (cid: number) => adminService.addMovieCategory(movieId, cid),
+    onSuccess: invalidate,
+  });
+  const removeCat = useMutation({
+    mutationFn: (cid: number) => adminService.removeMovieCategory(movieId, cid),
+    onSuccess: invalidate,
+  });
+  const addTag = useMutation({
+    mutationFn: (tid: number) => adminService.addMovieTag(movieId, tid),
+    onSuccess: invalidate,
+  });
+  const removeTag = useMutation({
+    mutationFn: (tid: number) => adminService.removeMovieTag(movieId, tid),
+    onSuccess: invalidate,
+  });
+  const addPerson = useMutation({
+    mutationFn: (p: AdminMoviePersonPayload) => adminService.addMoviePerson(movieId, p),
+    onSuccess: invalidate,
+  });
+  const removePerson = useMutation({
+    mutationFn: (mpid: number) => adminService.removeMoviePerson(movieId, mpid),
+    onSuccess: invalidate,
+  });
+  const updatePerson = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<AdminMoviePersonPayload> }) =>
+      adminService.updateMoviePerson(id, payload),
+    onSuccess: () => {
+      invalidate();
+      setEditPersonDialog(false);
+    },
+  });
+  const addStudio = useMutation({
+    mutationFn: (p: AdminMovieStudioPayload) => adminService.addMovieStudio(movieId, p),
+    onSuccess: invalidate,
+  });
+  const removeStudio = useMutation({
+    mutationFn: (msid: number) => adminService.removeMovieStudio(movieId, msid),
+    onSuccess: invalidate,
+  });
+  const updateStudio = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<AdminMovieStudioPayload> }) =>
+      adminService.updateMovieStudio(id, payload),
+    onSuccess: () => {
+      invalidate();
+      setEditStudioDialog(false);
+    },
+  });
+  const createCategory = useMutation({
+    mutationFn: (p: { name: string; slug: string }) => adminService.createCategory(p),
+    onSuccess: (cat) => {
+      addCat.mutate(cat.id);
+      setNewCatName("");
+    },
+  });
+  const addEpisode = useMutation({
+    mutationFn: (p: AdminEpisodePayload) => adminService.createEpisode(movieId, p),
+    onSuccess: invalidate,
+  });
+  const updateEpisodeMutation = useMutation({
+    mutationFn: ({ episodeId, p }: { episodeId: number; p: AdminEpisodePayload }) =>
+      adminService.updateEpisode(movieId, episodeId, p),
+    onSuccess: () => {
+      invalidate();
+      setEditEpisodeDialog(false);
+    },
+  });
+  const deleteEpisode = useMutation({
+    mutationFn: (episodeId: number) => adminService.deleteEpisode(movieId, episodeId),
+    onSuccess: invalidate,
+  });
+  const createTag = useMutation({
+    mutationFn: (p: AdminTagPayload) => adminService.createTag(p),
+    onSuccess: (tag) => {
+      addTag.mutate(tag.id);
+      setNewTagName("");
+    },
+  });
+  const createPerson = useMutation({
+    mutationFn: (p: AdminPersonPayload) => adminService.createPerson(p),
+    onSuccess: (person) => {
+      setPersonForm((prev) => ({ ...prev, personId: person.id }));
+      qc.invalidateQueries({ queryKey: ["admin", "persons"] });
+    },
+  });
+  const createStudio = useMutation({
+    mutationFn: (p: AdminStudioPayload) => adminService.createStudio(p),
+    onSuccess: (studio) => {
+      setStudioForm((prev) => ({ ...prev, studioId: studio.id }));
+      qc.invalidateQueries({ queryKey: ["admin", "studios"] });
+    },
+  });
+
+  const [addCatId, setAddCatId] = useState<number | "">("");
+  const [addTagId, setAddTagId] = useState<number | "">("");
+  const [newTagName, setNewTagName] = useState("");
+  const [newCatName, setNewCatName] = useState("");
+  const [personDialog, setPersonDialog] = useState(false);
+  const [studioDialog, setStudioDialog] = useState(false);
+  const [editPersonDialog, setEditPersonDialog] = useState(false);
+  const [editPersonId, setEditPersonId] = useState<number | null>(null);
+  const [editPersonForm, setEditPersonForm] = useState<{
+    role: string;
+    characterName: string;
+    displayOrder: number;
+  }>({ role: "ACTOR", characterName: "", displayOrder: 1 });
+  const [editStudioDialog, setEditStudioDialog] = useState(false);
+  const [editStudioId, setEditStudioId] = useState<number | null>(null);
+  const [editStudioRole, setEditStudioRole] = useState("PRODUCTION");
+  const [episodeDialog, setEpisodeDialog] = useState(false);
+  const [editEpisodeDialog, setEditEpisodeDialog] = useState(false);
+  const [editEpisodeId, setEditEpisodeId] = useState<number | null>(null);
+  const [editEpisodeForm, setEditEpisodeForm] = useState<AdminEpisodePayload>({
+    title: "",
+    episodeNumber: 1,
+    durationSeconds: 0,
+    isFreePreview: false,
+    status: "DRAFT",
+    videoUrl: "",
+    thumbnailUrl: "",
+  });
+  const [editEpisodeNumberStr, setEditEpisodeNumberStr] = useState("1");
+  const [editEpisodeDurationStr, setEditEpisodeDurationStr] = useState("0");
+  const [editEpisodeVideoFile, setEditEpisodeVideoFile] = useState<File | null>(null);
+  const [editEpisodeVideoPreviewUrl, setEditEpisodeVideoPreviewUrl] = useState<string>("");
+  const [editEpisodeThumbnailPreview, setEditEpisodeThumbnailPreview] = useState<string>("");
+  const [editEpisodeUploading, setEditEpisodeUploading] = useState(false);
+  const [editEpisodeUploadProgress, setEditEpisodeUploadProgress] = useState(0);
+  const [editEpisodeThumbnailUploading, setEditEpisodeThumbnailUploading] = useState(false);
+  const editEpisodeVideoInputRef = useRef<HTMLInputElement>(null);
+  const editEpisodeThumbInputRef = useRef<HTMLInputElement>(null);
+  const [episodeVideoPreviewUrl, setEpisodeVideoPreviewUrl] = useState<string>("");
+  const [episodeNumberStr, setEpisodeNumberStr] = useState("1");
+  const [episodeDurationStr, setEpisodeDurationStr] = useState("0");
+  const [newPersonForm, setNewPersonForm] = useState<
+    AdminPersonPayload & { _avatarFile?: File | null }
+  >({
+    fullName: "",
+    stageName: "",
+    biography: "",
+    birthDate: "",
+    nationality: "",
+    avatarUrl: "",
+  });
+  const [newStudioForm, setNewStudioForm] = useState<
+    AdminStudioPayload & { _logoFile?: File | null }
+  >({
+    name: "",
+    slug: "",
+    description: "",
+    logoUrl: "",
+    country: "",
+    websiteUrl: "",
+  });
+  const [editInfoOpen, setEditInfoOpen] = useState(false);
+  const [infoForm, setInfoForm] = useState<AdminMoviePayload | null>(null);
+  const [imageUploading, setImageUploading] = useState<"poster" | "banner" | null>(null);
+  const [movieVideoFile, setMovieVideoFile] = useState<File | null>(null);
+  const [movieUploading, setMovieUploading] = useState(false);
+  const [movieUploadProgress, setMovieUploadProgress] = useState(0);
+  const movieVideoInputRef = useRef<HTMLInputElement>(null);
+  const updateMovie = useMutation({
+    mutationFn: (p: AdminMoviePayload) => adminService.updateMovie(movieId, p),
+    onSuccess: () => {
+      invalidate();
+      setEditInfoOpen(false);
+    },
+  });
+
+  const [episodeForm, setEpisodeForm] = useState<AdminEpisodePayload>({
+    title: "",
+    episodeNumber: (movie?.episodes ?? []).length + 1,
+    durationSeconds: 0,
+    isFreePreview: false,
+    status: "DRAFT",
+    videoUrl: "",
+    thumbnailUrl: "",
+  });
+  const [episodeVideoFile, setEpisodeVideoFile] = useState<File | null>(null);
+  const [episodeThumbnailPreview, setEpisodeThumbnailPreview] = useState<string>("");
+  const [episodeUploadProgress, setEpisodeUploadProgress] = useState(0);
+  const [episodeUploading, setEpisodeUploading] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
+  const [personForm, setPersonForm] = useState<AdminMoviePersonPayload>({
+    personId: 0,
+    role: "ACTOR",
+    characterName: "",
+    displayOrder: 1,
+  });
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(["ACTOR"]);
+  const [studioForm, setStudioForm] = useState<AdminMovieStudioPayload>({
+    studioId: 0,
+    role: "PRODUCTION",
+  });
+
+  if (isLoading)
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  if (!movie) return <Alert severity="error">Không tìm thấy phim.</Alert>;
+
+  const existingCatIds = new Set((movie.categories ?? []).map((c) => c.id));
+  const existingTagIds = new Set((movie.tags ?? []).map((t) => t.id));
+
+  const resetEpisodeForm = () => {
+    setEpisodeForm({
+      title: "",
+      episodeNumber: (movie?.episodes ?? []).length + 1,
+      durationSeconds: 0,
+      isFreePreview: false,
+      status: "DRAFT",
+      videoUrl: "",
+      thumbnailUrl: "",
+    });
+    setEpisodeVideoFile(null);
+    setEpisodeThumbnailPreview("");
+    setEpisodeUploadProgress(0);
+  };
+
+  const sectionSx = {
+    p: 2.5,
+    bgcolor: "background.paper",
+    border: "1px solid",
+    borderColor: "divider",
+    borderRadius: 2,
+  };
+
+  return (
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+        <IconButton onClick={() => router.back()} size="small">
+          <ArrowBack />
+        </IconButton>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="h5" fontWeight={800}>
+            {movie.title}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {movie.slug} · {movie.movieType} · {movie.movieStatus}
+          </Typography>
+        </Box>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<Edit />}
+          onClick={() => {
+            setInfoForm({
+              title: movie.title ?? "",
+              originalTitle: movie.originalTitle ?? "",
+              slug: movie.slug ?? "",
+              description: movie.description ?? "",
+              posterUrl: movie.posterUrl ?? "",
+              bannerUrl: movie.bannerUrl ?? "",
+              trailerUrl: movie.trailerUrl ?? "",
+              releaseYear: movie.releaseYear ?? new Date().getFullYear(),
+              country: movie.country ?? "",
+              language: movie.language ?? "",
+              ageRating: movie.ageRating ?? "",
+              movieType: (movie.movieType as AdminMovieType) ?? "SINGLE",
+              movieStatus: (movie.movieStatus as AdminMovieStatus) ?? "DRAFT",
+              isPremiumOnly: Boolean(movie.isPremiumOnly),
+            });
+            setEditInfoOpen(true);
+          }}
+        >
+          Sửa thông tin
+        </Button>
+      </Box>
+
+      <Stack spacing={2.5}>
+        <Paper sx={sectionSx} elevation={0}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+            <Category sx={{ fontSize: 18, color: "primary.main" }} />
+            <Typography fontWeight={700}>Thể loại</Typography>
+          </Box>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+            {(movie.categories ?? []).length === 0 && (
+              <Typography variant="caption" color="text.secondary">
+                Chưa có thể loại
+              </Typography>
+            )}
+            {(movie.categories ?? []).map((c) => (
+              <Chip
+                key={c.id}
+                label={c.name}
+                size="small"
+                onDelete={() => removeCat.mutate(c.id)}
+                deleteIcon={
+                  <Delete sx={{ fontSize: "0.85rem !important", color: "error.main !important" }} />
+                }
+              />
+            ))}
+          </Box>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel shrink>Thêm thể loại</InputLabel>
+              <Select
+                value={addCatId}
+                label="Thêm thể loại"
+                notched
+                displayEmpty
+                onChange={(e) => setAddCatId(Number(e.target.value))}
+              >
+                {allCategories
+                  .filter((c) => !existingCatIds.has(c.id))
+                  .map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.name}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={!addCatId || addCat.isPending}
+              onClick={() => {
+                if (addCatId) {
+                  addCat.mutate(addCatId);
+                  setAddCatId("");
+                }
+              }}
+              startIcon={<Add />}
+            >
+              Thêm
+            </Button>
+            <TextField
+              size="small"
+              placeholder="Tạo thể loại mới..."
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newCatName.trim()) {
+                  const slug = newCatName
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")
+                    .replace(/[^a-z0-9-]/g, "");
+                  createCategory.mutate({ name: newCatName.trim(), slug });
+                }
+              }}
+              sx={{ minWidth: 180 }}
+              InputProps={{
+                endAdornment: (
+                  <Button
+                    size="small"
+                    disabled={!newCatName.trim() || createCategory.isPending}
+                    onClick={() => {
+                      const slug = newCatName
+                        .trim()
+                        .toLowerCase()
+                        .replace(/\s+/g, "-")
+                        .replace(/[^a-z0-9-]/g, "");
+                      createCategory.mutate({ name: newCatName.trim(), slug });
+                    }}
+                    sx={{ minWidth: 0, px: 1 }}
+                  >
+                    <Add fontSize="small" />
+                  </Button>
+                ),
+              }}
+            />
+          </Box>
+        </Paper>
+
+        <Paper sx={sectionSx} elevation={0}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+            <LocalOffer sx={{ fontSize: 18, color: "primary.main" }} />
+            <Typography fontWeight={700}>Tags</Typography>
+          </Box>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+            {(movie.tags ?? []).length === 0 && (
+              <Typography variant="caption" color="text.secondary">
+                Chưa có tag
+              </Typography>
+            )}
+            {(movie.tags ?? []).map((t) => (
+              <Chip
+                key={t.id}
+                label={t.name}
+                size="small"
+                variant="outlined"
+                onDelete={() => removeTag.mutate(t.id)}
+                deleteIcon={
+                  <Delete sx={{ fontSize: "0.85rem !important", color: "error.main !important" }} />
+                }
+              />
+            ))}
+          </Box>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel shrink>Thêm tag</InputLabel>
+              <Select
+                value={addTagId}
+                label="Thêm tag"
+                notched
+                displayEmpty
+                onChange={(e) => setAddTagId(Number(e.target.value))}
+              >
+                {allTags
+                  .filter((t) => !existingTagIds.has(t.id))
+                  .map((t) => (
+                    <MenuItem key={t.id} value={t.id}>
+                      {t.name}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={!addTagId || addTag.isPending}
+              onClick={() => {
+                if (addTagId) {
+                  addTag.mutate(addTagId);
+                  setAddTagId("");
+                }
+              }}
+              startIcon={<Add />}
+            >
+              Thêm
+            </Button>
+            <TextField
+              size="small"
+              placeholder="Tạo tag mới..."
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newTagName.trim()) {
+                  const slug = newTagName
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")
+                    .replace(/[^a-z0-9-]/g, "");
+                  createTag.mutate({ name: newTagName.trim(), slug });
+                }
+              }}
+              sx={{ minWidth: 180 }}
+              InputProps={{
+                endAdornment: (
+                  <Button
+                    size="small"
+                    disabled={!newTagName.trim() || createTag.isPending}
+                    onClick={() => {
+                      const slug = newTagName
+                        .trim()
+                        .toLowerCase()
+                        .replace(/\s+/g, "-")
+                        .replace(/[^a-z0-9-]/g, "");
+                      createTag.mutate({ name: newTagName.trim(), slug });
+                    }}
+                    sx={{ minWidth: 0, px: 1 }}
+                  >
+                    <Add fontSize="small" />
+                  </Button>
+                ),
+              }}
+            />
+          </Box>
+        </Paper>
+
+        <Paper sx={sectionSx} elevation={0}>
+          <Box
+            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Person sx={{ fontSize: 18, color: "primary.main" }} />
+              <Typography fontWeight={700}>Diễn viên / Đạo diễn</Typography>
+            </Box>
+            <Button size="small" startIcon={<Add />} onClick={() => setPersonDialog(true)}>
+              Thêm
+            </Button>
+          </Box>
+          {(movie.persons ?? []).length === 0 && (
+            <Typography variant="caption" color="text.secondary">
+              Chưa có người tham gia
+            </Typography>
+          )}
+          <Stack spacing={0.5}>
+            {(() => {
+              const grouped = new Map<
+                number,
+                { personId: number; name: string; entries: typeof movie.persons }
+              >();
+              (movie.persons ?? []).forEach((mp) => {
+                const pid = mp.person?.id ?? 0;
+                if (!grouped.has(pid)) {
+                  grouped.set(pid, { personId: pid, name: mp.person?.fullName ?? "", entries: [] });
+                }
+                const group = grouped.get(pid);
+                if (group) group.entries.push(mp);
+              });
+              return Array.from(grouped.values()).map(({ personId, name, entries }) => (
+                <Box
+                  key={personId}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 1,
+                    py: 0.75,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={700}>
+                      {name}
+                    </Typography>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      flexWrap="wrap"
+                      useFlexGap
+                      sx={{ mt: 0.5 }}
+                    >
+                      {(entries ?? []).map((mp) => (
+                        <Box key={mp.id} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <Chip
+                            label={mp.role}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ fontSize: "0.68rem" }}
+                          />
+                          {mp.characterName && (
+                            <Typography variant="caption" color="text.secondary">
+                              as {mp.characterName}
+                            </Typography>
+                          )}
+                          <Tooltip title="Sửa role">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => {
+                                setEditPersonId(mp.id);
+                                setEditPersonForm({
+                                  role: mp.role ?? "ACTOR",
+                                  characterName: mp.characterName ?? "",
+                                  displayOrder: mp.displayOrder ?? 1,
+                                });
+                                setEditPersonDialog(true);
+                              }}
+                            >
+                              <Edit sx={{ fontSize: 13 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Xóa role">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => removePerson.mutate(mp.id)}
+                            >
+                              <Delete sx={{ fontSize: 13 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Box>
+                </Box>
+              ));
+            })()}
+          </Stack>
+        </Paper>
+
+        <Paper sx={sectionSx} elevation={0}>
+          <Box
+            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Business sx={{ fontSize: 18, color: "primary.main" }} />
+              <Typography fontWeight={700}>Studio / Nhà sản xuất</Typography>
+            </Box>
+            <Button size="small" startIcon={<Add />} onClick={() => setStudioDialog(true)}>
+              Thêm
+            </Button>
+          </Box>
+          {(movie.studios ?? []).length === 0 && (
+            <Typography variant="caption" color="text.secondary">
+              Chưa có studio
+            </Typography>
+          )}
+          <Stack spacing={0.5}>
+            {(movie.studios ?? []).map((ms) => (
+              <Box key={ms.id} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
+                <Chip
+                  label={ms.role}
+                  size="small"
+                  color="secondary"
+                  variant="outlined"
+                  sx={{ minWidth: 120, fontSize: "0.7rem" }}
+                />
+                <Typography variant="body2" fontWeight={600}>
+                  {ms.studio.name}
+                </Typography>
+                <Box sx={{ flex: 1 }} />
+                <Tooltip title="Sửa">
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => {
+                      setEditStudioId(ms.id);
+                      setEditStudioRole(ms.role ?? "PRODUCTION");
+                      setEditStudioDialog(true);
+                    }}
+                  >
+                    <Edit sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Xóa">
+                  <IconButton size="small" color="error" onClick={() => removeStudio.mutate(ms.id)}>
+                    <Delete sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            ))}
+          </Stack>
+        </Paper>
+
+        <Paper sx={sectionSx} elevation={0}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+            <VideoLibrary sx={{ fontSize: 18, color: "primary.main" }} />
+            <Typography fontWeight={700} sx={{ flex: 1 }}>
+              {movie.movieType === "SINGLE"
+                ? "Video phim"
+                : `Tập phim (${(movie.episodes ?? []).length})`}
+            </Typography>
+            {movie.movieType !== "SINGLE" && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<Add />}
+                onClick={() => {
+                  setEpisodeForm({
+                    title: "",
+                    episodeNumber: (movie.episodes ?? []).length + 1,
+                    durationSeconds: 0,
+                    isFreePreview: false,
+                    status: "DRAFT",
+                  });
+                  setEpisodeDialog(true);
+                }}
+              >
+                Thêm tập
+              </Button>
+            )}
+          </Box>
+          {movie.movieType === "SINGLE" && (
+            <Box sx={{ mb: 1.5 }}>
+              <Typography
+                variant="caption"
+                fontWeight={700}
+                color="text.secondary"
+                sx={{ mb: 0.5, display: "block" }}
+              >
+                File Video *
+              </Typography>
+              <Box
+                onClick={() => !movieUploading && movieVideoInputRef.current?.click()}
+                sx={{
+                  border: "2px dashed",
+                  borderColor: movieVideoFile ? "primary.main" : "divider",
+                  borderRadius: 1.5,
+                  p: 2,
+                  textAlign: "center",
+                  cursor: movieUploading ? "default" : "pointer",
+                  "&:hover": { borderColor: movieUploading ? undefined : "primary.main" },
+                  transition: "border-color 0.2s",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  color={movieVideoFile ? "text.primary" : "text.disabled"}
+                >
+                  {movieVideoFile
+                    ? movieVideoFile.name
+                    : movie.trailerUrl
+                      ? `Đã có video: ${movie.trailerUrl.split("/").pop()}`
+                      : "Nhấn để chọn file video (MP4, MKV, ...)"}
+                </Typography>
+              </Box>
+              <input
+                ref={movieVideoInputRef}
+                type="file"
+                accept="video/mp4,video/x-matroska,video/avi,video/quicktime,video/webm,.mp4,.mkv,.avi,.mov,.webm"
+                hidden
+                onChange={(e) => setMovieVideoFile(e.target.files?.[0] ?? null)}
+              />
+              {movieUploading && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Đang upload... {movieUploadProgress}%
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={movieUploadProgress}
+                    sx={{ mt: 0.5, borderRadius: 1 }}
+                  />
+                </Box>
+              )}
+              {movieVideoFile && !movieUploading && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  sx={{ mt: 1 }}
+                  onClick={() => {
+                    if (!movieVideoFile) return;
+                    setMovieUploading(true);
+                    setMovieUploadProgress(0);
+                    const fd = new FormData();
+                    fd.append("file", movieVideoFile);
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", `${API_BASE}/admin/media/movies/${movieId}/source`);
+                    const token =
+                      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+                    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                    xhr.upload.onprogress = (ev) => {
+                      if (ev.lengthComputable)
+                        setMovieUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                    };
+                    xhr.onload = () => {
+                      setMovieUploading(false);
+                      setMovieVideoFile(null);
+                      setMovieUploadProgress(0);
+                      invalidate();
+                    };
+                    xhr.onerror = () => setMovieUploading(false);
+                    xhr.send(fd);
+                  }}
+                >
+                  Upload video
+                </Button>
+              )}
+            </Box>
+          )}
+          {(movie.episodes ?? []).length === 0 && (
+            <Typography variant="caption" color="text.secondary">
+              Chưa có tập phim nào.
+            </Typography>
+          )}
+          <Stack spacing={0.5}>
+            {(movie.episodes ?? []).map((ep) => (
+              <Box
+                key={ep.id}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  py: 0.75,
+                  px: 1,
+                  borderRadius: 1,
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <Chip
+                  label={`Tập ${ep.episodeNumber}`}
+                  size="small"
+                  sx={{ minWidth: 60, fontSize: "0.7rem" }}
+                />
+                <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
+                  {ep.title}
+                </Typography>
+                <Chip
+                  label={ep.videoUrl ? "Có video" : "Chưa có video"}
+                  size="small"
+                  color={ep.videoUrl ? "success" : "warning"}
+                  variant="outlined"
+                  sx={{ fontSize: "0.68rem" }}
+                />
+                <Chip
+                  label={ep.status}
+                  size="small"
+                  variant="outlined"
+                  color={
+                    ep.status === "PUBLISHED"
+                      ? "success"
+                      : ep.status === "HIDDEN"
+                        ? "error"
+                        : "default"
+                  }
+                  sx={{ fontSize: "0.68rem" }}
+                />
+                <Tooltip title="Sửa tập">
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => {
+                      setEditEpisodeId(ep.id);
+                      setEditEpisodeForm({
+                        title: ep.title,
+                        episodeNumber: ep.episodeNumber,
+                        durationSeconds: ep.durationSeconds,
+                        isFreePreview: ep.isFreePreview,
+                        status: ep.status,
+                        videoUrl: ep.videoUrl ?? "",
+                        thumbnailUrl: ep.thumbnailUrl ?? "",
+                      });
+                      setEditEpisodeNumberStr(String(ep.episodeNumber));
+                      setEditEpisodeDurationStr(String(ep.durationSeconds));
+                      setEditEpisodeThumbnailPreview(ep.thumbnailUrl ?? "");
+                      setEditEpisodeVideoFile(null);
+                      if (editEpisodeVideoPreviewUrl)
+                        URL.revokeObjectURL(editEpisodeVideoPreviewUrl);
+                      setEditEpisodeVideoPreviewUrl("");
+                      setEditEpisodeUploading(false);
+                      setEditEpisodeUploadProgress(0);
+                      setEditEpisodeDialog(true);
+                    }}
+                  >
+                    <Edit sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Xóa tập">
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => deleteEpisode.mutate(ep.id)}
+                    disabled={deleteEpisode.isPending}
+                  >
+                    <Delete sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            ))}
+          </Stack>
+        </Paper>
+      </Stack>
+
+      <Dialog
+        open={episodeDialog}
+        onClose={() => !addEpisode.isPending && !episodeUploading && setEpisodeDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle fontWeight={700}>Thêm tập phim</DialogTitle>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px", overflow: "visible" }}
+        >
+          <TextField
+            label="Tiêu đề tập"
+            value={episodeForm.title}
+            onChange={(e) => setEpisodeForm((prev) => ({ ...prev, title: e.target.value }))}
+            fullWidth
+            size="small"
+            required
+            InputLabelProps={{ shrink: true }}
+          />
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              label="Số tập"
+              value={episodeNumberStr}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEpisodeNumberStr(v);
+                const n = parseInt(v, 10);
+                if (!isNaN(n)) setEpisodeForm((prev) => ({ ...prev, episodeNumber: n }));
+              }}
+              onBlur={() => setEpisodeNumberStr(String(episodeForm.episodeNumber))}
+              size="small"
+              sx={{ flex: 1 }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Thời lượng (giây)"
+              value={episodeDurationStr}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEpisodeDurationStr(v);
+                const n = parseInt(v, 10);
+                if (!isNaN(n)) setEpisodeForm((prev) => ({ ...prev, durationSeconds: n }));
+              }}
+              onBlur={() => setEpisodeDurationStr(String(episodeForm.durationSeconds))}
+              size="small"
+              sx={{ flex: 1 }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+
+          <Box>
+            <Typography
+              variant="caption"
+              fontWeight={700}
+              color="text.secondary"
+              sx={{ mb: 0.5, display: "block" }}
+            >
+              File Video *
+            </Typography>
+            <Box
+              onClick={() => !episodeUploading && videoInputRef.current?.click()}
+              sx={{
+                border: "2px dashed",
+                borderColor: episodeVideoFile ? "primary.main" : "divider",
+                borderRadius: 1.5,
+                p: 2,
+                textAlign: "center",
+                cursor: episodeUploading ? "default" : "pointer",
+                "&:hover": { borderColor: episodeUploading ? undefined : "primary.main" },
+                transition: "border-color 0.2s",
+              }}
+            >
+              <Typography
+                variant="body2"
+                color={episodeVideoFile ? "text.primary" : "text.disabled"}
+              >
+                {episodeVideoFile
+                  ? episodeVideoFile.name
+                  : "Nhấn để chọn file video (MP4, MKV, ...)"}
+              </Typography>
+              {episodeVideoFile && (
+                <Typography variant="caption" color="text.secondary">
+                  {(episodeVideoFile.size / 1024 / 1024).toFixed(1)} MB
+                </Typography>
+              )}
+            </Box>
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/x-matroska,video/avi,video/quicktime,video/webm,.mp4,.mkv,.avi,.mov,.webm"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                e.target.value = "";
+                setEpisodeVideoFile(f);
+                if (episodeVideoPreviewUrl) URL.revokeObjectURL(episodeVideoPreviewUrl);
+                setEpisodeVideoPreviewUrl(f ? URL.createObjectURL(f) : "");
+              }}
+            />
+            {episodeVideoPreviewUrl && (
+              <Box
+                component="video"
+                src={episodeVideoPreviewUrl}
+                controls
+                sx={{ mt: 1, width: "100%", borderRadius: 1, maxHeight: 180 }}
+              />
+            )}
+          </Box>
+
+          <Box>
+            <Typography
+              variant="caption"
+              fontWeight={700}
+              color="text.secondary"
+              sx={{ mb: 0.5, display: "block" }}
+            >
+              Thumbnail
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+              {episodeThumbnailPreview && (
+                <Box
+                  component="img"
+                  src={episodeThumbnailPreview}
+                  alt="thumb"
+                  sx={{
+                    width: 80,
+                    aspectRatio: "16/9",
+                    objectFit: "cover",
+                    borderRadius: 1,
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                />
+              )}
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => thumbInputRef.current?.click()}
+              >
+                {episodeThumbnailPreview ? "Thay ảnh" : "Chọn ảnh thumbnail"}
+              </Button>
+              {episodeThumbnailPreview && (
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => {
+                    setEpisodeThumbnailPreview("");
+                    setEpisodeForm((prev) => ({ ...prev, thumbnailUrl: "" }));
+                    if (thumbInputRef.current) thumbInputRef.current.value = "";
+                  }}
+                >
+                  Xóa
+                </Button>
+              )}
+            </Box>
+            <input
+              ref={thumbInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                e.target.value = "";
+                const { file: webpFile, previewUrl } = await convertToWebPObjectUrl(f);
+                setEpisodeThumbnailPreview(previewUrl);
+                try {
+                  const res = await adminService.uploadImage(webpFile);
+                  setEpisodeThumbnailPreview(res.videoUrl);
+                  setEpisodeForm((prev) => ({ ...prev, thumbnailUrl: res.videoUrl }));
+                } catch {}
+              }}
+            />
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <FormControl size="small" sx={{ flex: 1 }}>
+              <InputLabel shrink>Trạng thái</InputLabel>
+              <Select
+                notched
+                label="Trạng thái"
+                value={episodeForm.status}
+                onChange={(e) => setEpisodeForm((prev) => ({ ...prev, status: e.target.value }))}
+              >
+                <MenuItem value="DRAFT">Draft</MenuItem>
+                <MenuItem value="HIDDEN">Hidden</MenuItem>
+                <MenuItem value="PUBLISHED">Published</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ flex: 1 }}>
+              <InputLabel shrink>Xem miễn phí</InputLabel>
+              <Select
+                notched
+                label="Xem miễn phí"
+                value={episodeForm.isFreePreview ? "true" : "false"}
+                onChange={(e) =>
+                  setEpisodeForm((prev) => ({ ...prev, isFreePreview: e.target.value === "true" }))
+                }
+              >
+                <MenuItem value="false">Không</MenuItem>
+                <MenuItem value="true">Có</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          {episodeUploading && (
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Đang upload video... {episodeUploadProgress}%
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={episodeUploadProgress}
+                sx={{ mt: 0.5, borderRadius: 1 }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setEpisodeDialog(false)}
+            disabled={addEpisode.isPending || episodeUploading}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            disabled={
+              !episodeForm.title || !episodeVideoFile || addEpisode.isPending || episodeUploading
+            }
+            onClick={() => {
+              const payload = {
+                ...episodeForm,
+                episodeNumber: parseInt(episodeNumberStr, 10) || episodeForm.episodeNumber,
+                durationSeconds: parseInt(episodeDurationStr, 10) || 0,
+                videoUrl: "pending",
+                thumbnailUrl: episodeThumbnailPreview || undefined,
+              };
+              addEpisode.mutate(payload, {
+                onSuccess: (created) => {
+                  if (!episodeVideoFile) {
+                    setEpisodeDialog(false);
+                    resetEpisodeForm();
+                    return;
+                  }
+                  setEpisodeUploading(true);
+                  setEpisodeUploadProgress(0);
+                  const fd = new FormData();
+                  fd.append("file", episodeVideoFile);
+                  const xhr = new XMLHttpRequest();
+                  xhr.open("POST", `${API_BASE}/admin/media/episodes/${created.id}/source`);
+                  const token =
+                    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+                  if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                  xhr.upload.onprogress = (ev) => {
+                    if (ev.lengthComputable)
+                      setEpisodeUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                  };
+                  xhr.onload = () => {
+                    setEpisodeUploading(false);
+                    setEpisodeDialog(false);
+                    resetEpisodeForm();
+                    invalidate();
+                  };
+                  xhr.onerror = () => {
+                    setEpisodeUploading(false);
+                  };
+                  xhr.send(fd);
+                },
+              });
+            }}
+          >
+            {addEpisode.isPending
+              ? "Đang tạo..."
+              : episodeUploading
+                ? "Uploading..."
+                : "Tạo & Upload"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={editEpisodeDialog}
+        onClose={() =>
+          !updateEpisodeMutation.isPending && !editEpisodeUploading && setEditEpisodeDialog(false)
+        }
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle fontWeight={700}>Sửa tập phim</DialogTitle>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px", overflow: "visible" }}
+        >
+          <TextField
+            label="Tiêu đề tập"
+            value={editEpisodeForm.title}
+            onChange={(e) => setEditEpisodeForm((prev) => ({ ...prev, title: e.target.value }))}
+            fullWidth
+            size="small"
+            required
+            InputLabelProps={{ shrink: true }}
+          />
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              label="Số tập"
+              value={editEpisodeNumberStr}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEditEpisodeNumberStr(v);
+                const n = parseInt(v, 10);
+                if (!isNaN(n)) setEditEpisodeForm((prev) => ({ ...prev, episodeNumber: n }));
+              }}
+              onBlur={() => setEditEpisodeNumberStr(String(editEpisodeForm.episodeNumber))}
+              size="small"
+              sx={{ flex: 1 }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Thời lượng (giây)"
+              value={editEpisodeDurationStr}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEditEpisodeDurationStr(v);
+                const n = parseInt(v, 10);
+                if (!isNaN(n)) setEditEpisodeForm((prev) => ({ ...prev, durationSeconds: n }));
+              }}
+              onBlur={() => setEditEpisodeDurationStr(String(editEpisodeForm.durationSeconds))}
+              size="small"
+              sx={{ flex: 1 }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+          <Box>
+            <Typography
+              variant="caption"
+              fontWeight={700}
+              color="text.secondary"
+              sx={{ mb: 0.5, display: "block" }}
+            >
+              Thay video (tùy chọn)
+            </Typography>
+            {editEpisodeForm.videoUrl && !editEpisodeVideoFile && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 0.5, display: "block" }}
+              >
+                Hiện tại: {editEpisodeForm.videoUrl.split("/").pop()}
+              </Typography>
+            )}
+            <Box
+              onClick={() => !editEpisodeUploading && editEpisodeVideoInputRef.current?.click()}
+              sx={{
+                border: "2px dashed",
+                borderColor: editEpisodeVideoFile ? "primary.main" : "divider",
+                borderRadius: 1.5,
+                p: 2,
+                textAlign: "center",
+                cursor: editEpisodeUploading ? "default" : "pointer",
+                "&:hover": { borderColor: editEpisodeUploading ? undefined : "primary.main" },
+                transition: "border-color 0.2s",
+              }}
+            >
+              <Typography
+                variant="body2"
+                color={editEpisodeVideoFile ? "text.primary" : "text.disabled"}
+              >
+                {editEpisodeVideoFile ? editEpisodeVideoFile.name : "Nhấn để chọn file video mới"}
+              </Typography>
+            </Box>
+            <input
+              ref={editEpisodeVideoInputRef}
+              type="file"
+              accept="video/mp4,video/x-matroska,video/avi,video/quicktime,video/webm,.mp4,.mkv,.avi,.mov,.webm"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                e.target.value = "";
+                setEditEpisodeVideoFile(f);
+                if (editEpisodeVideoPreviewUrl) URL.revokeObjectURL(editEpisodeVideoPreviewUrl);
+                setEditEpisodeVideoPreviewUrl(f ? URL.createObjectURL(f) : "");
+              }}
+            />
+            {editEpisodeVideoPreviewUrl && (
+              <Box
+                component="video"
+                src={editEpisodeVideoPreviewUrl}
+                controls
+                sx={{ mt: 1, width: "100%", borderRadius: 1, maxHeight: 180 }}
+              />
+            )}
+            {editEpisodeUploading && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Đang upload... {editEpisodeUploadProgress}%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={editEpisodeUploadProgress}
+                  sx={{ mt: 0.5, borderRadius: 1 }}
+                />
+              </Box>
+            )}
+          </Box>
+          <Box>
+            <Typography
+              variant="caption"
+              fontWeight={700}
+              color="text.secondary"
+              sx={{ mb: 0.5, display: "block" }}
+            >
+              Thumbnail
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+              {editEpisodeThumbnailPreview && (
+                <Box
+                  component="img"
+                  src={editEpisodeThumbnailPreview}
+                  alt="thumb"
+                  sx={{
+                    width: 80,
+                    aspectRatio: "16/9",
+                    objectFit: "cover",
+                    borderRadius: 1,
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                />
+              )}
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={editEpisodeThumbnailUploading}
+                onClick={() => editEpisodeThumbInputRef.current?.click()}
+              >
+                {editEpisodeThumbnailUploading
+                  ? "Đang upload..."
+                  : editEpisodeThumbnailPreview
+                    ? "Thay ảnh"
+                    : "Chọn thumbnail"}
+              </Button>
+              {editEpisodeThumbnailPreview && (
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => {
+                    setEditEpisodeThumbnailPreview("");
+                    setEditEpisodeForm((f) => ({ ...f, thumbnailUrl: "" }));
+                    if (editEpisodeThumbInputRef.current)
+                      editEpisodeThumbInputRef.current.value = "";
+                  }}
+                >
+                  Xóa
+                </Button>
+              )}
+            </Box>
+            <input
+              ref={editEpisodeThumbInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                e.target.value = "";
+                setEditEpisodeThumbnailUploading(true);
+                try {
+                  const { file: webpFile, previewUrl } = await convertToWebPObjectUrl(f);
+                  setEditEpisodeThumbnailPreview(previewUrl);
+                  const res = await adminService.uploadImage(webpFile);
+                  setEditEpisodeThumbnailPreview(res.videoUrl);
+                  setEditEpisodeForm((prev) => ({ ...prev, thumbnailUrl: res.videoUrl }));
+                } finally {
+                  setEditEpisodeThumbnailUploading(false);
+                }
+              }}
+            />
+          </Box>
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <FormControl size="small" sx={{ flex: 1 }}>
+              <InputLabel shrink>Trạng thái</InputLabel>
+              <Select
+                notched
+                label="Trạng thái"
+                value={editEpisodeForm.status}
+                onChange={(e) =>
+                  setEditEpisodeForm((prev) => ({ ...prev, status: e.target.value }))
+                }
+              >
+                <MenuItem value="DRAFT">Draft</MenuItem>
+                <MenuItem value="HIDDEN">Hidden</MenuItem>
+                <MenuItem value="PUBLISHED">Published</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ flex: 1 }}>
+              <InputLabel shrink>Xem miễn phí</InputLabel>
+              <Select
+                notched
+                label="Xem miễn phí"
+                value={editEpisodeForm.isFreePreview ? "true" : "false"}
+                onChange={(e) =>
+                  setEditEpisodeForm((prev) => ({
+                    ...prev,
+                    isFreePreview: e.target.value === "true",
+                  }))
+                }
+              >
+                <MenuItem value="false">Không</MenuItem>
+                <MenuItem value="true">Có</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setEditEpisodeDialog(false)}
+            disabled={updateEpisodeMutation.isPending || editEpisodeUploading}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            disabled={
+              !editEpisodeForm.title || updateEpisodeMutation.isPending || editEpisodeUploading
+            }
+            onClick={() => {
+              if (!editEpisodeId) return;
+              const finalForm = {
+                ...editEpisodeForm,
+                episodeNumber: parseInt(editEpisodeNumberStr, 10) || editEpisodeForm.episodeNumber,
+                durationSeconds: parseInt(editEpisodeDurationStr, 10) || 0,
+              };
+              updateEpisodeMutation.mutate(
+                { episodeId: editEpisodeId, p: finalForm },
+                {
+                  onSuccess: () => {
+                    if (!editEpisodeVideoFile) return;
+                    setEditEpisodeUploading(true);
+                    setEditEpisodeUploadProgress(0);
+                    const fd = new FormData();
+                    fd.append("file", editEpisodeVideoFile);
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", `${API_BASE}/admin/media/episodes/${editEpisodeId}/source`);
+                    const token =
+                      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+                    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                    xhr.upload.onprogress = (ev) => {
+                      if (ev.lengthComputable)
+                        setEditEpisodeUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                    };
+                    xhr.onload = () => {
+                      setEditEpisodeUploading(false);
+                      setEditEpisodeVideoFile(null);
+                      invalidate();
+                    };
+                    xhr.onerror = () => setEditEpisodeUploading(false);
+                    xhr.send(fd);
+                  },
+                }
+              );
+            }}
+          >
+            {updateEpisodeMutation.isPending
+              ? "Đang lưu..."
+              : editEpisodeUploading
+                ? "Uploading..."
+                : "Lưu"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={personDialog} onClose={() => setPersonDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle fontWeight={700}>Gắn diễn viên / đạo diễn</DialogTitle>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px", overflow: "visible" }}
+        >
+          <FormControl fullWidth size="small">
+            <InputLabel shrink id="person-select-label">
+              Chọn diễn viên có sẵn
+            </InputLabel>
+            <Select
+              notched
+              labelId="person-select-label"
+              label="Chọn diễn viên có sẵn"
+              displayEmpty
+              value={personForm.personId || ""}
+              onChange={(e) => setPersonForm({ ...personForm, personId: Number(e.target.value) })}
+            >
+              <MenuItem value="">-- Chọn --</MenuItem>
+              {allPersons.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.fullName}
+                  {p.stageName ? ` (${p.stageName})` : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+            Hoặc tạo người mới:
+          </Typography>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+            <AvatarCropUpload
+              currentUrl={newPersonForm.avatarUrl ?? ""}
+              onCropped={(_file, previewUrl) =>
+                setNewPersonForm((p) => ({ ...p, avatarUrl: previewUrl }))
+              }
+              onClear={() => setNewPersonForm((p) => ({ ...p, avatarUrl: "" }))}
+              size={72}
+            />
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
+              <TextField
+                size="small"
+                label="Họ tên *"
+                value={newPersonForm.fullName}
+                onChange={(e) => setNewPersonForm((p) => ({ ...p, fullName: e.target.value }))}
+                fullWidth
+              />
+              <TextField
+                size="small"
+                label="Tên nghệ danh"
+                value={newPersonForm.stageName ?? ""}
+                onChange={(e) => setNewPersonForm((p) => ({ ...p, stageName: e.target.value }))}
+                fullWidth
+              />
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <TextField
+                  size="small"
+                  label="Quốc tịch"
+                  value={newPersonForm.nationality ?? ""}
+                  onChange={(e) => setNewPersonForm((p) => ({ ...p, nationality: e.target.value }))}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  size="small"
+                  type="date"
+                  label="Ngày sinh"
+                  value={newPersonForm.birthDate ?? ""}
+                  onChange={(e) => setNewPersonForm((p) => ({ ...p, birthDate: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ flex: 1 }}
+                />
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={!newPersonForm.fullName.trim() || createPerson.isPending}
+                onClick={() => createPerson.mutate({ ...newPersonForm })}
+              >
+                {createPerson.isPending ? "Đang tạo..." : "Tạo & chọn người này"}
+              </Button>
+            </Box>
+          </Box>
+          <FormControl fullWidth size="small">
+            <InputLabel shrink id="person-role-label">
+              Vai trò (chọn nhiều)
+            </InputLabel>
+            <Select
+              multiple
+              notched
+              labelId="person-role-label"
+              label="Vai trò (chọn nhiều)"
+              value={selectedRoles}
+              onChange={(e) =>
+                setSelectedRoles(
+                  typeof e.target.value === "string"
+                    ? e.target.value.split(",")
+                    : (e.target.value as string[])
+                )
+              }
+              renderValue={(selected) => (selected as string[]).join(", ")}
+            >
+              {PERSON_ROLES.map((r) => (
+                <MenuItem key={r} value={r}>
+                  <input
+                    type="checkbox"
+                    checked={selectedRoles.includes(r)}
+                    readOnly
+                    style={{ marginRight: 8 }}
+                  />
+                  {r}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              size="small"
+              label="Tên nhân vật (nếu có)"
+              value={personForm.characterName ?? ""}
+              onChange={(e) => setPersonForm({ ...personForm, characterName: e.target.value })}
+              sx={{ flex: 1 }}
+            />
+            <TextField
+              size="small"
+              type="number"
+              label="Thứ tự"
+              value={personForm.displayOrder ?? 0}
+              onChange={(e) =>
+                setPersonForm({ ...personForm, displayOrder: Number(e.target.value) })
+              }
+              sx={{ width: 100 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPersonDialog(false)}>Hủy</Button>
+          <Button
+            variant="contained"
+            disabled={!personForm.personId || selectedRoles.length === 0 || addPerson.isPending}
+            onClick={async () => {
+              let order = personForm.displayOrder ?? 1;
+              for (const role of selectedRoles) {
+                await new Promise<void>((resolve, reject) =>
+                  addPerson.mutate(
+                    { ...personForm, role, displayOrder: order++ },
+                    { onSuccess: () => resolve(), onError: () => reject() }
+                  )
+                );
+              }
+              setPersonDialog(false);
+              setSelectedRoles(["ACTOR"]);
+              setPersonForm({
+                personId: 0,
+                role: "ACTOR",
+                characterName: "",
+                displayOrder: (movie.persons ?? []).length + selectedRoles.length + 1,
+              });
+              setNewPersonForm({
+                fullName: "",
+                stageName: "",
+                biography: "",
+                birthDate: "",
+                nationality: "",
+                avatarUrl: "",
+              });
+            }}
+          >
+            {addPerson.isPending
+              ? "Đang thêm..."
+              : `Gắn vào phim${selectedRoles.length > 1 ? ` (${selectedRoles.length} vai trò)` : ""}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={studioDialog} onClose={() => setStudioDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle fontWeight={700}>Thêm studio / nhà sản xuất</DialogTitle>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px", overflow: "visible" }}
+        >
+          <FormControl fullWidth size="small">
+            <InputLabel shrink id="studio-select-label">
+              Chọn studio có sẵn
+            </InputLabel>
+            <Select
+              notched
+              labelId="studio-select-label"
+              label="Chọn studio có sẵn"
+              displayEmpty
+              value={studioForm.studioId || ""}
+              onChange={(e) => setStudioForm({ ...studioForm, studioId: Number(e.target.value) })}
+            >
+              <MenuItem value="">-- Chọn --</MenuItem>
+              {allStudios.map((s) => (
+                <MenuItem key={s.id} value={s.id}>
+                  {s.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+            Hoặc tạo studio mới:
+          </Typography>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+            <AvatarCropUpload
+              currentUrl={newStudioForm.logoUrl ?? ""}
+              onCropped={(_file, previewUrl) =>
+                setNewStudioForm((s) => ({ ...s, logoUrl: previewUrl }))
+              }
+              onClear={() => setNewStudioForm((s) => ({ ...s, logoUrl: "" }))}
+              size={72}
+            />
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
+              <TextField
+                size="small"
+                label="Tên studio *"
+                value={newStudioForm.name}
+                onChange={(e) =>
+                  setNewStudioForm((s) => ({
+                    ...s,
+                    name: e.target.value,
+                    slug: e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")
+                      .replace(/[^a-z0-9-]/g, ""),
+                  }))
+                }
+                fullWidth
+              />
+              <TextField
+                size="small"
+                label="Slug"
+                value={newStudioForm.slug}
+                onChange={(e) => setNewStudioForm((s) => ({ ...s, slug: e.target.value }))}
+                fullWidth
+              />
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <TextField
+                  size="small"
+                  label="Quốc gia"
+                  value={newStudioForm.country ?? ""}
+                  onChange={(e) => setNewStudioForm((s) => ({ ...s, country: e.target.value }))}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  size="small"
+                  label="Website"
+                  value={newStudioForm.websiteUrl ?? ""}
+                  onChange={(e) => setNewStudioForm((s) => ({ ...s, websiteUrl: e.target.value }))}
+                  sx={{ flex: 1 }}
+                />
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={!newStudioForm.name.trim() || createStudio.isPending}
+                onClick={() => createStudio.mutate({ ...newStudioForm })}
+              >
+                {createStudio.isPending ? "Đang tạo..." : "Tạo & chọn studio này"}
+              </Button>
+            </Box>
+          </Box>
+          <FormControl fullWidth size="small">
+            <InputLabel shrink id="studio-role-label">
+              Vai trò
+            </InputLabel>
+            <Select
+              notched
+              labelId="studio-role-label"
+              label="Vai trò"
+              displayEmpty
+              value={studioForm.role}
+              onChange={(e) => setStudioForm({ ...studioForm, role: e.target.value })}
+            >
+              {STUDIO_ROLES.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {r}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStudioDialog(false)}>Hủy</Button>
+          <Button
+            variant="contained"
+            disabled={!studioForm.studioId || addStudio.isPending}
+            onClick={() => {
+              addStudio.mutate(studioForm, {
+                onSuccess: () => {
+                  setStudioDialog(false);
+                  setStudioForm({ studioId: 0, role: "PRODUCTION" });
+                  setNewStudioForm({
+                    name: "",
+                    slug: "",
+                    description: "",
+                    logoUrl: "",
+                    country: "",
+                    websiteUrl: "",
+                  });
+                },
+              });
+            }}
+          >
+            Thêm vào phim
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Person Dialog */}
+      <Dialog
+        open={editPersonDialog}
+        onClose={() => setEditPersonDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle fontWeight={700}>Sửa vai trò diễn viên</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px" }}>
+          <FormControl fullWidth size="small">
+            <InputLabel shrink id="edit-person-role-label">
+              Vai trò
+            </InputLabel>
+            <Select
+              notched
+              labelId="edit-person-role-label"
+              label="Vai trò"
+              value={editPersonForm.role}
+              onChange={(e) => setEditPersonForm({ ...editPersonForm, role: e.target.value })}
+            >
+              {PERSON_ROLES.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {r}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            size="small"
+            label="Tên nhân vật (nếu có)"
+            value={editPersonForm.characterName}
+            onChange={(e) =>
+              setEditPersonForm({ ...editPersonForm, characterName: e.target.value })
+            }
+            fullWidth
+          />
+          <TextField
+            size="small"
+            type="number"
+            label="Thứ tự"
+            value={editPersonForm.displayOrder}
+            onChange={(e) =>
+              setEditPersonForm({ ...editPersonForm, displayOrder: Number(e.target.value) })
+            }
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditPersonDialog(false)}>Hủy</Button>
+          <Button
+            variant="contained"
+            disabled={updatePerson.isPending}
+            onClick={() => {
+              if (!editPersonId) return;
+              updatePerson.mutate({ id: editPersonId, payload: editPersonForm });
+            }}
+          >
+            {updatePerson.isPending ? "Đang lưu..." : "Lưu"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Studio Dialog */}
+      <Dialog
+        open={editStudioDialog}
+        onClose={() => setEditStudioDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle fontWeight={700}>Sửa vai trò studio</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px" }}>
+          <FormControl fullWidth size="small">
+            <InputLabel shrink id="edit-studio-role-label">
+              Vai trò
+            </InputLabel>
+            <Select
+              notched
+              labelId="edit-studio-role-label"
+              label="Vai trò"
+              value={editStudioRole}
+              onChange={(e) => setEditStudioRole(e.target.value)}
+            >
+              {STUDIO_ROLES.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {r}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditStudioDialog(false)}>Hủy</Button>
+          <Button
+            variant="contained"
+            disabled={updateStudio.isPending}
+            onClick={() => {
+              if (!editStudioId) return;
+              updateStudio.mutate({ id: editStudioId, payload: { role: editStudioRole } });
+            }}
+          >
+            {updateStudio.isPending ? "Đang lưu..." : "Lưu"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {infoForm && (
+        <Dialog
+          open={editInfoOpen}
+          onClose={() => !updateMovie.isPending && setEditInfoOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle fontWeight={700}>Sửa thông tin phim</DialogTitle>
+          <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px" }}>
+            {updateMovie.isError && <Alert severity="error">Lưu thất bại. Vui lòng thử lại.</Alert>}
+            <Box
+              sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}
+            >
+              <TextField
+                size="small"
+                label="Tiêu đề"
+                required
+                value={infoForm.title}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setInfoForm((f) => f && { ...f, title: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label="Tên gốc"
+                value={infoForm.originalTitle ?? ""}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setInfoForm((f) => f && { ...f, originalTitle: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label="Slug"
+                required
+                value={infoForm.slug}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setInfoForm((f) => f && { ...f, slug: e.target.value })}
+              />
+              <TextField
+                size="small"
+                type="number"
+                label="Năm phát hành"
+                value={infoForm.releaseYear}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) =>
+                  setInfoForm((f) => f && { ...f, releaseYear: Number(e.target.value) })
+                }
+              />
+              <TextField
+                size="small"
+                label="Quốc gia"
+                value={infoForm.country ?? ""}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setInfoForm((f) => f && { ...f, country: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label="Ngôn ngữ"
+                value={infoForm.language ?? ""}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setInfoForm((f) => f && { ...f, language: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label="Age rating"
+                value={infoForm.ageRating ?? ""}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setInfoForm((f) => f && { ...f, ageRating: e.target.value })}
+              />
+              <FormControl size="small">
+                <InputLabel shrink id="edit-type-label">
+                  Loại phim
+                </InputLabel>
+                <Select
+                  native
+                  notched
+                  labelId="edit-type-label"
+                  label="Loại phim"
+                  value={infoForm.movieType || "SINGLE"}
+                  onChange={(e) =>
+                    setInfoForm(
+                      (f) =>
+                        f && {
+                          ...f,
+                          movieType: (e.target as HTMLSelectElement).value as AdminMovieType,
+                        }
+                    )
+                  }
+                >
+                  <option value="SINGLE">Movie (Single)</option>
+                  <option value="SERIES">Series</option>
+                </Select>
+              </FormControl>
+              <FormControl size="small">
+                <InputLabel shrink id="edit-status-label">
+                  Trạng thái
+                </InputLabel>
+                <Select
+                  native
+                  notched
+                  labelId="edit-status-label"
+                  label="Trạng thái"
+                  value={infoForm.movieStatus || "DRAFT"}
+                  onChange={(e) =>
+                    setInfoForm(
+                      (f) =>
+                        f && {
+                          ...f,
+                          movieStatus: (e.target as HTMLSelectElement).value as AdminMovieStatus,
+                        }
+                    )
+                  }
+                >
+                  <option value="DRAFT">Draft</option>
+                  <option value="REVIEWING">Reviewing</option>
+                  <option value="PUBLISHED">Published</option>
+                  <option value="ARCHIVED">Archived</option>
+                </Select>
+              </FormControl>
+            </Box>
+            <TextField
+              size="small"
+              label="Mô tả"
+              multiline
+              rows={4}
+              value={infoForm.description ?? ""}
+              InputLabelProps={{ shrink: true }}
+              onChange={(e) => setInfoForm((f) => f && { ...f, description: e.target.value })}
+              fullWidth
+            />
+            <Box>
+              <Typography
+                variant="caption"
+                fontWeight={700}
+                color="text.secondary"
+                sx={{ mb: 0.5, display: "block" }}
+              >
+                Poster (2:3)
+              </Typography>
+              <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+                {infoForm.posterUrl && (
+                  <Box
+                    component="img"
+                    src={infoForm.posterUrl}
+                    alt="poster"
+                    sx={{
+                      width: 80,
+                      aspectRatio: "2/3",
+                      objectFit: "cover",
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                    }}
+                  />
+                )}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    component="label"
+                    disabled={imageUploading === "poster"}
+                  >
+                    {imageUploading === "poster"
+                      ? "Đang upload..."
+                      : infoForm.posterUrl
+                        ? "Thay poster"
+                        : "Upload poster"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        setImageUploading("poster");
+                        try {
+                          const { file: webpFile, previewUrl } = await convertToWebPObjectUrl(f);
+                          setInfoForm((prev) => prev && { ...prev, posterUrl: previewUrl });
+                          const res = await adminService.uploadImage(webpFile);
+                          setInfoForm((prev) => prev && { ...prev, posterUrl: res.videoUrl });
+                        } finally {
+                          setImageUploading(null);
+                        }
+                      }}
+                    />
+                  </Button>
+                  {infoForm.posterUrl && (
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => setInfoForm((f) => f && { ...f, posterUrl: "" })}
+                    >
+                      Xóa
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+            <Box>
+              <Typography
+                variant="caption"
+                fontWeight={700}
+                color="text.secondary"
+                sx={{ mb: 0.5, display: "block" }}
+              >
+                Banner (16:9)
+              </Typography>
+              <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+                {infoForm.bannerUrl && (
+                  <Box
+                    component="img"
+                    src={infoForm.bannerUrl}
+                    alt="banner"
+                    sx={{
+                      width: 160,
+                      aspectRatio: "16/9",
+                      objectFit: "cover",
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                    }}
+                  />
+                )}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    component="label"
+                    disabled={imageUploading === "banner"}
+                  >
+                    {imageUploading === "banner"
+                      ? "Đang upload..."
+                      : infoForm.bannerUrl
+                        ? "Thay banner"
+                        : "Upload banner"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        setImageUploading("banner");
+                        try {
+                          const { file: webpFile, previewUrl } = await convertToWebPObjectUrl(f);
+                          setInfoForm((prev) => prev && { ...prev, bannerUrl: previewUrl });
+                          const res = await adminService.uploadImage(webpFile);
+                          setInfoForm((prev) => prev && { ...prev, bannerUrl: res.videoUrl });
+                        } finally {
+                          setImageUploading(null);
+                        }
+                      }}
+                    />
+                  </Button>
+                  {infoForm.bannerUrl && (
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => setInfoForm((f) => f && { ...f, bannerUrl: "" })}
+                    >
+                      Xóa
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+            <Box>
+              <Typography
+                variant="caption"
+                fontWeight={700}
+                color="text.secondary"
+                sx={{ mb: 0.5, display: "block" }}
+              >
+                Video / Trailer
+              </Typography>
+              {infoForm.trailerUrl && !infoForm.trailerUrl.startsWith("blob:") && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mb: 0.5, display: "block" }}
+                >
+                  Hiện tại: {infoForm.trailerUrl.split("/").pop()}
+                </Typography>
+              )}
+              <Box
+                onClick={() => !movieUploading && movieVideoInputRef.current?.click()}
+                sx={{
+                  border: "2px dashed",
+                  borderColor: movieVideoFile ? "primary.main" : "divider",
+                  borderRadius: 1.5,
+                  p: 2,
+                  textAlign: "center",
+                  cursor: movieUploading ? "default" : "pointer",
+                  "&:hover": { borderColor: movieUploading ? undefined : "primary.main" },
+                  transition: "border-color 0.2s",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  color={movieVideoFile ? "text.primary" : "text.disabled"}
+                >
+                  {movieVideoFile
+                    ? movieVideoFile.name
+                    : "Nhấn để chọn file video mới (MP4, MKV, ...)"}
+                </Typography>
+              </Box>
+              <input
+                ref={movieVideoInputRef}
+                type="file"
+                accept="video/mp4,video/x-matroska,video/avi,video/quicktime,video/webm,.mp4,.mkv,.avi,.mov,.webm"
+                hidden
+                onChange={(e) => setMovieVideoFile(e.target.files?.[0] ?? null)}
+              />
+              {movieUploading && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Đang upload... {movieUploadProgress}%
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={movieUploadProgress}
+                    sx={{ mt: 0.5, borderRadius: 1 }}
+                  />
+                </Box>
+              )}
+              {movieVideoFile && !movieUploading && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  sx={{ mt: 1 }}
+                  onClick={() => {
+                    if (!movieVideoFile) return;
+                    setMovieUploading(true);
+                    setMovieUploadProgress(0);
+                    const fd = new FormData();
+                    fd.append("file", movieVideoFile);
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", `${API_BASE}/admin/media/movies/${movieId}/source`);
+                    const token =
+                      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+                    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                    xhr.upload.onprogress = (ev) => {
+                      if (ev.lengthComputable)
+                        setMovieUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                    };
+                    xhr.onload = () => {
+                      setMovieUploading(false);
+                      setMovieVideoFile(null);
+                      setMovieUploadProgress(0);
+                      try {
+                        const res = JSON.parse(xhr.responseText);
+                        setInfoForm((f) => f && { ...f, trailerUrl: res.videoUrl });
+                      } catch {}
+                      invalidate();
+                    };
+                    xhr.onerror = () => setMovieUploading(false);
+                    xhr.send(fd);
+                  }}
+                >
+                  Upload video
+                </Button>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditInfoOpen(false)} disabled={updateMovie.isPending}>
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              disabled={!infoForm.title || !infoForm.slug || updateMovie.isPending}
+              onClick={() => updateMovie.mutate(infoForm)}
+            >
+              {updateMovie.isPending ? "Đang lưu..." : "Lưu"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+    </Box>
+  );
+}

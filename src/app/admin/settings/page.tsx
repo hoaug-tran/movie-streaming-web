@@ -11,6 +11,7 @@ import {
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -79,18 +80,23 @@ export default function AdminSettingsPage() {
                   duyệt, quảng cáo và an toàn phiên đăng nhập.
                 </Typography>
               </Box>
-              <Button
-                id="admin-settings-save-button"
-                variant="contained"
-                startIcon={<SaveRoundedIcon />}
-                sx={{
-                  alignSelf: { xs: "stretch", md: "center" },
-                  borderRadius: 1.5,
-                  fontWeight: 900,
-                }}
-              >
-                Lưu cấu hình
-              </Button>
+              <Tooltip title="Cài đặt chưa kết nối backend — sẽ được bật trong phiên bản tiếp theo">
+                <span>
+                  <Button
+                    id="admin-settings-save-button"
+                    variant="contained"
+                    startIcon={<SaveRoundedIcon />}
+                    disabled
+                    sx={{
+                      alignSelf: { xs: "stretch", md: "center" },
+                      borderRadius: 1.5,
+                      fontWeight: 900,
+                    }}
+                  >
+                    Lưu cấu hình
+                  </Button>
+                </span>
+              </Tooltip>
             </Stack>
           </Paper>
 

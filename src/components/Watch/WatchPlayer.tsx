@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Box } from "@mui/material";
+import { Box, Dialog, DialogContent, DialogTitle, Button, Typography } from "@mui/material";
 import { Episode, MovieDetail } from "@/modules/movie/types/movie";
-import { useSubscription } from "@/hooks/use-subscription";
+import { useSubscription, VideoQuality } from "@/hooks/use-subscription";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import HlsPlayer from "./HlsPlayer";
 import PlayerControls from "./PlayerControls";
@@ -14,6 +14,8 @@ import { Advertisement } from "@/modules/advertisement/types/advertisement";
 import advertisementService from "@/modules/advertisement/api/advertisement-service";
 import watchHistoryService from "@/modules/watch-history/api/watch-history-service";
 import { ContinueWatchingItem } from "@/modules/watch-history/types/watch-history";
+import streamingService from "@/modules/streaming/api/streaming-service";
+import movieService from "@/modules/movie/api/movie-service";
 
 interface WatchPlayerProps {
   movie: MovieDetail;
@@ -31,7 +33,25 @@ export default function WatchPlayer({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
-  const { hasAdsFree } = useSubscription();
+  const { hasAdsFree, maxQuality, canWatchPremium } = useSubscription();
+  const PREVIEW_LIMIT_SECONDS = 30;
+
+  const QUALITY_ORDER: VideoQuality[] = ["720p", "1080p", "4K"];
+
+  const getQualityUrl = (videoUrl: string, quality: VideoQuality): string => {
+    const match = videoUrl.match(
+      /^(.*\/stream\/series\/episodes\/\d+\/)([^/]+)(\/master\.m3u8.*)$/
+    );
+    if (match) return `${match[1]}${quality}${match[3]}`;
+    return videoUrl;
+  };
+
+  const selectBestQuality = (available: string[], max: VideoQuality): VideoQuality => {
+    const maxIdx = QUALITY_ORDER.indexOf(max);
+    const allowed = QUALITY_ORDER.slice(0, maxIdx + 1);
+    const candidates = available.filter((q) => allowed.includes(q as VideoQuality));
+    return (candidates[candidates.length - 1] as VideoQuality) || "720p";
+  };
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,6 +65,19 @@ export default function WatchPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [selectedEpisode, setSelectedEpisode] = useState(currentEpisode);
+  const [selectedQuality, setSelectedQuality] = useState<VideoQuality>("720p");
+  const [currentVideoUrl, setCurrentVideoUrl] = useState(currentEpisode.videoUrl ?? "");
+  const [isKicked, setIsKicked] = useState(false);
+  const [showPreviewWall, setShowPreviewWall] = useState(false);
+  const previewWallFiredRef = useRef(false);
+  const streamSessionIdRef = useRef<number | null>(null);
+  const viewFiredRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (viewFiredRef.current === currentEpisode.id) return;
+    viewFiredRef.current = currentEpisode.id;
+    movieService.incrementView(movie.id);
+  }, [currentEpisode.id, movie.id]);
 
   const [currentAd, setCurrentAd] = useState<Advertisement | null>(null);
   const [adPhase, setAdPhase] = useState<"PRE_ROLL" | "MID_ROLL" | "POST_ROLL" | null>(null);
@@ -191,6 +224,58 @@ export default function WatchPlayer({
     };
   }, [selectedEpisode.id, hasAdsFree, showAd]);
 
+  // Quality selection when episode changes
+  useEffect(() => {
+    const available = selectedEpisode.availableQualities ?? [];
+    if (available.length > 0) {
+      const best = selectBestQuality(available, maxQuality);
+      setSelectedQuality(best);
+      setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", best));
+    } else {
+      setCurrentVideoUrl(selectedEpisode.videoUrl ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEpisode.id, maxQuality]);
+
+  // Stream session management
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let sessionId: number | null = null;
+
+    streamingService
+      .startSession("Web Browser", "WEB")
+      .then((res) => {
+        sessionId = res.sessionId;
+        streamSessionIdRef.current = sessionId;
+      })
+      .catch(() => {});
+
+    return () => {
+      if (sessionId) {
+        streamingService.stopSession(sessionId).catch(() => {});
+        streamSessionIdRef.current = null;
+      }
+    };
+  }, [selectedEpisode.id, isAuthenticated]);
+
+  // Heartbeat every 30s
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(async () => {
+      const sid = streamSessionIdRef.current;
+      if (!sid) return;
+      try {
+        await streamingService.heartbeat(sid);
+      } catch (err: any) {
+        if (err?.status === 403) {
+          setIsKicked(true);
+          streamSessionIdRef.current = null;
+        }
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   useEffect(() => {
     selectedEpisodeRef.current = selectedEpisode;
   }, [selectedEpisode]);
@@ -295,6 +380,8 @@ export default function WatchPlayer({
     lastPlaybackSecondRef.current = 0;
     lastDurationRef.current = selectedEpisode.durationSeconds ?? 0;
     pendingResumeSecondRef.current = null;
+    previewWallFiredRef.current = false;
+    setShowPreviewWall(false);
 
     if (
       selectedEpisode.id === currentEpisode.id &&
@@ -354,6 +441,19 @@ export default function WatchPlayer({
     }
     setCurrentTime(t);
 
+    if (
+      movie.isPremiumOnly &&
+      !canWatchPremium &&
+      !previewWallFiredRef.current &&
+      t >= PREVIEW_LIMIT_SECONDS
+    ) {
+      previewWallFiredRef.current = true;
+      videoRef.current.pause();
+      setIsPlaying(false);
+      setShowPreviewWall(true);
+      return;
+    }
+
     if (hasAdsFree) return;
 
     if (!midRollFired && d > 60 && t >= d * 0.5) {
@@ -381,6 +481,9 @@ export default function WatchPlayer({
     }
   }, [
     hasAdsFree,
+    canWatchPremium,
+    movie.isPremiumOnly,
+    PREVIEW_LIMIT_SECONDS,
     midRollFired,
     postRollFired,
     midRollTimestamp,
@@ -591,7 +694,7 @@ export default function WatchPlayer({
     >
       <HlsPlayer
         videoRef={videoRef}
-        src={selectedEpisode.videoUrl ?? ""}
+        src={currentVideoUrl}
         startTime={resumeStartTime}
         shouldPlay={!currentAd}
         onTimeUpdate={handleTimeUpdate}
@@ -619,6 +722,9 @@ export default function WatchPlayer({
           volume={volume}
           isMuted={isMuted}
           isFullscreen={isFullscreen}
+          availableQualities={selectedEpisode.availableQualities ?? []}
+          currentQuality={selectedQuality}
+          maxQuality={maxQuality}
           onPlay={togglePlay}
           onSeek={handleSeek}
           onVolumeChange={handleVolumeChange}
@@ -626,8 +732,119 @@ export default function WatchPlayer({
           onFullscreen={handleFullscreen}
           onBack={handleBack}
           onEpisodeSelect={(ep) => setSelectedEpisode(ep)}
+          onQualityChange={(q) => {
+            setSelectedQuality(q);
+            setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
+          }}
         />
       )}
+
+      {/* Preview wall dialog */}
+      <Dialog
+        open={showPreviewWall}
+        PaperProps={{
+          sx: {
+            bgcolor: "#161616",
+            border: "1px solid rgba(200,16,46,0.35)",
+            borderRadius: 3,
+            p: 1,
+            maxWidth: 420,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{ color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 700, pb: 0.5 }}
+        >
+          Bạn đã xem hết phần xem thử
+        </DialogTitle>
+        <DialogContent>
+          <Typography
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              fontFamily: "Inter, sans-serif",
+              fontSize: "0.9rem",
+              mb: 2.5,
+              lineHeight: 1.6,
+            }}
+          >
+            Nội dung này yêu cầu gói Premium. Nâng cấp ngay để xem toàn bộ phim không giới hạn,
+            không quảng cáo.
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1.5, flexDirection: "column" }}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => router.push("/pricing")}
+              sx={{
+                bgcolor: "#C8102E",
+                "&:hover": { bgcolor: "#A00B24" },
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 700,
+                borderRadius: 2,
+                py: 1.2,
+              }}
+            >
+              Xem các gói Premium
+            </Button>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => router.push("/")}
+              sx={{
+                borderColor: "rgba(255,255,255,0.2)",
+                color: "rgba(255,255,255,0.6)",
+                fontFamily: "Inter, sans-serif",
+                borderRadius: 2,
+              }}
+            >
+              Về trang chủ
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Kicked dialog */}
+      <Dialog
+        open={isKicked}
+        PaperProps={{
+          sx: {
+            bgcolor: "#161616",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 3,
+            p: 1,
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 700 }}>
+          Phiên xem bị ngắt
+        </DialogTitle>
+        <DialogContent>
+          <Typography
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              fontFamily: "Inter, sans-serif",
+              fontSize: "0.9rem",
+              mb: 2,
+            }}
+          >
+            Tài khoản của bạn đang được xem trên thiết bị khác. Phiên xem hiện tại đã bị ngắt.
+          </Typography>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={() => router.push("/")}
+            sx={{
+              bgcolor: "#C8102E",
+              "&:hover": { bgcolor: "#A00B24" },
+              fontFamily: "Inter, sans-serif",
+              fontWeight: 600,
+              borderRadius: 2,
+            }}
+          >
+            Về trang chủ
+          </Button>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

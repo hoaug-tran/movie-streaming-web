@@ -62,11 +62,12 @@ class CommentService {
     }
   }
 
-  async toggleLike(commentId: string): Promise<{ commentId: number; liked: boolean }> {
+  async toggleLike(commentId: string): Promise<boolean> {
     try {
-      return await apiClient.post<{ commentId: number; liked: boolean }>(
+      const res = await apiClient.post<{ commentId: number; liked: boolean }>(
         `/comment-likes/${commentId}`
       );
+      return res.liked;
     } catch (error) {
       throw this.handleError(error);
     }

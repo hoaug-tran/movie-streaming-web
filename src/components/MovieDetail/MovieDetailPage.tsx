@@ -31,7 +31,7 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useMovieDetailPage } from "@/modules/movie/hooks/useMovieDetailPage";
@@ -236,8 +236,8 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                   fontWeight={950}
                   letterSpacing={{ xs: "-0.035em", md: "-0.045em" }}
                   sx={{
-                    fontSize: { xs: "clamp(2.2rem, 13vw, 3.6rem)", sm: "4.2rem", md: "6.2rem" },
-                    lineHeight: { xs: 1.02, md: 0.98 },
+                    fontSize: { xs: "clamp(1.6rem, 8vw, 2.4rem)", sm: "2.8rem", md: "3.8rem" },
+                    lineHeight: { xs: 1.05, md: 1.0 },
                     maxWidth: 1040,
                     overflowWrap: "anywhere",
                   }}
@@ -255,9 +255,9 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                 color="text.secondary"
                 sx={{
                   maxWidth: 840,
-                  lineHeight: { xs: 1.55, md: 1.65 },
+                  lineHeight: { xs: 1.5, md: 1.6 },
                   fontWeight: 400,
-                  fontSize: { xs: "1rem", sm: "1.08rem", md: "1.25rem" },
+                  fontSize: { xs: "0.875rem", sm: "0.925rem", md: "1rem" },
                 }}
               >
                 {movie.description || "Thông tin phim đang được cập nhật."}
@@ -288,7 +288,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                   color="text.secondary"
                   sx={{ maxWidth: 300, fontSize: "0.92rem", display: { xs: "none", md: "block" } }}
                 >
-                  Phát ngay, thêm vào danh sách xem sau hoặc chạm trái tim để lưu phim yêu thích.
+                  Xem ngay, lưu xem sau hoặc thêm yêu thích.
                 </Typography>
               </Stack>
               <Box sx={{ maxWidth: 920 }}>
@@ -337,11 +337,141 @@ function SectionTitle({ eyebrow, title }: { eyebrow?: string; title: string }) {
         component="h2"
         fontWeight={950}
         letterSpacing="-0.035em"
-        sx={{ fontSize: { xs: "2rem", sm: "2.35rem", md: "3rem" }, lineHeight: 1.08 }}
+        sx={{ fontSize: { xs: "1.5rem", sm: "1.75rem", md: "2rem" }, lineHeight: 1.08 }}
       >
         {title}
       </Typography>
     </Box>
+  );
+}
+
+interface GroupedPerson {
+  personId: number;
+  displayName: string;
+  avatarUrl?: string;
+  biography?: string;
+  birthDate?: string;
+  nationality?: string;
+  roles: string[];
+}
+
+function PersonCard({ person }: { person: GroupedPerson }) {
+  const theme = useTheme();
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const isValidAvatar =
+    person.avatarUrl &&
+    !person.avatarUrl.startsWith("blob:") &&
+    !person.avatarUrl.startsWith("https://example.com");
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.displayName)}&background=random&color=fff&size=64`;
+  const avatarSrc = isValidAvatar ? person.avatarUrl! : fallbackAvatar;
+
+  return (
+    <>
+      <Box
+        onMouseEnter={(e) => setAnchor(e.currentTarget)}
+        onMouseLeave={() => setAnchor(null)}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+          py: 0.75,
+          px: 1,
+          borderRadius: 1,
+          cursor: "default",
+          transition: "background .18s",
+          "&:hover": { background: alpha(theme.palette.primary.main, 0.08) },
+        }}
+      >
+        <Avatar
+          src={avatarSrc}
+          alt={person.displayName}
+          sx={{ width: 36, height: 36, flexShrink: 0 }}
+        />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography fontWeight={700} noWrap>
+            {person.displayName}
+          </Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.3 }}>
+            {person.roles.map((role) => (
+              <Chip
+                key={role}
+                label={role}
+                size="small"
+                variant="outlined"
+                color="primary"
+                sx={{ fontSize: "0.65rem", height: 18, "& .MuiChip-label": { px: 0.8 } }}
+              />
+            ))}
+          </Stack>
+        </Box>
+      </Box>
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        disableAutoFocus
+        disableEnforceFocus
+        sx={{ pointerEvents: "none" }}
+        PaperProps={{
+          onMouseEnter: () => {},
+          onMouseLeave: () => setAnchor(null),
+          sx: {
+            pointerEvents: "auto",
+            p: 2,
+            minWidth: 240,
+            maxWidth: 320,
+            background: alpha(theme.palette.background.paper, 0.96),
+            backdropFilter: "blur(18px)",
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            borderRadius: 2,
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
+          <Avatar src={avatarSrc} alt={person.displayName} sx={{ width: 52, height: 52 }} />
+          <Box>
+            <Typography fontWeight={800}>{person.displayName}</Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.4 }}>
+              {person.roles.map((role) => (
+                <Chip
+                  key={role}
+                  label={role}
+                  size="small"
+                  color="primary"
+                  sx={{ fontSize: "0.65rem", height: 18 }}
+                />
+              ))}
+            </Stack>
+          </Box>
+        </Box>
+        {person.birthDate && (
+          <Typography variant="caption" color="text.secondary" display="block">
+            Sinh: {new Date(person.birthDate).toLocaleDateString("vi-VN")}
+          </Typography>
+        )}
+        {person.nationality && (
+          <Typography variant="caption" color="text.secondary" display="block">
+            Quốc tịch: {person.nationality}
+          </Typography>
+        )}
+        {person.biography && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              mt: 1,
+              lineHeight: 1.5,
+              display: "-webkit-box",
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {person.biography}
+          </Typography>
+        )}
+      </Menu>
+    </>
   );
 }
 
@@ -360,13 +490,14 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
 
   return (
     <Container maxWidth="xl" sx={{ mt: { xs: -1, md: -3 }, pb: { xs: 4, md: 5 } }}>
-      <Grid container spacing={2.5}>
-        <Grid item xs={12} lg={7.4}>
+      <Grid container spacing={2.5} alignItems="stretch">
+        <Grid item xs={12} lg={7.4} sx={{ display: "flex", flexDirection: "column" }}>
           <Paper
             elevation={0}
             sx={{
               p: { xs: 2.5, md: 3.5 },
               borderRadius: 1.5,
+              flex: 1,
               border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
               background: `linear-gradient(120deg, ${alpha(theme.palette.background.paper, 0.8)}, ${alpha(theme.palette.primary.main, 0.08)})`,
               backdropFilter: "blur(22px)",
@@ -400,47 +531,83 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
                   }}
                 />
               ))}
-              {movie.tags?.map((item) => (
-                <Chip key={item.id} label={item.name} variant="outlined" />
-              ))}
-              {movie.studios?.map((item) => (
-                <Chip key={item.id} label={item.name} variant="outlined" />
-              ))}
             </Stack>
+            {movie.tags?.length || movie.studios?.length ? (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
+                {movie.tags?.map((item) => (
+                  <Chip key={item.id} label={item.name} variant="outlined" size="small" />
+                ))}
+                {movie.studios?.map((item) => {
+                  const studioName = (item as any).studio?.name || (item as any).name;
+                  if (!studioName) return null;
+                  return <Chip key={item.id} label={studioName} variant="outlined" size="small" />;
+                })}
+              </Stack>
+            ) : null}
           </Paper>
         </Grid>
-        <Grid item xs={12} lg={4.6}>
+        <Grid item xs={12} lg={4.6} sx={{ display: "flex", flexDirection: "column" }}>
           <Paper
             elevation={0}
             sx={{
               p: { xs: 2.5, md: 3.5 },
               borderRadius: 1.5,
-              height: "100%",
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
               border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
               background: `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.18)}, ${alpha(theme.palette.background.paper, 0.78)})`,
             }}
           >
             <SectionTitle eyebrow="Cast & Crew" title="Người tạo nên nhịp phim" />
-            <Stack spacing={1.35}>
-              {movie.persons?.length ? (
-                movie.persons.map((person) => (
-                  <Box
-                    key={`${person.id}-${person.role}`}
-                    sx={{
-                      display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      justifyContent: "space-between",
-                      gap: { xs: 0.3, sm: 2 },
-                    }}
-                  >
-                    <Typography fontWeight={850}>{person.name}</Typography>
-                    <Typography color="text.secondary">{person.role}</Typography>
-                  </Box>
-                ))
-              ) : (
-                <Typography color="text.secondary">Đang cập nhật nhân sự.</Typography>
-              )}
-            </Stack>
+            <Box
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                maxHeight: { xs: 320, md: 380 },
+                pr: 0.5,
+                "&::-webkit-scrollbar": { width: 4 },
+                "&::-webkit-scrollbar-track": { background: "transparent" },
+                "&::-webkit-scrollbar-thumb": {
+                  background: alpha(theme.palette.primary.main, 0.3),
+                  borderRadius: 2,
+                },
+              }}
+            >
+              <Stack spacing={0.5}>
+                {movie.persons?.length ? (
+                  (() => {
+                    const grouped = new Map<number, GroupedPerson>();
+                    (movie.persons as any[]).forEach((mp) => {
+                      const p = mp.person ?? mp;
+                      const pid = p.id ?? mp.personId ?? mp.id;
+                      const name = p.fullName || p.stageName || p.name || "";
+                      if (!name || !pid) return;
+                      if (!grouped.has(pid)) {
+                        grouped.set(pid, {
+                          personId: pid,
+                          displayName: name,
+                          avatarUrl: p.avatarUrl || p.profileImageUrl,
+                          biography: p.biography,
+                          birthDate: p.birthDate,
+                          nationality: p.nationality,
+                          roles: [],
+                        });
+                      }
+                      const role = mp.role;
+                      if (role && !grouped.get(pid)!.roles.includes(role)) {
+                        grouped.get(pid)!.roles.push(role);
+                      }
+                    });
+                    return Array.from(grouped.values()).map((gp) => (
+                      <PersonCard key={gp.personId} person={gp} />
+                    ));
+                  })()
+                ) : (
+                  <Typography color="text.secondary">Đang cập nhật nhân sự.</Typography>
+                )}
+              </Stack>
+            </Box>
           </Paper>
         </Grid>
       </Grid>
@@ -448,30 +615,226 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
   );
 }
 
+const EPISODES_PER_PAGE = 24;
+
 function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: MovieDetail }) {
   const theme = useTheme();
   const { navigateToWatch } = usePlayNavigation();
+  const [showAll, setShowAll] = useState(false);
+  const [jumpInput, setJumpInput] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+  const didDrag = useRef(false);
+
+  const visibleEpisodes = showAll ? episodes : episodes.slice(0, EPISODES_PER_PAGE);
+  const hasMore = episodes.length > EPISODES_PER_PAGE;
+
+  const scrollToEpisode = (epNum: number) => {
+    const ep = episodes.find((e) => e.episodeNumber === epNum);
+    if (!ep) return;
+    if (!showAll && (ep.episodeNumber ?? 0) > EPISODES_PER_PAGE) setShowAll(true);
+    setTimeout(() => {
+      const el = cardRefs.current.get(ep.id);
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }, 60);
+  };
+
+  const handleJump = () => {
+    const num = parseInt(jumpInput, 10);
+    if (isNaN(num) || num < 1) return;
+    const ep = episodes.find((e) => e.episodeNumber === num);
+    if (!ep) return;
+    navigateToWatch({
+      movieSlug: movie.slug,
+      movieId: movie.id,
+      isPremiumOnly: movie.isPremiumOnly,
+      episodeId: ep.id,
+      isFreePreview: ep.isFreePreview,
+    });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse") return;
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    didDrag.current = false;
+    dragStartX.current = e.clientX;
+    dragScrollLeft.current = el.scrollLeft;
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse") return;
+    if (!isDragging.current || !scrollRef.current) return;
+    const dx = e.clientX - dragStartX.current;
+    if (Math.abs(dx) > 4) didDrag.current = true;
+    scrollRef.current.scrollLeft = dragScrollLeft.current - dx;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse") return;
+    if (!scrollRef.current) return;
+    isDragging.current = false;
+    scrollRef.current.releasePointerCapture(e.pointerId);
+  };
+
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
-      <SectionTitle eyebrow="Xem thôi nào" title="Tập phim" />
-      <Grid container spacing={2}>
-        {episodes.map((episode) => (
-          <Grid item xs={12} sm={6} lg={4} key={episode.id}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        spacing={1.5}
+        sx={{ mb: 2.5 }}
+      >
+        <Stack direction="row" alignItems="baseline" spacing={1.5}>
+          <SectionTitle eyebrow="Xem thôi nào" title="Tập phim" />
+          <Chip
+            label={`${episodes.length} tập`}
+            variant="outlined"
+            color="primary"
+            size="small"
+            sx={{ flexShrink: 0 }}
+          />
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="stretch" flexWrap="wrap" useFlexGap>
+          <TextField
+            size="small"
+            placeholder="Tới tập số..."
+            value={jumpInput}
+            onChange={(e) => setJumpInput(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && handleJump()}
+            inputProps={{ inputMode: "numeric" }}
+            sx={{ width: 130, "& .MuiInputBase-root": { borderRadius: 1.5, height: 32 } }}
+          />
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleJump}
+            disabled={!jumpInput}
+            sx={{ borderRadius: 1.5, minWidth: 72, height: 32, fontSize: "0.8rem" }}
+          >
+            Xem ngayyy
+          </Button>
+          <Button
+            variant={showPicker ? "contained" : "outlined"}
+            size="small"
+            onClick={() => setShowPicker((v) => !v)}
+            sx={{ borderRadius: 1.5, height: 32, fontSize: "0.8rem" }}
+          >
+            {showPicker ? "Ẩn" : "Chọn tập"}
+          </Button>
+        </Stack>
+      </Stack>
+
+      {showPicker && (
+        <Box
+          sx={{
+            mb: 2.5,
+            p: 2,
+            borderRadius: 1.5,
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            background: alpha(theme.palette.background.paper, 0.7),
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: "block" }}>
+            Chọn nhanh tập
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+            {episodes.map((ep) => (
+              <ButtonBase
+                key={ep.id}
+                onClick={() =>
+                  navigateToWatch({
+                    movieSlug: movie.slug,
+                    movieId: movie.id,
+                    isPremiumOnly: movie.isPremiumOnly,
+                    episodeId: ep.id,
+                    isFreePreview: ep.isFreePreview,
+                  })
+                }
+                sx={{
+                  width: 40,
+                  height: 36,
+                  borderRadius: 1,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                  color: "text.primary",
+                  background: alpha(theme.palette.primary.main, 0.06),
+                  transition: "all .18s",
+                  "&:hover": {
+                    background: theme.palette.primary.main,
+                    color: "#fff",
+                    borderColor: theme.palette.primary.main,
+                    transform: "scale(1.08)",
+                  },
+                }}
+              >
+                {ep.episodeNumber ?? "?"}
+              </ButtonBase>
+            ))}
+          </Box>
+        </Box>
+      )}
+
+      <Box
+        ref={scrollRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        sx={{
+          display: "flex",
+          gap: 2,
+          overflowX: "auto",
+          overflowY: "visible",
+          py: 1,
+          pb: 1.5,
+          scrollSnapType: "x mandatory",
+          "&::-webkit-scrollbar": { height: 4 },
+          "&::-webkit-scrollbar-track": { background: "transparent" },
+          "&::-webkit-scrollbar-thumb": {
+            background: "rgba(255,255,255,0.2)",
+            borderRadius: 2,
+            "&:hover": { background: "rgba(255,255,255,0.4)" },
+          },
+        }}
+      >
+        {visibleEpisodes.map((episode) => (
+          <Box
+            key={episode.id}
+            ref={(el) => {
+              if (el) cardRefs.current.set(episode.id, el as HTMLDivElement);
+              else cardRefs.current.delete(episode.id);
+            }}
+            sx={{
+              flexShrink: 0,
+              width: { xs: "80vw", sm: "45vw", md: 320, lg: 300 },
+              scrollSnapAlign: "start",
+            }}
+          >
             <Paper
               elevation={0}
-              onClick={() =>
+              onClick={() => {
                 navigateToWatch({
                   movieSlug: movie.slug,
                   movieId: movie.id,
                   isPremiumOnly: movie.isPremiumOnly,
                   episodeId: episode.id,
                   isFreePreview: episode.isFreePreview,
-                })
-              }
+                });
+              }}
               sx={{
                 position: "relative",
                 overflow: "hidden",
-                minHeight: { xs: 190, sm: 220, md: 230 },
+                height: { xs: 180, sm: 200, md: 210 },
                 borderRadius: 1.5,
                 border: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
                 backgroundColor: "background.paper",
@@ -495,36 +858,40 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
               <Stack
                 sx={{
                   position: "relative",
-                  minHeight: { xs: 190, sm: 220, md: 230 },
-                  p: { xs: 2, md: 2.4 },
+                  height: "100%",
+                  p: { xs: 1.8, md: 2.2 },
                   justifyContent: "flex-end",
                 }}
               >
-                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                <Stack direction="row" spacing={1} sx={{ mb: 0.75 }}>
                   <Chip
                     size="small"
                     color="primary"
                     label={`Tập ${episode.episodeNumber ?? "?"}`}
                   />
-                  {episode.isFreePreview && (
-                    <Chip size="small" label="Free preview" variant="outlined" />
-                  )}
+                  {episode.isFreePreview && <Chip size="small" label="Free" variant="outlined" />}
                 </Stack>
-                <Typography variant="h5" fontWeight={950} letterSpacing="-0.035em">
+                <Typography variant="subtitle1" fontWeight={900} letterSpacing="-0.02em" noWrap>
                   {episode.title || "Chưa có tiêu đề"}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatRuntime(episode.durationSeconds)} · {episode.status || "PUBLISHED"}
+                <Typography variant="caption" color="text.secondary">
+                  {formatRuntime(episode.durationSeconds)}
                 </Typography>
               </Stack>
             </Paper>
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Box>
+      {hasMore && (
+        <Box sx={{ mt: 2.5, textAlign: "center" }}>
+          <Button variant="outlined" onClick={() => setShowAll((v) => !v)} sx={{ minWidth: 180 }}>
+            {showAll ? "Thu gọn" : `Xem tất cả ${episodes.length} tập`}
+          </Button>
+        </Box>
+      )}
     </Container>
   );
 }
-
 function ReviewSection({
   movie,
   reviews,
@@ -700,7 +1067,7 @@ function ReviewSection({
                 >
                   {canReview
                     ? `Review áp dụng cho toàn phim. ${content.length}/${reviewMaxLength} ký tự.`
-                    : `Bạn cần xem ít nhất 80% ${isSeries ? "một tập" : "phim"} để mở khóa ô review.`}
+                    : `Bạn cần xem ít nhất 80% ${isSeries ? "một tập" : "phim"} để có thể review.`}
                 </Typography>
               </Stack>
               <Button

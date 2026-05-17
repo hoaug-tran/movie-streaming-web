@@ -30,6 +30,11 @@ export function ContinueWatchingSection() {
           : items.map((item) => {
               if (!item.movie?.slug) return null;
               const progress = Math.max(0, Math.min(100, item.progressPercent ?? 0));
+              const isSeries = item.movie.movieType?.toUpperCase() === "SERIES";
+              const episodeLabel =
+                isSeries && item.episodeNumber != null
+                  ? `Tập ${item.episodeNumber}${item.episodeTitle ? ` · ${item.episodeTitle}` : ""}`
+                  : undefined;
 
               return (
                 <Box
@@ -53,6 +58,7 @@ export function ContinueWatchingSection() {
                       showProgress: true,
                       progress,
                     })}
+                    topLeftBadge={episodeLabel}
                   />
                 </Box>
               );

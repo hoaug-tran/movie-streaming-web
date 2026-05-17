@@ -19,8 +19,9 @@ export function useMovieCardProps(
   options: MovieCardOptions = {}
 ): MovieCardProps {
   const { navigateToWatch } = usePlayNavigation();
-  const defaultReleaseDate =
-    movie.publishedAt || (movie.releaseYear ? `${movie.releaseYear}-01-01` : movie.createdAt);
+  const defaultReleaseDate = movie.releaseYear
+    ? `${movie.releaseYear}-01-01`
+    : (movie.publishedAt ?? movie.createdAt);
 
   const handlePlay =
     options.onPlay ||
@@ -70,8 +71,9 @@ export function getMovieCardProps(
   movie: MovieCardMovie,
   options: MovieCardOptions = {}
 ): MovieCardProps {
-  const defaultReleaseDate =
-    movie.publishedAt || (movie.releaseYear ? `${movie.releaseYear}-01-01` : movie.createdAt);
+  const defaultReleaseDate = movie.releaseYear
+    ? `${movie.releaseYear}-01-01`
+    : (movie.publishedAt ?? movie.createdAt);
 
   return {
     id: movie.id,

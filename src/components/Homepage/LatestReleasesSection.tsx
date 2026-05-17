@@ -5,11 +5,11 @@ import { SectionHeader } from "@/components/Common/SectionHeader";
 import { MovieCard, MovieCardSkeleton } from "@/components/Common/MovieCard";
 import { getMovieCardProps } from "@/components/Common/movie-card-props";
 import { HorizontalScrollGrid } from "@/components/Common/HorizontalScrollGrid";
-import { useLatestMovies } from "@/modules/movie/hooks/useClientMovies";
+import { useWeeklyNewMovies } from "@/modules/movie/hooks/useDiscovery";
 import { useRouter } from "next/navigation";
 
 export function LatestReleasesSection() {
-  const { data: movies = [], isLoading, isError } = useLatestMovies();
+  const { data: movies = [], isLoading, isError } = useWeeklyNewMovies();
   const router = useRouter();
 
   return (
@@ -39,9 +39,7 @@ export function LatestReleasesSection() {
               >
                 <MovieCard
                   {...getMovieCardProps(movie, {
-                    releaseDate:
-                      movie.publishedAt ||
-                      (movie.releaseYear ? `${movie.releaseYear}-01-01` : undefined),
+                    releaseDate: movie.releaseYear ? `${movie.releaseYear}-01-01` : undefined,
                     variant: "default",
                   })}
                 />

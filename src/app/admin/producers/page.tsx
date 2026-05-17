@@ -40,7 +40,7 @@ export default function AdminProducersPage() {
     <AdminManagementPage<AdminStudio>
       permission="studios:manage"
       title="Quản lý đơn vị sản xuất"
-      description="Quản lý studio/producer theo đúng CreateStudioRequest backend."
+      description="Quản lý thông tin nhà sản xuất và studio liên kết với phim."
       queryKey={["admin", "studios"]}
       queryFn={adminService.getStudios}
       searchPlaceholder="Tìm studio, slug, quốc gia..."
@@ -105,7 +105,7 @@ export default function AdminProducersPage() {
           open={open}
           mode={mode}
           title={mode === "create" ? "Thêm đơn vị sản xuất" : `Sửa ${item?.name ?? "đơn vị"}`}
-          description="Form bám sát ràng buộc Studio DTO để tránh lỗi validation."
+          description="Nhập thông tin nhà sản xuất hoặc studio."
           fields={fields}
           initialValues={toForm(item)}
           submitting={submitting}

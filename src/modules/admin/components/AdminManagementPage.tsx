@@ -24,6 +24,9 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import AdminPermissionGate from "./AdminPermissionGate";
 import { AdminPermission } from "../permissions";
@@ -45,6 +48,13 @@ export interface AdminQuickAction<T> {
   run?: (item: T) => Promise<unknown>;
 }
 
+interface AdminFilterDef<T> {
+  key: string;
+  label: string;
+  options: { label: string; value: string }[];
+  getValue: (item: T) => string;
+}
+
 interface AdminManagementPageProps<T extends { id: number }> {
   permission: AdminPermission;
   title: string;
@@ -55,6 +65,7 @@ interface AdminManagementPageProps<T extends { id: number }> {
   columns: AdminTableColumn<T>[];
   getSearchText: (item: T) => string;
   getStatus?: (item: T) => string;
+  extraFilters?: AdminFilterDef<T>[];
   stats: Array<{ label: string; getValue: (items: T[]) => number | string; tone: Tone }>;
   quickActions?: AdminQuickAction<T>[];
   createLabel?: string;
@@ -69,6 +80,7 @@ interface AdminManagementPageProps<T extends { id: number }> {
     onSubmit: (payload: unknown) => void;
   }) => ReactNode;
   onCreate?: (payload: unknown) => Promise<unknown>;
+  onCreateSuccess?: (data: unknown) => void;
   onEdit?: (item: T, payload: unknown) => Promise<unknown>;
   onDelete?: (item: T) => Promise<unknown>;
 }
@@ -95,12 +107,14 @@ export default function AdminManagementPage<T extends { id: number }>({
   columns,
   getSearchText,
   getStatus,
+  extraFilters = [],
   stats,
   quickActions = [],
   createLabel = "Tạo mới",
   createHint = "Form tạo mới sẽ mở rộng theo hợp đồng backend chi tiết.",
   renderForm,
   onCreate,
+  onCreateSuccess,
   onEdit,
   onDelete,
 }: AdminManagementPageProps<T>) {
@@ -108,17 +122,27 @@ export default function AdminManagementPage<T extends { id: number }>({
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [extraFilterValues, setExtraFilterValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(extraFilters.map((f) => [f.key, "ALL"]))
+  );
   const [notice, setNotice] = useState<string | null>(null);
   const [formState, setFormState] = useState<{ mode: "create" | "edit"; item: T | null } | null>(
     null
   );
+
+  // Derive a short entity label from the page title, e.g. "Quản lý phim" → "phim"
+  const entityLabel = title
+    .replace(/quản lý/i, "")
+    .replace(/thêm/i, "")
+    .trim()
+    .toLowerCase() || "mục";
 
   const listQuery = useQuery({ queryKey, queryFn });
   const actionMutation = useMutation({
     mutationFn: ({ item, action }: { item: T; action: AdminQuickAction<T> }) =>
       action.run ? action.run(item) : Promise.resolve(),
     onSuccess: (_data, variables) => {
-      setNotice(`Đã thực hiện: ${variables.action.label}`);
+      setNotice(`Thao tác "${variables.action.label}" thành công.`);
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -137,10 +161,11 @@ export default function AdminManagementPage<T extends { id: number }>({
       if (mode === "create" && onCreate) return onCreate(payload);
       return Promise.reject(new Error("Form action is not configured"));
     },
-    onSuccess: (_data, variables) => {
-      setNotice(variables.mode === "create" ? "Đã tạo bản ghi." : "Đã cập nhật bản ghi.");
+    onSuccess: (data, variables) => {
+      setNotice(variables.mode === "create" ? `Tạo ${entityLabel} thành công.` : `Cập nhật ${entityLabel} thành công.`);
       setFormState(null);
       queryClient.invalidateQueries({ queryKey });
+      if (variables.mode === "create" && onCreateSuccess) onCreateSuccess(data);
     },
   });
 
@@ -156,9 +181,12 @@ export default function AdminManagementPage<T extends { id: number }>({
       const matchesSearch =
         !normalizedSearch || getSearchText(item).toLowerCase().includes(normalizedSearch);
       const matchesStatus = !getStatus || status === "ALL" || getStatus(item) === status;
-      return matchesSearch && matchesStatus;
+      const matchesExtra = extraFilters.every(
+        (f) => extraFilterValues[f.key] === "ALL" || f.getValue(item) === extraFilterValues[f.key]
+      );
+      return matchesSearch && matchesStatus && matchesExtra;
     });
-  }, [getSearchText, getStatus, items, search, status]);
+  }, [getSearchText, getStatus, items, search, status, extraFilters, extraFilterValues]);
 
   return (
     <AdminPermissionGate permission={permission}>
@@ -236,59 +264,80 @@ export default function AdminManagementPage<T extends { id: number }>({
               boxShadow: "none",
             }}
           >
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={getStatus ? 8 : 12}>
-                <TextField
-                  id={`${queryKey.join("-")}-search-input`}
-                  fullWidth
-                  size="small"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={searchPlaceholder}
-                  InputProps={{
-                    startAdornment: (
-                      <SearchRoundedIcon sx={{ mr: 1, color: theme.palette.text.secondary }} />
-                    ),
-                  }}
-                />
-              </Grid>
-              {getStatus && (
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    id={`${queryKey.join("-")}-status-filter`}
-                    select
-                    fullWidth
-                    size="small"
-                    label="Trạng thái"
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value)}
-                  >
-                    <MenuItem value="ALL">Tất cả</MenuItem>
-                    {statuses.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+            <Stack spacing={1.5}>
+              <TextField
+                id={`${queryKey.join("-")}-search-input`}
+                fullWidth
+                size="small"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={searchPlaceholder}
+                InputProps={{
+                  startAdornment: (
+                    <SearchRoundedIcon sx={{ mr: 1, color: theme.palette.text.secondary }} />
+                  ),
+                }}
+              />
+              {(getStatus || extraFilters.length > 0) && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {getStatus && (
+                    <TextField
+                      id={`${queryKey.join("-")}-status-filter`}
+                      select
+                      size="small"
+                      label="Trạng thái"
+                      value={status}
+                      onChange={(event) => setStatus(event.target.value)}
+                      sx={{ minWidth: 160 }}
+                    >
+                      <MenuItem value="ALL">Tất cả</MenuItem>
+                      {statuses.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                  {extraFilters.map((f) => (
+                    <TextField
+                      key={f.key}
+                      id={`${queryKey.join("-")}-${f.key}-filter`}
+                      select
+                      size="small"
+                      label={f.label}
+                      value={extraFilterValues[f.key] ?? "ALL"}
+                      onChange={(event) =>
+                        setExtraFilterValues((prev) => ({ ...prev, [f.key]: event.target.value }))
+                      }
+                      sx={{ minWidth: 160 }}
+                    >
+                      <MenuItem value="ALL">Tất cả</MenuItem>
+                      {f.options.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  ))}
+                </Stack>
               )}
-            </Grid>
+            </Stack>
           </Paper>
 
           {listQuery.isLoading && <LinearProgress color="primary" />}
           {listQuery.isError && (
             <Alert severity="error">
-              Không tải được dữ liệu quản trị. Kiểm tra quyền hoặc backend.
+              Không tải được dữ liệu. Vui lòng thử lại hoặc kiểm tra kết nối.
             </Alert>
           )}
           {actionMutation.isError && (
             <Alert severity="error">
-              Thao tác thất bại. Backend có thể từ chối hoặc payload chưa khớp contract.
+              Thao tác thất bại. Vui lòng kiểm tra lại dữ liệu hoặc liên hệ quản trị viên.
             </Alert>
           )}
           {formMutation.isError && (
             <Alert severity="error">
-              Không lưu được form. Kiểm tra dữ liệu hoặc quyền backend.
+              Không lưu được. Vui lòng kiểm tra lại thông tin và thử lại.
             </Alert>
           )}
           {notice && (
@@ -390,7 +439,7 @@ export default function AdminManagementPage<T extends { id: number }>({
                               color="error"
                               disabled={actionMutation.isPending || formMutation.isPending}
                               onClick={() => {
-                                if (window.confirm("Xóa bản ghi này?")) {
+                                if (window.confirm("Bạn có chắc muốn xóa mục này không? Hành động này không thể hoàn tác.")) {
                                   actionMutation.mutate({
                                     item,
                                     action: {
@@ -429,7 +478,11 @@ export default function AdminManagementPage<T extends { id: number }>({
                                 }}
                                 href={href}
                                 startIcon={
-                                  action.tone === "rose" ? <DeleteRoundedIcon /> : <LockRoundedIcon />
+                                  action.tone === "rose" ? <DeleteRoundedIcon />
+                                  : action.id === "view" || action.id === "detail" ? <VisibilityRoundedIcon />
+                                  : action.id === "upload" ? <CloudUploadRoundedIcon />
+                                  : action.id === "lock" || action.id === "unlock" ? <LockRoundedIcon />
+                                  : <OpenInNewRoundedIcon />
                                 }
                                 sx={{ borderRadius: 1.25, fontWeight: 800 }}
                               >

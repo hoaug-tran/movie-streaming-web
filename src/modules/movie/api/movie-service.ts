@@ -36,6 +36,14 @@ class MovieService {
     }
   }
 
+  async incrementView(movieId: number): Promise<void> {
+    try {
+      await apiClient.post<void>(`/movies/${movieId}/view`);
+    } catch {
+      // fire-and-forget, ignore errors
+    }
+  }
+
   async searchMovies(query: string, params?: PaginationParams): Promise<PaginatedResponse<Movie>> {
     try {
       return await apiClient.post<PaginatedResponse<Movie>>("/movies/search", {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Box, IconButton, Slider, Tooltip, Typography, Fade } from "@mui/material";
 import {
   PlayArrow,
@@ -13,8 +14,11 @@ import {
   PictureInPicture,
   SlowMotionVideo,
   ListAlt,
+  Lock,
+  Hd,
 } from "@mui/icons-material";
 import { Episode, MovieDetail } from "@/modules/movie/types/movie";
+import { VideoQuality } from "@/hooks/use-subscription";
 import EpisodeList from "./EpisodeList";
 
 interface PlayerControlsProps {
@@ -28,6 +32,9 @@ interface PlayerControlsProps {
   volume: number;
   isMuted: boolean;
   isFullscreen: boolean;
+  availableQualities: string[];
+  currentQuality: VideoQuality;
+  maxQuality: VideoQuality;
   onPlay: () => void;
   onSeek: (value: number) => void;
   onVolumeChange: (value: number) => void;
@@ -35,6 +42,7 @@ interface PlayerControlsProps {
   onFullscreen: () => void;
   onBack: () => void;
   onEpisodeSelect: (ep: Episode) => void;
+  onQualityChange: (q: VideoQuality) => void;
 }
 
 function formatTime(sec: number): string {
@@ -47,6 +55,22 @@ function formatTime(sec: number): string {
 }
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const ALL_QUALITIES: VideoQuality[] = ["720p", "1080p", "4K"];
+const QUALITY_ORDER: VideoQuality[] = ["720p", "1080p", "4K"];
+
+const menuBoxSx = {
+  position: "absolute" as const,
+  bottom: "100%",
+  right: 0,
+  mb: 1,
+  bgcolor: "rgba(20,20,20,0.95)",
+  backdropFilter: "blur(12px)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 2,
+  overflow: "hidden",
+  minWidth: 100,
+  zIndex: 20,
+};
 
 export default function PlayerControls({
   show,
@@ -59,6 +83,9 @@ export default function PlayerControls({
   volume,
   isMuted,
   isFullscreen,
+  availableQualities,
+  currentQuality,
+  maxQuality,
   onPlay,
   onSeek,
   onVolumeChange,
@@ -66,11 +93,16 @@ export default function PlayerControls({
   onFullscreen,
   onBack,
   onEpisodeSelect,
+  onQualityChange,
 }: PlayerControlsProps) {
+  const router = useRouter();
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const isSeries = movie.movieType === "SERIES" && episodes.length > 1;
+
+  const maxQualityIdx = QUALITY_ORDER.indexOf(maxQuality);
 
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
@@ -89,6 +121,24 @@ export default function PlayerControls({
         await videoEl.requestPictureInPicture();
       }
     } catch {}
+  };
+
+  const handleQualityClick = (q: VideoQuality) => {
+    const idx = QUALITY_ORDER.indexOf(q);
+    if (idx > maxQualityIdx) {
+      router.push("/pricing");
+      return;
+    }
+    if (availableQualities.includes(q)) {
+      onQualityChange(q);
+    }
+    setShowQualityMenu(false);
+  };
+
+  const qualityLabel = (q: VideoQuality) => {
+    if (q === "4K") return "4K Ultra HD";
+    if (q === "1080p") return "Full HD 1080p";
+    return "HD 720p";
   };
 
   return (
@@ -125,10 +175,7 @@ export default function PlayerControls({
               e.stopPropagation();
               onBack();
             }}
-            sx={{
-              color: "#fff",
-              "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
-            }}
+            sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
           >
             <ArrowBack />
           </IconButton>
@@ -200,20 +247,11 @@ export default function PlayerControls({
             />
           </Box>
 
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-            }}
-          >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Tooltip title={isPlaying ? "Tạm dừng (Space)" : "Phát (Space)"}>
               <IconButton
                 onClick={onPlay}
-                sx={{
-                  color: "#fff",
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
-                }}
+                sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
               >
                 {isPlaying ? <Pause /> : <PlayArrow />}
               </IconButton>
@@ -223,10 +261,7 @@ export default function PlayerControls({
               <Tooltip title={isMuted ? "Bật âm (M)" : "Tắt âm (M)"}>
                 <IconButton
                   onClick={onMuteToggle}
-                  sx={{
-                    color: "#fff",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
-                  }}
+                  sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
                 >
                   {isMuted ? <VolumeOff /> : <VolumeUp />}
                 </IconButton>
@@ -263,7 +298,10 @@ export default function PlayerControls({
             <Box sx={{ position: "relative" }}>
               <Tooltip title="Tốc độ phát">
                 <IconButton
-                  onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                  onClick={() => {
+                    setShowSpeedMenu(!showSpeedMenu);
+                    setShowQualityMenu(false);
+                  }}
                   sx={{
                     color: "#fff",
                     fontSize: "0.75rem",
@@ -277,21 +315,7 @@ export default function PlayerControls({
                 </IconButton>
               </Tooltip>
               {showSpeedMenu && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    bottom: "100%",
-                    right: 0,
-                    mb: 1,
-                    bgcolor: "rgba(20,20,20,0.95)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 2,
-                    overflow: "hidden",
-                    minWidth: 100,
-                    zIndex: 20,
-                  }}
-                >
+                <Box sx={menuBoxSx}>
                   {PLAYBACK_SPEEDS.map((speed) => (
                     <Box
                       key={speed}
@@ -310,6 +334,76 @@ export default function PlayerControls({
                       {speed}x
                     </Box>
                   ))}
+                </Box>
+              )}
+            </Box>
+
+            <Box sx={{ position: "relative" }}>
+              <Tooltip title="Chất lượng video">
+                <IconButton
+                  onClick={() => {
+                    setShowQualityMenu(!showQualityMenu);
+                    setShowSpeedMenu(false);
+                  }}
+                  sx={{
+                    color: currentQuality !== "720p" ? "#C8102E" : "#fff",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                  }}
+                >
+                  <Hd sx={{ fontSize: 20 }} />
+                  <Typography sx={{ ml: 0.3, fontSize: "0.65rem", color: "inherit" }}>
+                    {currentQuality}
+                  </Typography>
+                </IconButton>
+              </Tooltip>
+              {showQualityMenu && (
+                <Box sx={{ ...menuBoxSx, minWidth: 160 }}>
+                  {ALL_QUALITIES.map((q) => {
+                    const qIdx = QUALITY_ORDER.indexOf(q);
+                    const isLocked = qIdx > maxQualityIdx;
+                    const isAvailable =
+                      availableQualities.length === 0 || availableQualities.includes(q);
+                    const isActive = q === currentQuality;
+                    return (
+                      <Box
+                        key={q}
+                        onClick={() => handleQualityClick(q)}
+                        sx={{
+                          px: 2,
+                          py: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 1,
+                          color: isLocked
+                            ? "rgba(255,255,255,0.35)"
+                            : isActive
+                              ? "#C8102E"
+                              : isAvailable
+                                ? "#fff"
+                                : "rgba(255,255,255,0.35)",
+                          fontFamily: "Inter, sans-serif",
+                          fontSize: "0.85rem",
+                          cursor: isAvailable || isLocked ? "pointer" : "default",
+                          fontWeight: isActive ? 700 : 400,
+                          "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+                        }}
+                      >
+                        <span>{qualityLabel(q)}</span>
+                        {isLocked && <Lock sx={{ fontSize: 13, opacity: 0.6 }} />}
+                        {!isLocked && isActive && (
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              bgcolor: "#C8102E",
+                            }}
+                          />
+                        )}
+                      </Box>
+                    );
+                  })}
                 </Box>
               )}
             </Box>
@@ -344,10 +438,7 @@ export default function PlayerControls({
             <Tooltip title={isFullscreen ? "Thoát toàn màn hình (F)" : "Toàn màn hình (F)"}>
               <IconButton
                 onClick={onFullscreen}
-                sx={{
-                  color: "#fff",
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
-                }}
+                sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
               >
                 {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
               </IconButton>

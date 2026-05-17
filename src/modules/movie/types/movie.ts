@@ -86,6 +86,7 @@ export interface Episode {
   durationSeconds?: number;
   isFreePreview?: boolean;
   status?: string;
+  availableQualities?: string[];
 }
 
 export interface CategoryItem {

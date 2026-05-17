@@ -103,17 +103,10 @@ const navItems: AdminNavItem[] = [
     section: "catalog",
   },
   {
-    label: "Diễn viên",
-    href: "/admin/cast",
+    label: "Người tham gia",
+    href: "/admin/persons",
     permission: "persons:manage",
     icon: <TheaterComedyRoundedIcon />,
-    section: "catalog",
-  },
-  {
-    label: "Đạo diễn",
-    href: "/admin/directors",
-    permission: "persons:manage",
-    icon: <PersonRoundedIcon />,
     section: "catalog",
   },
   {

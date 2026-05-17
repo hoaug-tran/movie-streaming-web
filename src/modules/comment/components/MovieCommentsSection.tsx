@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   alpha,
   Avatar,
@@ -26,7 +26,7 @@ import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import ReplyRoundedIcon from "@mui/icons-material/ReplyRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Episode, MovieComment } from "@/modules/movie/types/movie";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
@@ -94,6 +94,7 @@ export function MovieCommentsSection({
   const theme = useTheme();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated, loading } = useAuth();
   const commentsQuery = useMovieComments(movieId, initialComments);
   const createComment = useCreateMovieComment(movieId, slug);
@@ -105,6 +106,8 @@ export function MovieCommentsSection({
   const [allCommentsOpen, setAllCommentsOpen] = useState(false);
   const [selectedComment, setSelectedComment] = useState<MovieComment | null>(null);
   const [reportComment, setReportComment] = useState<MovieComment | null>(null);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
+  const commentRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const comments = useMemo(
     () => flattenComments(commentsQuery.data ?? initialComments),
@@ -116,6 +119,24 @@ export function MovieCommentsSection({
       new Set(comments.filter((comment) => comment.likedByCurrentUser).map((comment) => comment.id))
     );
   }, [comments]);
+
+  useEffect(() => {
+    const commentParam = searchParams?.get("comment");
+    if (!commentParam) return;
+    const targetId = Number(commentParam);
+    if (!targetId || isNaN(targetId)) return;
+    setHighlightedCommentId(targetId);
+    const tryScroll = (attempts = 0) => {
+      const el = commentRefs.current[targetId];
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => setHighlightedCommentId(null), 4000);
+      } else if (attempts < 10) {
+        setTimeout(() => tryScroll(attempts + 1), 300);
+      }
+    };
+    tryScroll();
+  }, [searchParams, comments]);
 
   const rootComments = useMemo(
     () => comments.filter((comment) => !comment.parentCommentId),
@@ -293,12 +314,20 @@ export function MovieCommentsSection({
           rootComments.map((comment) => (
             <Paper
               key={comment.id}
+              ref={(el) => { commentRefs.current[comment.id] = el; }}
               elevation={0}
               sx={{
                 p: { xs: 2, md: 2.6 },
                 borderRadius: 1.5,
-                border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-                background: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.92)}, ${alpha(theme.palette.primary.main, 0.06)})`,
+                border: `1px solid ${
+                  highlightedCommentId === comment.id
+                    ? theme.palette.primary.main
+                    : alpha(theme.palette.text.primary, 0.1)
+                }`,
+                background: highlightedCommentId === comment.id
+                  ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.18)}, ${alpha(theme.palette.background.paper, 0.92)})`
+                  : `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.92)}, ${alpha(theme.palette.primary.main, 0.06)})`,
+                transition: "border-color 0.4s, background 0.4s",
               }}
             >
               <CommentContent

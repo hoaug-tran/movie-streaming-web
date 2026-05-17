@@ -47,9 +47,10 @@ class ReviewService {
     }
   }
 
-  async toggleReviewLike(reviewId: number): Promise<ReviewLikeResponse> {
+  async toggleReviewLike(reviewId: number): Promise<boolean> {
     try {
-      return await apiClient.post<ReviewLikeResponse>(`/review-likes/${reviewId}`);
+      const res = await apiClient.post<ReviewLikeResponse>(`/review-likes/${reviewId}`);
+      return res.liked;
     } catch (error) {
       throw this.handleError(error);
     }

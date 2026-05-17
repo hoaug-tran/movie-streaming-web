@@ -1,6 +1,7 @@
 "use client";
 
 import { Stack, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
 import AdminFormDrawer, { AdminFormField } from "@/modules/admin/components/AdminFormDrawer";
 import AdminManagementPage, {
   AdminStatusChip,
@@ -30,7 +31,7 @@ const movieFields: AdminFormField<MovieFormValues>[] = [
     imageAspectRatio: "16 / 9",
     imageSizeHint: "Khuyến nghị 1920×1080px (16:9).",
   },
-  { name: "trailerUrl", label: "Trailer URL", maxLength: 1000 },
+  { name: "trailerUrl", label: "Trailer", type: "video", maxLength: 1000 },
   {
     name: "releaseYear",
     label: "Năm phát hành",
@@ -48,7 +49,7 @@ const movieFields: AdminFormField<MovieFormValues>[] = [
     type: "select",
     required: true,
     options: [
-      { label: "Movie", value: "MOVIE" },
+      { label: "Movie (Single)", value: "SINGLE" },
       { label: "Series", value: "SERIES" },
     ],
   },
@@ -80,18 +81,19 @@ function toMovieForm(movie?: AdminMovie | null): MovieFormValues {
     country: movie?.country ?? "",
     language: movie?.language ?? "",
     ageRating: movie?.ageRating ?? "",
-    movieType: movie?.movieType ?? "MOVIE",
+    movieType: movie?.movieType ?? "SINGLE",
     movieStatus: movie?.movieStatus ?? "DRAFT",
     isPremiumOnly: Boolean(movie?.isPremiumOnly),
   };
 }
 
 export default function AdminMoviesPage() {
+  const router = useRouter();
   return (
     <AdminManagementPage<AdminMovie>
       permission="movies:manage"
       title="Quản lý phim"
-      description="Điều phối metadata, trạng thái phát hành và khóa vận hành nội dung. Moderator chỉ thấy ổ khóa theo RBAC."
+      description="Thêm, chỉnh sửa và quản lý trạng thái phát hành phim. Sau khi tạo phim, vào trang chi tiết để gắn danh mục, tag, diễn viên và đạo diễn."
       queryKey={["admin", "movies"]}
       queryFn={adminService.getMovies}
       searchPlaceholder="Tìm theo tên, slug, quốc gia, ngôn ngữ..."
@@ -99,6 +101,26 @@ export default function AdminMoviesPage() {
         `${movie.title} ${movie.originalTitle ?? ""} ${movie.slug ?? ""} ${movie.country ?? ""} ${movie.language ?? ""}`
       }
       getStatus={(movie) => movie.movieStatus ?? "UNKNOWN"}
+      extraFilters={[
+        {
+          key: "movieType",
+          label: "Loại phim",
+          options: [
+            { label: "Phim lẻ", value: "SINGLE" },
+            { label: "Phim bộ", value: "SERIES" },
+          ],
+          getValue: (movie) => movie.movieType ?? "",
+        },
+        {
+          key: "premium",
+          label: "Truy cập",
+          options: [
+            { label: "Miễn phí", value: "false" },
+            { label: "Premium", value: "true" },
+          ],
+          getValue: (movie) => String(Boolean(movie.isPremiumOnly)),
+        },
+      ]}
       stats={[
         { label: "Tổng phim", getValue: (items) => items.length, tone: "cyan" },
         {
@@ -187,13 +209,17 @@ export default function AdminMoviesPage() {
       ]}
       createLabel="Thêm phim"
       onCreate={(payload) => adminService.createMovie(payload as AdminMoviePayload)}
+      onCreateSuccess={(data) => {
+        const movie = data as AdminMovie;
+        if (movie?.id) router.push(`/admin/movies/${movie.id}`);
+      }}
       onEdit={(movie, payload) => adminService.updateMovie(movie.id, payload as AdminMoviePayload)}
       renderForm={({ mode, item, open, submitting, error, onClose, onSubmit }) => (
         <AdminFormDrawer<MovieFormValues>
           open={open}
           mode={mode}
           title={mode === "create" ? "Thêm phim" : `Sửa ${item?.title ?? "phim"}`}
-          description="Metadata gửi đúng Create/UpdateMovieRequest để backend @Valid chặn sai lệch sớm."
+          description="Nhập thông tin cơ bản của phim. Sau khi tạo xong, vào trang chi tiết để thêm danh mục, tag, diễn viên, đạo diễn và studio."
           fields={movieFields}
           initialValues={toMovieForm(item)}
           submitting={submitting}

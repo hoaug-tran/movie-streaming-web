@@ -107,6 +107,16 @@ export const useDiscovery = () => {
   };
 };
 
+export const useWeeklyNewMovies = () => {
+  return useQuery<Movie[]>({
+    queryKey: ["movies", "weekly-new"],
+    queryFn: () => movieService.getWeeklyNewMovies(10),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 2,
+  });
+};
+
 export const useRegionalMovies = (country: string) => {
   return useQuery<Movie[]>({
     queryKey: ["movies", "region", country],

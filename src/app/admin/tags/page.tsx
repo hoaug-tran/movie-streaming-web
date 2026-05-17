@@ -93,7 +93,7 @@ export default function AdminTagsPage() {
           open={open}
           mode={mode}
           title={mode === "create" ? "Thêm thẻ" : `Sửa ${item?.name ?? "thẻ"}`}
-          description="Tag là metadata bổ trợ cho phim, khác với danh mục chính."
+          description="Nhập tên và slug cho tag."
           fields={tagFields}
           initialValues={toTagForm(item)}
           submitting={submitting}

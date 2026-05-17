@@ -103,7 +103,7 @@ export default function AdminCategoriesPage() {
           open={open}
           mode={mode}
           title={mode === "create" ? "Thêm danh mục" : `Sửa ${item?.name ?? "danh mục"}`}
-          description="Ràng buộc name/slug/mô tả bám sát DTO backend để tránh lỗi @Valid."
+          description="Nhập tên, slug và mô tả danh mục."
           fields={categoryFields}
           initialValues={toCategoryForm(item)}
           submitting={submitting}

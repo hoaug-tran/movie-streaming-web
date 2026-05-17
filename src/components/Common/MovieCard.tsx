@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import movieService from "@/modules/movie/api/movie-service";
 import {
@@ -16,6 +16,9 @@ import {
 import Image from "next/image";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import PauseIcon from "@mui/icons-material/Pause";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import { usePlayNavigation } from "@/hooks/use-play-navigation";
 import { FavoriteToggleButton } from "@/modules/favorite/components/FavoriteToggleButton";
 import { WatchlistToggleButton } from "@/modules/watchlist/components/WatchlistToggleButton";
@@ -51,6 +54,7 @@ export interface MovieCardProps {
   categories?: Array<string | { name?: string; slug?: string }> | null;
   matchScore?: number;
   resolution?: string;
+  topLeftBadge?: string;
   sx?: object;
 }
 
@@ -84,6 +88,7 @@ export function MovieCard({
   categories = [],
   matchScore,
   resolution = "4K",
+  topLeftBadge,
   sx: sxOverride,
 }: MovieCardProps) {
   const theme = useTheme();
@@ -94,8 +99,32 @@ export function MovieCard({
   const leaveTimeout = useRef<NodeJS.Timeout>();
   const containerRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
+  const [trailerPaused, setTrailerPaused] = useState(false);
+  const [trailerMuted, setTrailerMuted] = useState(true);
+
+  const toggleTrailerPlay = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play();
+      setTrailerPaused(false);
+    } else {
+      v.pause();
+      setTrailerPaused(true);
+    }
+  }, []);
+
+  const toggleTrailerMute = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setTrailerMuted(v.muted);
+  }, []);
 
   const handlePlay = () => {
     if (onPlay) {
@@ -135,6 +164,22 @@ export function MovieCard({
       if (leaveTimeout.current) clearTimeout(leaveTimeout.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (isHovered) {
+      const timer = setTimeout(() => {
+        const v = videoRef.current;
+        if (!v) return;
+        v.play().catch(() => {});
+        setTrailerPaused(false);
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      const v = videoRef.current;
+      if (v) v.pause();
+      setTrailerPaused(false);
+    }
+  }, [isHovered]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -437,6 +482,26 @@ export function MovieCard({
             {new Date(releaseDate).getFullYear()}
           </Box>
         )}
+        {topLeftBadge && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 8,
+              left: 8,
+              backgroundColor: "rgba(0,0,0,0.75)",
+              color: "#ffffff",
+              border: "1px solid rgba(255,255,255,0.2)",
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              fontSize: "11px",
+              fontWeight: 700,
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            {topLeftBadge}
+          </Box>
+        )}
         {rating && (
           <Box
             sx={{
@@ -539,17 +604,66 @@ export function MovieCard({
                 }}
               >
                 {hasTrailerPreview ? (
-                  <Box
-                    component="video"
-                    src={displayTrailerUrl || undefined}
-                    poster={displayBannerUrl || posterUrl}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                    sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                  />
+                  <>
+                    <Box
+                      ref={videoRef}
+                      component="video"
+                      src={displayTrailerUrl || undefined}
+                      poster={displayBannerUrl || posterUrl}
+                      muted
+                      loop
+                      playsInline
+                      preload="auto"
+                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        bottom: 8,
+                        right: 8,
+                        display: "flex",
+                        gap: 0.5,
+                        zIndex: 2,
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={toggleTrailerPlay}
+                        sx={{
+                          bgcolor: "rgba(0,0,0,0.55)",
+                          backdropFilter: "blur(6px)",
+                          color: "#fff",
+                          width: 28,
+                          height: 28,
+                          "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+                        }}
+                      >
+                        {trailerPaused ? (
+                          <PlayArrowIcon sx={{ fontSize: 16 }} />
+                        ) : (
+                          <PauseIcon sx={{ fontSize: 16 }} />
+                        )}
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={toggleTrailerMute}
+                        sx={{
+                          bgcolor: "rgba(0,0,0,0.55)",
+                          backdropFilter: "blur(6px)",
+                          color: "#fff",
+                          width: 28,
+                          height: 28,
+                          "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+                        }}
+                      >
+                        {trailerMuted ? (
+                          <VolumeOffIcon sx={{ fontSize: 16 }} />
+                        ) : (
+                          <VolumeUpIcon sx={{ fontSize: 16 }} />
+                        )}
+                      </IconButton>
+                    </Box>
+                  </>
                 ) : !(bannerUrl || posterUrl) || imageError ? (
                   <Skeleton variant="rectangular" width="100%" height="100%" />
                 ) : (

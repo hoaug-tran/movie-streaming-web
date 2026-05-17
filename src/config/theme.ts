@@ -73,6 +73,14 @@ const components = {
       root: { borderColor: "rgba(255,255,255,0.06)" },
     },
   },
+  MuiDialogContent: {
+    styleOverrides: {
+      root: {
+        overflow: "visible",
+        paddingTop: "20px !important",
+      },
+    },
+  },
 };
 
 export const lightTheme: Theme = createTheme({

@@ -53,6 +53,17 @@ const typeConfig: Record<
   SYSTEM: { icon: <Settings size={18} />, color: "#6b7280", label: "Hệ thống" },
 };
 
+const SOCIAL_TYPES: NotificationType[] = ["COMMENT_REPLY", "COMMENT_LIKE", "REVIEW_LIKE"];
+
+function resolveActionUrl(notification: Notification): string | null {
+  const url = notification.actionUrl;
+  if (!url) return null;
+  if (SOCIAL_TYPES.includes(notification.type) && url.startsWith("/watch/")) {
+    return url.replace(/^\/watch\//, "/movies/");
+  }
+  return url;
+}
+
 export default function NotificationDetailModal({
   notification,
   open,
@@ -82,9 +93,10 @@ export default function NotificationDetailModal({
   })();
 
   const handleActionClick = () => {
-    if (notification.actionUrl) {
+    const url = resolveActionUrl(notification);
+    if (url) {
       onClose();
-      router.push(notification.actionUrl);
+      router.push(url);
     }
   };
 
@@ -197,7 +209,7 @@ export default function NotificationDetailModal({
           </Typography>
         </Box>
 
-        {notification.actionUrl && (
+        {resolveActionUrl(notification) && (
           <>
             <Divider />
             <Box
