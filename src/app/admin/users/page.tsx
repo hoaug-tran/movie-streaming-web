@@ -248,7 +248,7 @@ function UserFormDialog({
             helperText={
               mode === "edit"
                 ? `Gói hiện tại: ${user?.currentPlanName ?? "Không có"}`
-                : "Tùy chọn — gán ngay sau khi tạo"
+                : "Tùy chọn - gán ngay sau khi tạo"
             }
           >
             <MenuItem value="">Không thay đổi</MenuItem>

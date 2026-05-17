@@ -2,6 +2,7 @@
 
 import {
   Typography,
+  Stack,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -34,7 +35,28 @@ export default function AdminEpisodesPage() {
       queryKey={["admin", "episodes", "movies"]}
       queryFn={adminService.getMovies}
       searchPlaceholder="Tìm phim, slug, trạng thái..."
-      getSearchText={(movie) => `${movie.title} ${movie.slug ?? ""} ${movie.movieStatus ?? ""}`}
+      getSearchText={(movie) => `${movie.title} ${movie.slug ?? ""} ${movie.movieStatus ?? ""} ${movie.country ?? ""}`}
+      getStatus={(movie) => movie.movieStatus ?? "UNKNOWN"}
+      extraFilters={[
+        {
+          key: "movieType",
+          label: "Loại",
+          options: [
+            { label: "Phim lẻ", value: "SINGLE" },
+            { label: "Phim bộ", value: "SERIES" },
+          ],
+          getValue: (movie) => movie.movieType ?? "",
+        },
+        {
+          key: "premium",
+          label: "Truy cập",
+          options: [
+            { label: "Miễn phí", value: "false" },
+            { label: "Premium", value: "true" },
+          ],
+          getValue: (movie) => String(Boolean(movie.isPremiumOnly)),
+        },
+      ]}
       stats={[
         { label: "Đầu phim", getValue: (items) => items.length, tone: "cyan" },
         {
@@ -52,12 +74,26 @@ export default function AdminEpisodesPage() {
         {
           key: "movie",
           label: "Phim",
-          render: (movie) => <Typography fontWeight={800}>{movie.title}</Typography>,
+          render: (movie) => (
+            <Stack>
+              <Typography fontWeight={800}>{movie.title}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {[movie.releaseYear, movie.country].filter(Boolean).join(" · ")}
+              </Typography>
+            </Stack>
+          ),
         },
         {
           key: "type",
           label: "Loại",
           render: (movie) => <AdminStatusChip label={movie.movieType || "SINGLE"} tone="violet" />,
+        },
+        {
+          key: "views",
+          label: "Lượt xem",
+          render: (movie) => (
+            <Typography variant="caption">{(movie.viewCount ?? 0).toLocaleString("vi-VN")}</Typography>
+          ),
         },
         {
           key: "status",

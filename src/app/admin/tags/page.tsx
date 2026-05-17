@@ -33,6 +33,17 @@ export default function AdminTagsPage() {
       queryFn={adminService.getTags}
       searchPlaceholder="Tìm thẻ, slug, mô tả..."
       getSearchText={(tag) => `${tag.name} ${tag.slug ?? ""} ${tag.description ?? ""}`}
+      extraFilters={[
+        {
+          key: "hasDesc",
+          label: "Mô tả",
+          options: [
+            { label: "Có mô tả", value: "true" },
+            { label: "Chưa có", value: "false" },
+          ],
+          getValue: (tag) => String(Boolean(tag.description)),
+        },
+      ]}
       stats={[
         { label: "Thẻ", getValue: (items) => items.length, tone: "cyan" },
         {

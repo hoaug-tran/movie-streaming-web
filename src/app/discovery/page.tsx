@@ -70,7 +70,7 @@ export default function DiscoveryPage() {
             maxWidth: 520,
           }}
         >
-          Lọc theo thể loại, thập niên và xếp hạng — hoặc bấm{" "}
+          Lọc theo thể loại, thập niên và xếp hạng - hoặc bấm{" "}
           <Box component="span" sx={{ color: "text.primary", fontWeight: 600 }}>
             Ngẫu nhiên
           </Box>{" "}

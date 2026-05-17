@@ -30,7 +30,6 @@ import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -117,8 +116,8 @@ const navItems: AdminNavItem[] = [
     section: "catalog",
   },
   {
-    label: "Bình luận",
-    href: "/admin/comments",
+    label: "Kiểm duyệt",
+    href: "/admin/moderation",
     permission: "comments:manage",
     icon: <ForumRoundedIcon />,
     section: "moderation",
@@ -149,13 +148,6 @@ const navItems: AdminNavItem[] = [
     href: "/admin/notifications",
     permission: "notifications:manage",
     icon: <NotificationsRoundedIcon />,
-    section: "system",
-  },
-  {
-    label: "Cài đặt hệ thống",
-    href: "/admin/settings",
-    permission: "settings:manage",
-    icon: <SettingsRoundedIcon />,
     section: "system",
   },
 ];

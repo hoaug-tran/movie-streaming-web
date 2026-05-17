@@ -22,6 +22,8 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -275,6 +277,12 @@ export default function AdminMovieDetailPage() {
     },
   });
 
+  const updateLocks = useMutation({
+    mutationFn: (payload: { commentsLocked: boolean; reviewsLocked: boolean }) =>
+      adminService.updateMovieInteractionLocks(movieId, payload),
+    onSuccess: invalidate,
+  });
+
   const [episodeForm, setEpisodeForm] = useState<AdminEpisodePayload>({
     title: "",
     episodeNumber: (movie?.episodes ?? []).length + 1,
@@ -377,6 +385,74 @@ export default function AdminMovieDetailPage() {
           Sửa thông tin
         </Button>
       </Box>
+
+      {/* Interaction Locks */}
+      <Paper sx={{ ...sectionSx, mb: 2.5 }} elevation={0}>
+        <Typography fontWeight={700} sx={{ mb: 1.5 }}>
+          Khóa tương tác
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(movie.commentsLocked)}
+                disabled={updateLocks.isPending}
+                onChange={(e) =>
+                  updateLocks.mutate({
+                    commentsLocked: e.target.checked,
+                    reviewsLocked: Boolean(movie.reviewsLocked),
+                  })
+                }
+                color="warning"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" fontWeight={700}>
+                  Khóa bình luận
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {movie.commentsLocked
+                    ? "Người dùng không thể bình luận"
+                    : "Bình luận đang mở"}
+                </Typography>
+              </Box>
+            }
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(movie.reviewsLocked)}
+                disabled={updateLocks.isPending}
+                onChange={(e) =>
+                  updateLocks.mutate({
+                    commentsLocked: Boolean(movie.commentsLocked),
+                    reviewsLocked: e.target.checked,
+                  })
+                }
+                color="warning"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" fontWeight={700}>
+                  Khóa đánh giá
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {movie.reviewsLocked
+                    ? "Người dùng không thể đánh giá"
+                    : "Đánh giá đang mở"}
+                </Typography>
+              </Box>
+            }
+          />
+        </Stack>
+        {updateLocks.isError && (
+          <Alert severity="error" sx={{ mt: 1.5 }}>
+            Không thể cập nhật khóa tương tác.
+          </Alert>
+        )}
+      </Paper>
 
       <Stack spacing={2.5}>
         <Paper sx={sectionSx} elevation={0}>
@@ -591,7 +667,7 @@ export default function AdminMovieDetailPage() {
             {(() => {
               const grouped = new Map<
                 number,
-                { personId: number; name: string; entries: typeof movie.persons }
+                { personId: number; name: string; entries: NonNullable<AdminMovieDetail["persons"]>[number][] }
               >();
               (movie.persons ?? []).forEach((mp) => {
                 const pid = mp.person?.id ?? 0;

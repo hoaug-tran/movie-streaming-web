@@ -120,6 +120,20 @@ export default function AdminMoviesPage() {
           ],
           getValue: (movie) => String(Boolean(movie.isPremiumOnly)),
         },
+        {
+          key: "ageRating",
+          label: "Độ tuổi",
+          options: [
+            { label: "G (Mọi lứa tuổi)", value: "G" },
+            { label: "PG (Có hướng dẫn)", value: "PG" },
+            { label: "PG-13 (13+)", value: "PG-13" },
+            { label: "R (17+)", value: "R" },
+            { label: "R-17 (17+)", value: "R-17" },
+            { label: "TV-14 (14+)", value: "TV-14" },
+            { label: "TV-MA (18+)", value: "TV-MA" },
+          ],
+          getValue: (movie) => movie.ageRating ?? "",
+        },
       ]}
       stats={[
         { label: "Tổng phim", getValue: (items) => items.length, tone: "cyan" },
@@ -142,7 +156,7 @@ export default function AdminMoviesPage() {
             <Stack>
               <Typography fontWeight={800}>{movie.title}</Typography>
               <Typography variant="caption" color="text.secondary">
-                {movie.slug}
+                {[movie.releaseYear, movie.country, movie.language].filter(Boolean).join(" · ")}
               </Typography>
             </Stack>
           ),
@@ -187,18 +201,16 @@ export default function AdminMoviesPage() {
           href: (movie) => `/admin/movies/${movie.id}`,
         },
         {
-          id: "publish",
-          label: "Publish",
-          tone: "emerald",
-          disabled: (movie) => movie.movieStatus === "PUBLISHED",
-          run: (movie) => adminService.updateMovieStatus(movie.id, "PUBLISHED"),
-        },
-        {
-          id: "draft",
-          label: "Draft",
-          tone: "amber",
-          disabled: (movie) => movie.movieStatus === "DRAFT",
-          run: (movie) => adminService.updateMovieStatus(movie.id, "DRAFT"),
+          id: "toggleStatus",
+          label: (movie: AdminMovie) =>
+            movie.movieStatus === "PUBLISHED" ? "Ẩn (Draft)" : "Publish",
+          tone: (movie: AdminMovie) =>
+            movie.movieStatus === "PUBLISHED" ? "amber" : "emerald",
+          run: (movie) =>
+            adminService.updateMovieStatus(
+              movie.id,
+              movie.movieStatus === "PUBLISHED" ? "DRAFT" : "PUBLISHED"
+            ),
         },
         {
           id: "delete",

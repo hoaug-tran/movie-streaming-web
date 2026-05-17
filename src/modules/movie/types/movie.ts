@@ -22,6 +22,8 @@ export interface MovieSummary {
   createdAt?: string;
   updatedAt?: string;
   publishedAt?: string;
+  commentsLocked?: boolean;
+  reviewsLocked?: boolean;
   categories?: CategoryItem[];
 }
 

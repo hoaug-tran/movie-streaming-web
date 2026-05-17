@@ -47,7 +47,8 @@ const adFields: AdminFormField<AdFormValues>[] = [
     required: true,
     min: 1,
     max: 100,
-    helperText: "1–100. Số càng cao càng được phát trước. Nếu bằng nhau, quảng cáo mới hơn được ưu tiên.",
+    helperText:
+      "1–100. Số càng cao càng được phát trước. Nếu bằng nhau, quảng cáo mới hơn được ưu tiên.",
   },
   { name: "isSkippable", label: "Cho phép bỏ qua", type: "switch" },
   { name: "skipAfterSeconds", label: "Bỏ qua sau giây", type: "number", min: 0, max: 600 },
@@ -137,10 +138,7 @@ export default function AdminAdsPage() {
           key: "type",
           label: "Loại",
           render: (ad) => (
-            <AdminStatusChip
-              label={AD_TYPE_LABELS[ad.adType] ?? ad.adType}
-              tone="violet"
-            />
+            <AdminStatusChip label={AD_TYPE_LABELS[ad.adType ?? ""] ?? ad.adType ?? "-"} tone="violet" />
           ),
         },
         {
@@ -155,7 +153,7 @@ export default function AdminAdsPage() {
           label: "Bỏ qua sau",
           render: (ad) => (
             <Typography>
-              {ad.isSkippable ? (ad.skipAfterSeconds ? `${ad.skipAfterSeconds}s` : "0s") : "—"}
+              {ad.isSkippable ? (ad.skipAfterSeconds ? `${ad.skipAfterSeconds}s` : "0s") : "-"}
             </Typography>
           ),
         },

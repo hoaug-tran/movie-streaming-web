@@ -366,6 +366,25 @@ export interface AdminCommentPayload {
   status: string;
 }
 
+export interface AdminReview {
+  id: number;
+  userId?: number | null;
+  movieId?: number | null;
+  movieTitle?: string | null;
+  movieSlug?: string | null;
+  rating?: number | null;
+  title?: string | null;
+  content?: string | null;
+  isEdited?: boolean | null;
+  status?: string | null;
+  likeCount?: number | null;
+  authorUsername?: string | null;
+  authorFullName?: string | null;
+  authorAvatarUrl?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface AdminSubscriptionPlan {
   id: number;
   name: string;
@@ -404,6 +423,9 @@ export interface AdminNotificationPayload {
   title: string;
   content: string;
   type: AdminNotificationType;
+  actionUrl?: string | null;
+  sendInApp?: boolean;
+  sendEmail?: boolean;
 }
 
 export interface AdminNotificationUpdatePayload {
@@ -416,6 +438,9 @@ export interface AdminBroadcastPayload {
   title: string;
   content: string;
   type: AdminNotificationType;
+  actionUrl?: string | null;
+  sendInApp?: boolean;
+  sendEmail?: boolean;
 }
 
 export const adminService = {
@@ -645,6 +670,18 @@ export const adminService = {
 
   deleteComment(commentId: number): Promise<void> {
     return apiClient.delete<void>(`/admin/comments/${commentId}`);
+  },
+
+  getReviews(): Promise<AdminReview[]> {
+    return apiClient.get<AdminReview[]>("/admin/reviews");
+  },
+
+  updateReviewStatus(reviewId: number, status: string): Promise<AdminReview> {
+    return apiClient.patch<AdminReview>(`/admin/reviews/${reviewId}/status`, { status });
+  },
+
+  deleteReview(reviewId: number): Promise<void> {
+    return apiClient.delete<void>(`/admin/reviews/${reviewId}`);
   },
 
   getSubscriptionPlans(): Promise<AdminSubscriptionPlan[]> {

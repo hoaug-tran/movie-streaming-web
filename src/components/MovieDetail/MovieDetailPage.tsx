@@ -31,7 +31,7 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useMovieDetailPage } from "@/modules/movie/hooks/useMovieDetailPage";
@@ -47,6 +47,7 @@ import {
 } from "@/modules/review/hooks/useMovieReviews";
 import { useMyWatchHistories } from "@/modules/watch-history/hooks/useWatchHistory";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { getAbsoluteAvatarUrl } from "@/utils/avatar";
 import { ReportContentDialog } from "@/modules/report/components/ReportContentDialog";
 
 type MovieDetailPageProps = {
@@ -633,15 +634,6 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
   const visibleEpisodes = showAll ? episodes : episodes.slice(0, EPISODES_PER_PAGE);
   const hasMore = episodes.length > EPISODES_PER_PAGE;
 
-  const scrollToEpisode = (epNum: number) => {
-    const ep = episodes.find((e) => e.episodeNumber === epNum);
-    if (!ep) return;
-    if (!showAll && (ep.episodeNumber ?? 0) > EPISODES_PER_PAGE) setShowAll(true);
-    setTimeout(() => {
-      const el = cardRefs.current.get(ep.id);
-      el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-    }, 60);
-  };
 
   const handleJump = () => {
     const num = parseInt(jumpInput, 10);
@@ -1097,20 +1089,21 @@ function ReviewSection({
               maskImage: {
                 md: "linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent)",
               },
+              "&:hover .review-track": { animationPlayState: "paused" },
             }}
           >
             <Box
+              className="review-track"
               sx={{
                 display: "flex",
                 gap: 2,
                 width: "max-content",
                 willChange: "transform",
-                animation: { xs: "none", md: "reviewFloat 6s linear infinite" },
+                animation: { xs: "none", md: "reviewFloat 60s linear infinite" },
                 "@keyframes reviewFloat": {
                   from: { transform: "translate3d(0,0,0)" },
                   to: { transform: "translate3d(calc(-50% - 8px),0,0)" },
                 },
-                "&:hover": { animationPlayState: "paused" },
               }}
             >
               {track.map((review, index) => (
@@ -1237,7 +1230,7 @@ function ReviewSection({
               }}
             >
               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-                <Avatar src={selectedReview.authorAvatarUrl || undefined}>
+                <Avatar src={getAbsoluteAvatarUrl(selectedReview.authorAvatarUrl) || undefined}>
                   {(selectedReview.authorFullName || selectedReview.authorUsername || "U")
                     .slice(0, 1)
                     .toUpperCase()}
@@ -1394,7 +1387,7 @@ function ReviewListDialog({
               }}
             >
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                <Avatar src={review.authorAvatarUrl || undefined}>
+                <Avatar src={getAbsoluteAvatarUrl(review.authorAvatarUrl) || undefined}>
                   {(review.authorFullName || review.authorUsername || "U")
                     .slice(0, 1)
                     .toUpperCase()}

@@ -45,6 +45,30 @@ export default function AdminProducersPage() {
       queryFn={adminService.getStudios}
       searchPlaceholder="Tìm studio, slug, quốc gia..."
       getSearchText={(studio) => `${studio.name} ${studio.slug ?? ""} ${studio.country ?? ""}`}
+      extraFilters={[
+        {
+          key: "country",
+          label: "Quốc gia",
+          options: [
+            { label: "Việt Nam", value: "Việt Nam" },
+            { label: "Mỹ", value: "Mỹ" },
+            { label: "Hàn Quốc", value: "Hàn Quốc" },
+            { label: "Nhật Bản", value: "Nhật Bản" },
+            { label: "Anh", value: "Anh" },
+            { label: "Pháp", value: "Pháp" },
+          ],
+          getValue: (studio) => studio.country ?? "",
+        },
+        {
+          key: "hasWebsite",
+          label: "Website",
+          options: [
+            { label: "Có website", value: "true" },
+            { label: "Chưa có", value: "false" },
+          ],
+          getValue: (studio) => String(Boolean(studio.websiteUrl)),
+        },
+      ]}
       stats={[
         { label: "Studio", getValue: (items) => items.length, tone: "cyan" },
         {

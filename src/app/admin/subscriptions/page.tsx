@@ -25,6 +25,27 @@ export default function AdminSubscriptionsPage() {
       getSearchText={(plan) =>
         `${plan.name} ${plan.code ?? ""} ${plan.description ?? ""} ${plan.price ?? ""}`
       }
+      extraFilters={[
+        {
+          key: "isActive",
+          label: "Trạng thái",
+          options: [
+            { label: "Đang bật", value: "true" },
+            { label: "Tạm tắt", value: "false" },
+          ],
+          getValue: (plan) => String(plan.isActive !== false),
+        },
+        {
+          key: "videoQuality",
+          label: "Chất lượng",
+          options: [
+            { label: "HD", value: "HD" },
+            { label: "Full HD", value: "FULL_HD" },
+            { label: "4K", value: "4K" },
+          ],
+          getValue: (plan) => plan.videoQuality ?? "",
+        },
+      ]}
       stats={[
         { label: "Gói", getValue: (items) => items.length, tone: "cyan" },
         {

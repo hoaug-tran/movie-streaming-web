@@ -10,7 +10,6 @@ import {
   Card,
   CardContent,
   Chip,
-  Grid,
   LinearProgress,
   MenuItem,
   Paper,
@@ -41,8 +40,8 @@ export interface AdminTableColumn<T> {
 
 export interface AdminQuickAction<T> {
   id: string;
-  label: string;
-  tone?: Tone;
+  label: string | ((item: T) => string);
+  tone?: Tone | ((item: T) => Tone);
   href?: (item: T) => string;
   disabled?: (item: T) => boolean;
   run?: (item: T) => Promise<unknown>;
@@ -80,9 +79,14 @@ interface AdminManagementPageProps<T extends { id: number }> {
     onSubmit: (payload: unknown) => void;
   }) => ReactNode;
   onCreate?: (payload: unknown) => Promise<unknown>;
+  onCreateClick?: () => void;
   onCreateSuccess?: (data: unknown) => void;
   onEdit?: (item: T, payload: unknown) => Promise<unknown>;
   onDelete?: (item: T) => Promise<unknown>;
+  noPadding?: boolean;
+  headerExtra?: ReactNode;
+  hideCreateButton?: boolean;
+  onRowClick?: (item: T) => void;
 }
 
 const getToneColor = (tone: Tone, theme: Theme) => {
@@ -114,9 +118,14 @@ export default function AdminManagementPage<T extends { id: number }>({
   createHint = "Form tạo mới sẽ mở rộng theo hợp đồng backend chi tiết.",
   renderForm,
   onCreate,
+  onCreateClick,
   onCreateSuccess,
   onEdit,
   onDelete,
+  noPadding = false,
+  headerExtra,
+  hideCreateButton = false,
+  onRowClick,
 }: AdminManagementPageProps<T>) {
   const theme = useTheme();
   const queryClient = useQueryClient();
@@ -142,7 +151,10 @@ export default function AdminManagementPage<T extends { id: number }>({
     mutationFn: ({ item, action }: { item: T; action: AdminQuickAction<T> }) =>
       action.run ? action.run(item) : Promise.resolve(),
     onSuccess: (_data, variables) => {
-      setNotice(`Thao tác "${variables.action.label}" thành công.`);
+      const lbl = typeof variables.action.label === "function"
+        ? variables.action.label(variables.item)
+        : variables.action.label;
+      setNotice(`Thao tác "${lbl}" thành công.`);
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -190,7 +202,7 @@ export default function AdminManagementPage<T extends { id: number }>({
 
   return (
     <AdminPermissionGate permission={permission}>
-      <Box sx={{ p: { xs: 2, md: 4 }, color: theme.palette.text.primary }}>
+      <Box sx={{ p: noPadding ? 0 : { xs: 2, md: 4 }, color: theme.palette.text.primary }}>
         <Stack spacing={3}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
             <Box>
@@ -205,24 +217,32 @@ export default function AdminManagementPage<T extends { id: number }>({
                 {description}
               </Typography>
             </Box>
-            <Button
-              id={`${queryKey.join("-")}-create-button`}
-              variant="contained"
-              size="small"
-              startIcon={<AddRoundedIcon />}
-              onClick={() => {
-                if (renderForm && onCreate) setFormState({ mode: "create", item: null });
-                else setNotice(createHint);
-              }}
-              sx={{
-                borderRadius: 1.5,
-                fontWeight: 900,
-                alignSelf: { xs: "stretch", md: "center" },
-              }}
-            >
-              {createLabel}
-            </Button>
+            {!hideCreateButton && (
+              <Button
+                id={`${queryKey.join("-")}-create-button`}
+                variant="contained"
+                size="small"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => {
+                  if (onCreateClick) {
+                    onCreateClick();
+                  } else if (renderForm && onCreate) {
+                    setFormState({ mode: "create", item: null });
+                  } else {
+                    setNotice(createHint);
+                  }
+                }}
+                sx={{
+                  borderRadius: 1.5,
+                  fontWeight: 900,
+                  alignSelf: { xs: "stretch", md: "center" },
+                }}
+              >
+                {createLabel}
+              </Button>
+            )}
           </Stack>
+          {headerExtra && <Box>{headerExtra}</Box>}
 
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             {stats.map((stat) => {
@@ -406,8 +426,10 @@ export default function AdminManagementPage<T extends { id: number }>({
                     <Box
                       component="tr"
                       key={item.id}
+                      onClick={() => onRowClick?.(item)}
                       sx={{
                         borderTop: `1px solid ${theme.palette.divider}`,
+                        cursor: onRowClick ? "pointer" : "default",
                         "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.06) },
                       }}
                     >
@@ -416,8 +438,8 @@ export default function AdminManagementPage<T extends { id: number }>({
                           {column.render(item)}
                         </Box>
                       ))}
-                      <Box component="td" sx={{ p: 2, textAlign: "right" }}>
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Box component="td" sx={{ p: 2, textAlign: "right", verticalAlign: "top" }}>
+                        <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="flex-start" flexWrap="wrap">
                           {renderForm && onEdit && (
                             <Button
                               id={`${queryKey.join("-")}-edit-${item.id}`}
@@ -459,6 +481,8 @@ export default function AdminManagementPage<T extends { id: number }>({
                           )}
                           {quickActions.map((action) => {
                             const href = action.href?.(item);
+                            const resolvedLabel = typeof action.label === "function" ? action.label(item) : action.label;
+                            const resolvedTone = typeof action.tone === "function" ? action.tone(item) : action.tone;
                             return (
                               <Button
                                 key={action.id}
@@ -466,9 +490,9 @@ export default function AdminManagementPage<T extends { id: number }>({
                                 size="small"
                                 variant="outlined"
                                 color={
-                                  action.tone === "rose"
+                                  resolvedTone === "rose"
                                     ? "error"
-                                    : action.tone === "emerald"
+                                    : resolvedTone === "emerald"
                                       ? "success"
                                       : "primary"
                                 }
@@ -478,7 +502,7 @@ export default function AdminManagementPage<T extends { id: number }>({
                                 }}
                                 href={href}
                                 startIcon={
-                                  action.tone === "rose" ? <DeleteRoundedIcon />
+                                  resolvedTone === "rose" ? <DeleteRoundedIcon />
                                   : action.id === "view" || action.id === "detail" ? <VisibilityRoundedIcon />
                                   : action.id === "upload" ? <CloudUploadRoundedIcon />
                                   : action.id === "lock" || action.id === "unlock" ? <LockRoundedIcon />
@@ -486,7 +510,7 @@ export default function AdminManagementPage<T extends { id: number }>({
                                 }
                                 sx={{ borderRadius: 1.25, fontWeight: 800 }}
                               >
-                                {action.label}
+                                {resolvedLabel}
                               </Button>
                             );
                           })}
@@ -498,9 +522,23 @@ export default function AdminManagementPage<T extends { id: number }>({
               </Box>
             </Box>
             {!listQuery.isLoading && filteredItems.length === 0 && (
-              <Alert severity="info" sx={{ m: 2 }}>
-                Không có bản ghi phù hợp.
-              </Alert>
+              <Box
+                sx={{
+                  py: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 1,
+                  color: "text.secondary",
+                }}
+              >
+                <Typography variant="h6" fontWeight={700}>
+                  Không tìm thấy {entityLabel} phù hợp
+                </Typography>
+                <Typography variant="body2">
+                  Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm.
+                </Typography>
+              </Box>
             )}
           </Paper>
         </Stack>

@@ -80,7 +80,7 @@ export default function AdminSettingsPage() {
                   duyệt, quảng cáo và an toàn phiên đăng nhập.
                 </Typography>
               </Box>
-              <Tooltip title="Cài đặt chưa kết nối backend — sẽ được bật trong phiên bản tiếp theo">
+              <Tooltip title="Cài đặt chưa kết nối backend - sẽ được bật trong phiên bản tiếp theo">
                 <span>
                   <Button
                     id="admin-settings-save-button"

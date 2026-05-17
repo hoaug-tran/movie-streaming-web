@@ -35,6 +35,17 @@ export default function AdminCategoriesPage() {
       getSearchText={(category) =>
         `${category.name} ${category.slug ?? ""} ${category.description ?? ""}`
       }
+      extraFilters={[
+        {
+          key: "hasDesc",
+          label: "Mô tả",
+          options: [
+            { label: "Có mô tả", value: "true" },
+            { label: "Chưa có", value: "false" },
+          ],
+          getValue: (category) => String(Boolean(category.description)),
+        },
+      ]}
       stats={[
         { label: "Danh mục", getValue: (items) => items.length, tone: "cyan" },
         {
@@ -78,7 +89,7 @@ export default function AdminCategoriesPage() {
               label={
                 category.createdAt
                   ? new Date(category.createdAt).toLocaleDateString("vi-VN")
-                  : "LOCAL"
+                  : "—"
               }
               tone="violet"
             />

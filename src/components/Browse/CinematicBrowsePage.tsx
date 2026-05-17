@@ -476,12 +476,12 @@ export default function CinematicBrowsePage({
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mt: 3 }}>
           {[
-            [spotlightStats ? `${spotlightStats.curatedCount}+` : "—", `${label} tuyển chọn`],
+            [spotlightStats ? `${spotlightStats.curatedCount}+` : "-", `${label} tuyển chọn`],
             [
-              spotlightStats ? formatCompactNumber(spotlightStats.leadingViewCount) : "—",
+              spotlightStats ? formatCompactNumber(spotlightStats.leadingViewCount) : "-",
               "lượt xem dẫn đầu",
             ],
-            [spotlightStats ? spotlightStats.spotlightScore.toFixed(1) : "—", "điểm spotlight"],
+            [spotlightStats ? spotlightStats.spotlightScore.toFixed(1) : "-", "điểm spotlight"],
           ].map(([value, caption]) => (
             <Box
               key={caption}

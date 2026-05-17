@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Autocomplete, Box, FormControlLabel, Switch, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, FormControlLabel, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import AdminManagementPage, {
   AdminStatusChip,
@@ -105,6 +105,8 @@ function CreateNotificationDrawer({
     type: "SYSTEM",
     actionUrl: "",
   });
+  const [sendInApp, setSendInApp] = useState(true);
+  const [sendEmail, setSendEmail] = useState(false);
 
   const usersQuery = useQuery<AdminUser[]>({
     queryKey: ["admin", "users"],
@@ -113,7 +115,7 @@ function CreateNotificationDrawer({
 
   const users = usersQuery.data ?? [];
 
-  const reset = () =>
+  const reset = () => {
     setForm({
       broadcastToAll: false,
       selectedUser: null,
@@ -122,8 +124,13 @@ function CreateNotificationDrawer({
       type: "SYSTEM",
       actionUrl: "",
     });
+    setSendInApp(true);
+    setSendEmail(false);
+  };
 
   if (!open) return null;
+
+  const channelError = !sendInApp && !sendEmail;
 
   return (
     <AdminFormDrawer<EditForm>
@@ -148,12 +155,16 @@ function CreateNotificationDrawer({
         const merged = { ...form, ...values };
         setForm((prev) => ({ ...prev, ...values }));
         if (!merged.broadcastToAll && !merged.selectedUser) return;
+        if (channelError) return;
         if (merged.broadcastToAll) {
           onSubmit(
             {
               title: values.title,
               content: values.content,
               type: values.type,
+              actionUrl: values.actionUrl || undefined,
+              sendInApp,
+              sendEmail,
             } as AdminBroadcastPayload,
             true
           );
@@ -165,6 +176,8 @@ function CreateNotificationDrawer({
               content: values.content,
               type: values.type,
               actionUrl: values.actionUrl || undefined,
+              sendInApp,
+              sendEmail,
             } as AdminNotificationPayload,
             false
           );
@@ -196,7 +209,7 @@ function CreateNotificationDrawer({
             <Autocomplete<AdminUser>
               options={users}
               loading={usersQuery.isLoading}
-              getOptionLabel={(u) => `${u.fullName ?? u.username} (@${u.username}) — #${u.id}`}
+              getOptionLabel={(u) => `${u.fullName ?? u.username} (@${u.username}) - #${u.id}`}
               value={form.selectedUser}
               onChange={(_, value) => setForm((prev) => ({ ...prev, selectedUser: value }))}
               renderInput={(params) => (
@@ -215,6 +228,52 @@ function CreateNotificationDrawer({
               )}
             />
           )}
+
+          <Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              fontWeight={700}
+              sx={{ mb: 1, display: "block", textTransform: "uppercase", letterSpacing: "0.08em" }}
+            >
+              Kênh gửi
+            </Typography>
+            <Stack spacing={0.5}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={sendInApp}
+                    onChange={(e) => setSendInApp(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Typography variant="body2" fontWeight={700}>
+                    Thông báo trong trang
+                  </Typography>
+                }
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={sendEmail}
+                    onChange={(e) => setSendEmail(e.target.checked)}
+                    color="secondary"
+                  />
+                }
+                label={
+                  <Typography variant="body2" fontWeight={700}>
+                    Gửi email
+                  </Typography>
+                }
+              />
+            </Stack>
+            {channelError && (
+              <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+                Vui lòng chọn ít nhất một kênh gửi.
+              </Typography>
+            )}
+          </Box>
         </Box>
       }
     />
@@ -256,7 +315,14 @@ export default function AdminNotificationsPage() {
         queryFn={adminService.getNotifications}
         searchPlaceholder="Tìm theo tiêu đề, nội dung..."
         getSearchText={(item) => `${item.title} ${item.content}`}
-        getStatus={(item) => item.type}
+        extraFilters={[
+          {
+            key: "type",
+            label: "Loại",
+            options: NOTIFICATION_TYPES.map((t) => ({ label: t.label, value: t.value })),
+            getValue: (item) => item.type,
+          },
+        ]}
         stats={[
           { label: "Tổng thông báo", getValue: (items) => items.length, tone: "cyan" },
           {
@@ -292,7 +358,7 @@ export default function AdminNotificationsPage() {
             label: "Người nhận",
             render: (item) => (
               <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                {item.userId ? `User #${item.userId}` : "—"}
+                {item.userId ? `#${item.userId}` : "-"}
               </Typography>
             ),
           },
@@ -334,17 +400,13 @@ export default function AdminNotificationsPage() {
             label: "Thời gian",
             render: (item) => (
               <Typography variant="caption" color="text.secondary">
-                {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : "—"}
+                {item.createdAt ? new Date(item.createdAt).toLocaleString("vi-VN") : "-"}
               </Typography>
             ),
           },
         ]}
         createLabel="Tạo thông báo"
-        createHint=""
-        onCreate={() => {
-          setCreateOpen(true);
-          return Promise.resolve();
-        }}
+        onCreateClick={() => setCreateOpen(true)}
         onEdit={(item, payload) =>
           adminService.updateNotification(item.id, payload as AdminNotificationUpdatePayload)
         }

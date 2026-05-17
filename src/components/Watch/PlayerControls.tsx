@@ -16,6 +16,7 @@ import {
   ListAlt,
   Lock,
   Hd,
+  ChatBubbleOutlineRounded,
 } from "@mui/icons-material";
 import { Episode, MovieDetail } from "@/modules/movie/types/movie";
 import { VideoQuality } from "@/hooks/use-subscription";
@@ -43,6 +44,8 @@ interface PlayerControlsProps {
   onBack: () => void;
   onEpisodeSelect: (ep: Episode) => void;
   onQualityChange: (q: VideoQuality) => void;
+  commentOpen?: boolean;
+  onCommentToggle?: () => void;
 }
 
 function formatTime(sec: number): string {
@@ -94,6 +97,8 @@ export default function PlayerControls({
   onBack,
   onEpisodeSelect,
   onQualityChange,
+  commentOpen,
+  onCommentToggle,
 }: PlayerControlsProps) {
   const router = useRouter();
   const [showEpisodes, setShowEpisodes] = useState(false);
@@ -180,7 +185,7 @@ export default function PlayerControls({
             <ArrowBack />
           </IconButton>
 
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               sx={{
                 color: "#fff",
@@ -205,6 +210,20 @@ export default function PlayerControls({
               </Typography>
             )}
           </Box>
+          {/* Mobile comment toggle */}
+          {onCommentToggle && (
+            <IconButton
+              onClick={(e) => { e.stopPropagation(); onCommentToggle(); }}
+              sx={{
+                color: commentOpen ? "#C8102E" : "rgba(255,255,255,0.8)",
+                display: { xs: "flex", md: "none" },
+                "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+              }}
+              aria-label="Bình luận"
+            >
+              <ChatBubbleOutlineRounded sx={{ fontSize: 22 }} />
+            </IconButton>
+          )}
         </Box>
       </Fade>
 
@@ -418,6 +437,24 @@ export default function PlayerControls({
                   }}
                 >
                   <ListAlt />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {onCommentToggle && (
+              <Tooltip title="Bình luận">
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCommentToggle();
+                  }}
+                  sx={{
+                    color: commentOpen ? "#C8102E" : "#fff",
+                    display: { xs: "none", md: "flex" },
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                  }}
+                >
+                  <ChatBubbleOutlineRounded sx={{ fontSize: 22 }} />
                 </IconButton>
               </Tooltip>
             )}

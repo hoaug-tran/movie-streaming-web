@@ -178,6 +178,7 @@ export function MovieCard({
       const v = videoRef.current;
       if (v) v.pause();
       setTrailerPaused(false);
+      return undefined;
     }
   }, [isHovered]);
 

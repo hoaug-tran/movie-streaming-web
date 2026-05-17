@@ -11,6 +11,10 @@ export interface Comment {
   likeCount: number;
   replyCount: number;
   status: string;
+  authorUsername?: string | null;
+  authorFullName?: string | null;
+  authorAvatarUrl?: string | null;
+  likedByCurrentUser?: boolean;
   createdAt: string;
   updatedAt: string;
   user?: {

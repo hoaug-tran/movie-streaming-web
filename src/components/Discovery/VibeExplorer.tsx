@@ -482,7 +482,7 @@ export default function VibeExplorer() {
                 mb: 1,
               }}
             >
-              Sao tối thiểu — {ratingValue > 0 ? `${ratingValue}★` : "Tất cả"}
+              Sao tối thiểu - {ratingValue > 0 ? `${ratingValue}★` : "Tất cả"}
             </Typography>
             <Box sx={{ px: 0.5 }}>
               <Slider

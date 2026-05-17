@@ -49,6 +49,21 @@ export default function AdminPersonsPage() {
       }
       extraFilters={[
         {
+          key: "nationality",
+          label: "Quốc tịch",
+          options: [
+            { label: "Việt Nam", value: "Việt Nam" },
+            { label: "Hàn Quốc", value: "Hàn Quốc" },
+            { label: "Nhật Bản", value: "Nhật Bản" },
+            { label: "Trung Quốc", value: "Trung Quốc" },
+            { label: "Mỹ", value: "Mỹ" },
+            { label: "Anh", value: "Anh" },
+            { label: "Pháp", value: "Pháp" },
+            { label: "Thái Lan", value: "Thái Lan" },
+          ],
+          getValue: (person) => person.nationality ?? "",
+        },
+        {
           key: "hasBio",
           label: "Tiểu sử",
           options: [

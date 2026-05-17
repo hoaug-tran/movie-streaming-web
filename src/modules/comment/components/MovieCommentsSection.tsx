@@ -36,6 +36,7 @@ import {
   useToggleCommentLike,
 } from "@/modules/comment/hooks/useMovieComments";
 import { ReportContentDialog } from "@/modules/report/components/ReportContentDialog";
+import { getAbsoluteAvatarUrl } from "@/utils/avatar";
 
 function formatTime(value?: string) {
   if (!value) return "Vừa xong";
@@ -100,14 +101,19 @@ export function MovieCommentsSection({
   const createComment = useCreateMovieComment(movieId, slug);
   const toggleLike = useToggleCommentLike(movieId, slug);
   const [content, setContent] = useState("");
+  const [contentError, setContentError] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
+  const [replyError, setReplyError] = useState<string | null>(null);
   const [likedCommentIds, setLikedCommentIds] = useState<Set<number>>(() => new Set());
   const [allCommentsOpen, setAllCommentsOpen] = useState(false);
   const [selectedComment, setSelectedComment] = useState<MovieComment | null>(null);
   const [reportComment, setReportComment] = useState<MovieComment | null>(null);
   const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
   const commentRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  const MIN_COMMENT_LENGTH = 3;
+  const MAX_COMMENT_LENGTH = 5000;
 
   const comments = useMemo(
     () => flattenComments(commentsQuery.data ?? initialComments),
@@ -161,7 +167,12 @@ export function MovieCommentsSection({
     event.preventDefault();
     if (!requireAuth()) return;
     const trimmed = content.trim();
-    if (!trimmed || createComment.isPending) return;
+    if (trimmed.length < MIN_COMMENT_LENGTH) {
+      setContentError(`Bình luận phải có ít nhất ${MIN_COMMENT_LENGTH} ký tự.`);
+      return;
+    }
+    if (createComment.isPending) return;
+    setContentError(null);
     createComment.mutate({ content: trimmed }, { onSuccess: () => setContent("") });
   };
 
@@ -169,7 +180,12 @@ export function MovieCommentsSection({
     event.preventDefault();
     if (!requireAuth()) return;
     const trimmed = replyContent.trim();
-    if (!trimmed || createComment.isPending) return;
+    if (trimmed.length < MIN_COMMENT_LENGTH) {
+      setReplyError(`Phản hồi phải có ít nhất ${MIN_COMMENT_LENGTH} ký tự.`);
+      return;
+    }
+    if (createComment.isPending) return;
+    setReplyError(null);
     createComment.mutate(
       { content: trimmed, parentCommentId },
       {
@@ -283,25 +299,27 @@ export function MovieCommentsSection({
             minRows={3}
             value={content}
             onFocus={requireAuth}
-            onChange={(event) => setContent(event.target.value)}
+            onChange={(event) => { setContent(event.target.value); setContentError(null); }}
             onKeyDown={handleCommentKeyDown}
             placeholder={
               isAuthenticated
-                ? "Enter để gửi · Shift + Enter để xuống dòng"
+                ? `Enter để gửi · Shift + Enter để xuống dòng (tối thiểu ${MIN_COMMENT_LENGTH} ký tự)`
                 : "Đăng nhập để tham gia bình luận"
             }
+            error={Boolean(contentError)}
+            helperText={contentError}
             disabled={loading || createComment.isPending}
             fullWidth
           />
           <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5}>
             <Typography variant="caption" color="text.secondary">
-              Nội dung tối đa 5000 ký tự.
+              Nội dung tối đa {MAX_COMMENT_LENGTH} ký tự.
             </Typography>
             <Button
               id="movie-comment-submit"
               type="submit"
               variant="contained"
-              disabled={loading || createComment.isPending || !content.trim()}
+              disabled={loading || createComment.isPending || content.trim().length < MIN_COMMENT_LENGTH}
             >
               <SendRoundedIcon />
             </Button>
@@ -356,17 +374,19 @@ export function MovieCommentsSection({
                     multiline
                     minRows={2}
                     value={replyContent}
-                    onChange={(event) => setReplyContent(event.target.value)}
+                    onChange={(event) => { setReplyContent(event.target.value); setReplyError(null); }}
                     onKeyDown={(event) => handleReplyKeyDown(event, comment.id)}
-                    placeholder="Enter để gửi · Shift + Enter để xuống dòng"
+                    placeholder={`Enter để gửi · Shift + Enter để xuống dòng (tối thiểu ${MIN_COMMENT_LENGTH} ký tự)`}
+                    error={Boolean(replyError)}
+                    helperText={replyError}
                     fullWidth
                   />
                   <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 1 }}>
-                    <Button onClick={() => setReplyingTo(null)}>Hủy</Button>
+                    <Button onClick={() => { setReplyingTo(null); setReplyError(null); setReplyContent(""); }}>Hủy</Button>
                     <Button
                       type="submit"
                       variant="contained"
-                      disabled={!replyContent.trim() || createComment.isPending}
+                      disabled={replyContent.trim().length < MIN_COMMENT_LENGTH || createComment.isPending}
                     >
                       Gửi trả lời
                     </Button>
@@ -481,7 +501,7 @@ function CommentContent({
   return (
     <Stack direction="row" spacing={1.5} alignItems="flex-start">
       <Avatar
-        src={comment.authorAvatarUrl || undefined}
+        src={getAbsoluteAvatarUrl(comment.authorAvatarUrl) || undefined}
         sx={{
           width: compact ? 32 : 42,
           height: compact ? 32 : 42,

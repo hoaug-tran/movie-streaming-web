@@ -10,6 +10,7 @@ import { useAuth } from "@/modules/auth/hooks/useAuth";
 import HlsPlayer from "./HlsPlayer";
 import PlayerControls from "./PlayerControls";
 import AdOverlay from "./AdOverlay";
+import PlayerCommentDrawer from "./PlayerCommentDrawer";
 import { Advertisement } from "@/modules/advertisement/types/advertisement";
 import advertisementService from "@/modules/advertisement/api/advertisement-service";
 import watchHistoryService from "@/modules/watch-history/api/watch-history-service";
@@ -69,6 +70,7 @@ export default function WatchPlayer({
   const [currentVideoUrl, setCurrentVideoUrl] = useState(currentEpisode.videoUrl ?? "");
   const [isKicked, setIsKicked] = useState(false);
   const [showPreviewWall, setShowPreviewWall] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const previewWallFiredRef = useRef(false);
   const streamSessionIdRef = useRef<number | null>(null);
   const viewFiredRef = useRef<number | null>(null);
@@ -644,6 +646,10 @@ export default function WatchPlayer({
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (!videoRef.current) return;
+      // Disable shortcuts when comment drawer is open or focus is on input/textarea
+      if (showComments) return;
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || (e.target as HTMLElement)?.isContentEditable) return;
       switch (e.key) {
         case " ":
         case "k":
@@ -675,7 +681,7 @@ export default function WatchPlayer({
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [togglePlay, handleFullscreen, handleMuteToggle, handleVolumeChange, volume]);
+  }, [togglePlay, handleFullscreen, handleMuteToggle, handleVolumeChange, volume, showComments]);
 
   return (
     <Box
@@ -736,8 +742,19 @@ export default function WatchPlayer({
             setSelectedQuality(q);
             setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
           }}
+          commentOpen={showComments}
+          onCommentToggle={() => setShowComments((prev) => !prev)}
         />
       )}
+
+      <PlayerCommentDrawer
+        open={showComments}
+        movieId={movie.id}
+        movieSlug={movie.slug ?? ""}
+        episodeId={selectedEpisode.id}
+        commentsLocked={Boolean(movie.commentsLocked)}
+        onClose={() => setShowComments(false)}
+      />
 
       {/* Preview wall dialog */}
       <Dialog
