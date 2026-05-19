@@ -51,6 +51,7 @@ function WatchPageContent({ movieSlug }: { movieSlug: string }) {
   if (isLoading) {
     return (
       <Box
+        suppressHydrationWarning
         sx={{
           width: "100vw",
           height: "100dvh",
@@ -110,6 +111,7 @@ export default function WatchPage({ params }: WatchPageProps) {
 
   return (
     <Box
+      suppressHydrationWarning
       sx={{
         position: "fixed",
         inset: 0,

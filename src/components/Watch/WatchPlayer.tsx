@@ -3,12 +3,21 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Box, Dialog, DialogContent, DialogTitle, Button, Typography } from "@mui/material";
+import {
+  Box,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Button,
+  Typography,
+  IconButton,
+  Slider,
+} from "@mui/material";
 import { Episode, MovieDetail } from "@/modules/movie/types/movie";
 import { useSubscription, VideoQuality } from "@/hooks/use-subscription";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import HlsPlayer from "./HlsPlayer";
-import PlayerControls from "./PlayerControls";
+import PlayerControls, { formatTime } from "./PlayerControls";
 import AdOverlay from "./AdOverlay";
 import PlayerCommentDrawer from "./PlayerCommentDrawer";
 import { Advertisement } from "@/modules/advertisement/types/advertisement";
@@ -17,6 +26,21 @@ import watchHistoryService from "@/modules/watch-history/api/watch-history-servi
 import { ContinueWatchingItem } from "@/modules/watch-history/types/watch-history";
 import streamingService from "@/modules/streaming/api/streaming-service";
 import movieService from "@/modules/movie/api/movie-service";
+import { offlineStorage } from "@/lib/offline-storage";
+import { usePwa } from "@/hooks/use-pwa";
+import OfflineBadge from "@/components/PWA/OfflineBadge";
+import { isIPhoneDevice } from "@/lib/platform";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ListAltIcon from "@mui/icons-material/ListAlt";
+import HdIcon from "@mui/icons-material/Hd";
+import SkipPreviousIcon from "@mui/icons-material/SkipPrevious";
+import SkipNextIcon from "@mui/icons-material/SkipNext";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import PauseIcon from "@mui/icons-material/Pause";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
+import ForumIcon from "@mui/icons-material/Forum";
+import EpisodeList from "./EpisodeList";
 
 interface WatchPlayerProps {
   movie: MovieDetail;
@@ -35,6 +59,8 @@ export default function WatchPlayer({
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
   const { hasAdsFree, maxQuality, canWatchPremium } = useSubscription();
+  const { isOnline } = usePwa();
+  const [offlineSrc, setOfflineSrc] = useState<string | undefined>(undefined);
   const PREVIEW_LIMIT_SECONDS = 30;
 
   const QUALITY_ORDER: VideoQuality[] = ["720p", "1080p", "4K"];
@@ -49,25 +75,55 @@ export default function WatchPlayer({
 
   const selectBestQuality = (available: string[], max: VideoQuality): VideoQuality => {
     const maxIdx = QUALITY_ORDER.indexOf(max);
-    const allowed = QUALITY_ORDER.slice(0, maxIdx + 1);
-    const candidates = available.filter((q) => allowed.includes(q as VideoQuality));
-    return (candidates[candidates.length - 1] as VideoQuality) || "720p";
+    if (maxIdx < 0) return "720p";
+    const availableSet = new Set(available);
+    const allowedSorted = QUALITY_ORDER.filter((q, idx) => idx <= maxIdx && availableSet.has(q));
+    return (allowedSorted[allowedSorted.length - 1] as VideoQuality) || "720p";
+  };
+
+  const pickSafeInitialQuality = (available: string[]): VideoQuality => {
+    if (available.length === 0) return "720p";
+    if (available.includes("720p")) return "720p";
+    const sorted = QUALITY_ORDER.filter((q) => available.includes(q));
+    return (sorted[0] as VideoQuality) || "720p";
+  };
+
+  const buildInitialUrl = (episode: Episode): string => {
+    const available = episode.availableQualities ?? [];
+    const baseUrl = episode.videoUrl ?? "";
+    if (available.length === 0) return baseUrl;
+    const safeQuality = pickSafeInitialQuality(available);
+    return getQualityUrl(baseUrl, safeQuality);
   };
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const isMobileDevice =
+    typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent);
+
+  const [isIPhone, setIsIPhone] = useState(false);
+  useEffect(() => {
+    setIsIPhone(isIPhoneDevice());
+  }, []);
+
+  const [iPhoneShowEpisodes, setIPhoneShowEpisodes] = useState(false);
+  const [iPhoneShowQuality, setIPhoneShowQuality] = useState(false);
+  const [iPhoneOverlayVisible, setIPhoneOverlayVisible] = useState(true);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [resumeStartTime, setResumeStartTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(isMobileDevice);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [selectedEpisode, setSelectedEpisode] = useState(currentEpisode);
-  const [selectedQuality, setSelectedQuality] = useState<VideoQuality>("720p");
-  const [currentVideoUrl, setCurrentVideoUrl] = useState(currentEpisode.videoUrl ?? "");
+  const [selectedQuality, setSelectedQuality] = useState<VideoQuality>(() =>
+    pickSafeInitialQuality(currentEpisode.availableQualities ?? [])
+  );
+  const [currentVideoUrl, setCurrentVideoUrl] = useState(() => buildInitialUrl(currentEpisode));
   const [isKicked, setIsKicked] = useState(false);
   const [showPreviewWall, setShowPreviewWall] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -91,6 +147,7 @@ export default function WatchPlayer({
   const [midRollFired, setMidRollFired] = useState(false);
   const [postRollFired, setPostRollFired] = useState(false);
   const [midRollTimestamp, setMidRollTimestamp] = useState<number>(0);
+  const [preRollPending, setPreRollPending] = useState(false);
 
   const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -155,13 +212,20 @@ export default function WatchPlayer({
 
   const showAd = useCallback(
     (ad: Advertisement, phase: "PRE_ROLL" | "MID_ROLL" | "POST_ROLL", resumeSecond?: number) => {
-      if (resumeSecond !== undefined) {
-        const safeSecond = Math.max(0, Math.floor(resumeSecond));
-        setResumeStartTime(safeSecond);
-        resumeAfterAdRef.current = safeSecond;
-      }
+      const video = videoRef.current;
+      const liveSecond = video ? Math.floor(video.currentTime || 0) : 0;
+      const capturedSecond = resumeSecond ?? liveSecond;
+      const safeSecond = Math.max(0, Math.floor(capturedSecond));
+      setResumeStartTime(safeSecond);
+      resumeAfterAdRef.current = safeSecond;
 
-      videoRef.current?.pause();
+      if (video) {
+        try {
+          video.pause();
+        } catch {
+          // ignore
+        }
+      }
       setIsPlaying(false);
       setCurrentAd(ad);
       setAdPhase(phase);
@@ -175,47 +239,104 @@ export default function WatchPlayer({
       const video = videoRef.current;
       if (!video || !shouldResume) return;
 
-      if (resumeSecond && resumeSecond > 5) {
-        video.currentTime = resumeSecond;
+      if (resumeSecond !== null && resumeSecond >= 0) {
+        try {
+          video.currentTime = resumeSecond;
+        } catch {
+          // safari may throw if metadata not loaded yet, retry on canplay below
+        }
         lastPlaybackSecondRef.current = Math.floor(resumeSecond);
         setCurrentTime(resumeSecond);
       }
 
-      void video
-        .play()
-        .then(() => {
+      const attemptPlay = async () => {
+        try {
+          await video.play();
           setIsPlaying(true);
           resumeAfterAdRef.current = null;
-        })
-        .catch(() => {
-          setIsPlaying(false);
-        });
+        } catch {
+          if (!video.muted) {
+            video.muted = true;
+            setIsMuted(true);
+            try {
+              await video.play();
+              setIsPlaying(true);
+              resumeAfterAdRef.current = null;
+            } catch {
+              setIsPlaying(false);
+            }
+          } else {
+            setIsPlaying(false);
+          }
+        }
+      };
+
+      void attemptPlay();
     },
     []
   );
 
   useEffect(() => {
+    if (!currentAd) return;
+    const target = resumeAfterAdRef.current;
+    if (target === null) return;
+    const video = videoRef.current;
+    if (!video) return;
+    let cancelled = false;
+    const watchdog = window.setInterval(() => {
+      if (cancelled) return;
+      const v = videoRef.current;
+      if (!v) return;
+      if (!v.paused) {
+        try {
+          v.pause();
+        } catch {
+          // ignore
+        }
+      }
+      const drift = Math.abs((v.currentTime || 0) - target);
+      if (drift > 0.6) {
+        try {
+          v.currentTime = target;
+        } catch {
+          // ignore
+        }
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearInterval(watchdog);
+    };
+  }, [currentAd]);
+
+  useEffect(() => {
     if (hasAdsFree) {
       setAdsForEpisode({ preRoll: [], midRoll: [], postRoll: [] });
+      setPreRollPending(false);
       return;
     }
 
     let cancelled = false;
+    setPreRollPending(true);
 
     const loadAds = async () => {
-      const [pre, mid, post] = await Promise.all([
-        advertisementService.getAdsByType("PRE_ROLL"),
-        advertisementService.getAdsByType("MID_ROLL"),
-        advertisementService.getAdsByType("POST_ROLL"),
-      ]);
+      try {
+        const [pre, mid, post] = await Promise.all([
+          advertisementService.getAdsByType("PRE_ROLL"),
+          advertisementService.getAdsByType("MID_ROLL"),
+          advertisementService.getAdsByType("POST_ROLL"),
+        ]);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      setAdsForEpisode({ preRoll: pre, midRoll: mid, postRoll: post });
-      const preAd = pickHighestPriority(pre);
-      if (preAd) {
-        preRollEpisodeIdRef.current = selectedEpisode.id;
-        showAd(preAd, "PRE_ROLL");
+        setAdsForEpisode({ preRoll: pre, midRoll: mid, postRoll: post });
+        const preAd = pickHighestPriority(pre);
+        if (preAd) {
+          preRollEpisodeIdRef.current = selectedEpisode.id;
+          showAd(preAd, "PRE_ROLL");
+        }
+      } finally {
+        if (!cancelled) setPreRollPending(false);
       }
     };
 
@@ -226,20 +347,109 @@ export default function WatchPlayer({
     };
   }, [selectedEpisode.id, hasAdsFree, showAd]);
 
-  // Quality selection when episode changes
   useEffect(() => {
     const available = selectedEpisode.availableQualities ?? [];
-    if (available.length > 0) {
+    if (available.length === 0) {
+      setCurrentVideoUrl(selectedEpisode.videoUrl ?? "");
+      return;
+    }
+
+    const allowedMaxIdx = QUALITY_ORDER.indexOf(maxQuality);
+    const currentIdx = QUALITY_ORDER.indexOf(selectedQuality);
+    const userPickedHigherThanAllowed = currentIdx > allowedMaxIdx;
+    const currentNotAvailable = !available.includes(selectedQuality);
+
+    if (userPickedHigherThanAllowed || currentNotAvailable) {
       const best = selectBestQuality(available, maxQuality);
       setSelectedQuality(best);
       setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", best));
-    } else {
-      setCurrentVideoUrl(selectedEpisode.videoUrl ?? "");
+      return;
+    }
+
+    if (currentIdx < allowedMaxIdx) {
+      const best = selectBestQuality(available, maxQuality);
+      if (QUALITY_ORDER.indexOf(best) > currentIdx) {
+        setSelectedQuality(best);
+        setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", best));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEpisode.id, maxQuality]);
 
-  // Stream session management
+  useEffect(() => {
+    const blobUrls: string[] = [];
+
+    offlineStorage.isDownloaded(selectedEpisode.id).then(async (downloaded) => {
+      if (!downloaded) {
+        setOfflineSrc(undefined);
+        return;
+      }
+      const record = await offlineStorage.getMovie(selectedEpisode.id);
+      if (!record) {
+        setOfflineSrc(undefined);
+        return;
+      }
+
+      const segmentBlobUrls: string[] = [];
+      const sortedUrls = [...record.segmentUrls].sort((a, b) => {
+        const matchA = a.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
+        const matchB = b.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
+        if (matchA && matchB) {
+          return parseInt(matchA[1]) - parseInt(matchB[1]);
+        }
+        return 0;
+      });
+
+      for (const url of sortedUrls) {
+        const data = await offlineStorage.getSegment(url);
+        if (data) {
+          const blobUrl = URL.createObjectURL(new Blob([data], { type: "video/mp2t" }));
+          segmentBlobUrls.push(blobUrl);
+          blobUrls.push(blobUrl);
+        }
+      }
+
+      if (segmentBlobUrls.length === 0) {
+        setOfflineSrc(undefined);
+        return;
+      }
+
+      let keyLine = "";
+      const keyRecord = await offlineStorage.getKey(selectedEpisode.id);
+      if (keyRecord?.keyData) {
+        const keyBlobUrl = URL.createObjectURL(
+          new Blob([keyRecord.keyData], { type: "application/octet-stream" })
+        );
+        blobUrls.push(keyBlobUrl);
+        keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="${keyBlobUrl}"\n`;
+      }
+
+      const duration = record.durationSeconds
+        ? (record.durationSeconds / segmentBlobUrls.length).toFixed(3)
+        : "6.000";
+
+      const m3u8Lines = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3",
+        `#EXT-X-TARGETDURATION:${Math.ceil(Number(duration))}`,
+        "#EXT-X-MEDIA-SEQUENCE:0",
+        keyLine.trim(),
+        ...segmentBlobUrls.flatMap((url) => [`#EXTINF:${duration},`, url]),
+        "#EXT-X-ENDLIST",
+      ].filter(Boolean);
+
+      const m3u8Blob = new Blob([m3u8Lines.join("\n")], { type: "application/vnd.apple.mpegurl" });
+      const playlistUrl = URL.createObjectURL(m3u8Blob);
+      blobUrls.push(playlistUrl);
+      setOfflineSrc(playlistUrl);
+    });
+
+    return () => {
+      blobUrls.forEach((u) => URL.revokeObjectURL(u));
+      setOfflineSrc(undefined);
+    };
+  }, [selectedEpisode.id, isOnline]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     let sessionId: number | null = null;
@@ -260,7 +470,6 @@ export default function WatchPlayer({
     };
   }, [selectedEpisode.id, isAuthenticated]);
 
-  // Heartbeat every 30s
   useEffect(() => {
     if (!isAuthenticated) return;
     const interval = setInterval(async () => {
@@ -381,6 +590,7 @@ export default function WatchPlayer({
     lastSavedProgress.current = 0;
     lastPlaybackSecondRef.current = 0;
     lastDurationRef.current = selectedEpisode.durationSeconds ?? 0;
+    setDuration(selectedEpisode.durationSeconds ?? 0);
     pendingResumeSecondRef.current = null;
     previewWallFiredRef.current = false;
     setShowPreviewWall(false);
@@ -406,6 +616,7 @@ export default function WatchPlayer({
     }
   }, [
     selectedEpisode.id,
+    selectedEpisode.durationSeconds,
     currentEpisode.id,
     initialResumeSecond,
     isAuthenticated,
@@ -436,6 +647,7 @@ export default function WatchPlayer({
     lastPlaybackSecondRef.current = safeSecond;
     if (safeDuration > 0) {
       lastDurationRef.current = safeDuration;
+      setDuration((prev) => (prev !== safeDuration ? safeDuration : prev));
     }
     const pendingSecond = pendingResumeSecondRef.current;
     if (pendingSecond && Math.abs(t - pendingSecond) < 2) {
@@ -536,6 +748,16 @@ export default function WatchPlayer({
     showControlsTemporarily();
   }, [showControlsTemporarily]);
 
+  useEffect(() => {
+    if (!isIPhone) return;
+    if (!isPlaying) {
+      setIPhoneOverlayVisible(true);
+      return;
+    }
+    const t = setTimeout(() => setIPhoneOverlayVisible(false), 3000);
+    return () => clearTimeout(t);
+  }, [isIPhone, isPlaying, iPhoneOverlayVisible]);
+
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
@@ -573,22 +795,89 @@ export default function WatchPlayer({
   }, [isMuted]);
 
   const handleFullscreen = useCallback(() => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container) return;
+
+    type WebkitVideo = HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+      webkitExitFullscreen?: () => void;
+      webkitDisplayingFullscreen?: boolean;
+    };
+    type WebkitDocument = Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void>;
+    };
+    type WebkitElement = HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+    };
+
+    const doc = document as WebkitDocument;
+    const fsContainer = container as WebkitElement;
+    const fsVideo = video as WebkitVideo | null;
+
+    const isFs = Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
+
+    if (!isFs) {
+      if (typeof fsContainer.requestFullscreen === "function") {
+        void fsContainer.requestFullscreen().catch(() => {});
+        setIsFullscreen(true);
+        return;
+      }
+      if (typeof fsContainer.webkitRequestFullscreen === "function") {
+        void fsContainer.webkitRequestFullscreen();
+        setIsFullscreen(true);
+        return;
+      }
+      if (fsVideo && typeof fsVideo.webkitEnterFullscreen === "function") {
+        try {
+          fsVideo.webkitEnterFullscreen();
+          setIsFullscreen(true);
+        } catch {
+          // iOS fuck you
+        }
+      }
+      return;
     }
+
+    if (typeof document.exitFullscreen === "function") {
+      void document.exitFullscreen().catch(() => {});
+    } else if (typeof doc.webkitExitFullscreen === "function") {
+      void doc.webkitExitFullscreen();
+    } else if (fsVideo && typeof fsVideo.webkitExitFullscreen === "function") {
+      fsVideo.webkitExitFullscreen();
+    }
+    setIsFullscreen(false);
   }, []);
 
   useEffect(() => {
+    type WebkitDocument = Document & { webkitFullscreenElement?: Element | null };
+    const doc = document as WebkitDocument;
     const onFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
     };
     document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+
+    type WebkitVideo = HTMLVideoElement & {
+      webkitDisplayingFullscreen?: boolean;
+    };
+    const video = videoRef.current as WebkitVideo | null;
+    const onWebkitBegin = () => setIsFullscreen(true);
+    const onWebkitEnd = () => setIsFullscreen(false);
+    if (video) {
+      video.addEventListener("webkitbeginfullscreen", onWebkitBegin);
+      video.addEventListener("webkitendfullscreen", onWebkitEnd);
+    }
+
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+      if (video) {
+        video.removeEventListener("webkitbeginfullscreen", onWebkitBegin);
+        video.removeEventListener("webkitendfullscreen", onWebkitEnd);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -640,16 +929,20 @@ export default function WatchPlayer({
     setIsPlaying(false);
     await saveProgress(true);
     await syncContinueWatchingCache();
-    router.push("/");
+    if (window.history.length > 2) {
+      router.back();
+    } else {
+      router.push("/");
+    }
   }, [router, saveProgress, syncContinueWatchingCache, updatePlaybackSnapshot]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (!videoRef.current) return;
-      // Disable shortcuts when comment drawer is open or focus is on input/textarea
       if (showComments) return;
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || (e.target as HTMLElement)?.isContentEditable) return;
+      if (tag === "input" || tag === "textarea" || (e.target as HTMLElement)?.isContentEditable)
+        return;
       switch (e.key) {
         case " ":
         case "k":
@@ -687,8 +980,16 @@ export default function WatchPlayer({
     <Box
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      onClick={() => {
-        if (!currentAd) togglePlay();
+      onClick={(e) => {
+        if (currentAd) return;
+        if (isIPhone) {
+          const target = e.target as HTMLElement;
+          if (!target.closest('[data-iphone-player-control="true"]')) {
+            setIPhoneOverlayVisible((v) => !v);
+          }
+          return;
+        }
+        if (e.target === e.currentTarget) togglePlay();
       }}
       sx={{
         position: "fixed",
@@ -701,8 +1002,11 @@ export default function WatchPlayer({
       <HlsPlayer
         videoRef={videoRef}
         src={currentVideoUrl}
+        offlineSrc={offlineSrc}
         startTime={resumeStartTime}
-        shouldPlay={!currentAd}
+        shouldPlay={!currentAd && !preRollPending}
+        defaultMuted={isMobileDevice && !isIPhone}
+        nativeControls={false}
         onTimeUpdate={handleTimeUpdate}
         onDurationChange={(d) => setDuration(d)}
         onPlay={() => setIsPlaying(true)}
@@ -712,11 +1016,21 @@ export default function WatchPlayer({
         }}
         onEnded={handleVideoEnded}
         onLoaded={handleVideoLoaded}
+        onMutedChange={(muted) => setIsMuted(muted)}
       />
 
-      {currentAd && <AdOverlay ad={currentAd} onSkip={handleAdSkipped} onEnded={handleAdSkipped} />}
+      {offlineSrc && <OfflineBadge sx={{ position: "absolute", top: 16, right: 16, zIndex: 10 }} />}
 
-      {!currentAd && (
+      {currentAd && (
+        <AdOverlay
+          ad={currentAd}
+          onSkip={handleAdSkipped}
+          onEnded={handleAdSkipped}
+          preserveAudioOnAutoplay={isIPhone}
+        />
+      )}
+
+      {!currentAd && !isIPhone && (
         <PlayerControls
           show={showControls}
           movie={movie}
@@ -739,12 +1053,301 @@ export default function WatchPlayer({
           onBack={handleBack}
           onEpisodeSelect={(ep) => setSelectedEpisode(ep)}
           onQualityChange={(q) => {
+            const qIdx = QUALITY_ORDER.indexOf(q);
+            const maxIdx = QUALITY_ORDER.indexOf(maxQuality);
+            if (qIdx > maxIdx) {
+              router.push("/pricing");
+              return;
+            }
+            const available = selectedEpisode.availableQualities ?? [];
+            if (available.length > 0 && !available.includes(q)) return;
             setSelectedQuality(q);
             setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
           }}
           commentOpen={showComments}
           onCommentToggle={() => setShowComments((prev) => !prev)}
+          fullscreenContainer={isFullscreen ? containerRef.current : null}
         />
+      )}
+
+      {!currentAd && isIPhone && iPhoneOverlayVisible && (
+        <>
+          <Box
+            data-iphone-player-control="true"
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 1.5,
+              py: 1.25,
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.42) 64%, rgba(0,0,0,0) 100%)",
+              paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)",
+              paddingLeft: "calc(env(safe-area-inset-left, 0px) + 12px)",
+              paddingRight: "calc(env(safe-area-inset-right, 0px) + 12px)",
+              zIndex: 5,
+              pointerEvents: "auto",
+            }}
+          >
+            <IconButton
+              onClick={handleBack}
+              sx={{
+                color: "#fff",
+                bgcolor: "rgba(0,0,0,0.28)",
+                "&:hover": { bgcolor: "rgba(0,0,0,0.45)" },
+              }}
+              aria-label="Quay lại"
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                sx={{
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: "0.95rem",
+                  lineHeight: 1.12,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  textShadow: "0 2px 12px rgba(0,0,0,0.65)",
+                }}
+              >
+                {movie.title}
+              </Typography>
+              {movie.movieType === "SERIES" && selectedEpisode.title && (
+                <Typography
+                  sx={{
+                    color: "rgba(255,255,255,0.76)",
+                    fontSize: "0.72rem",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    textShadow: "0 2px 12px rgba(0,0,0,0.65)",
+                  }}
+                >
+                  Tập {selectedEpisode.episodeNumber} · {selectedEpisode.title}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+
+          <Box
+            data-iphone-player-control="true"
+            sx={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 5,
+              pointerEvents: "auto",
+              px: "calc(env(safe-area-inset-left, 0px) + 12px)",
+              pb: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
+              pt: 5,
+              background:
+                "linear-gradient(to top, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.48) 58%, rgba(0,0,0,0) 100%)",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.75 }}>
+              <Typography
+                sx={{ color: "rgba(255,255,255,0.82)", fontSize: "0.72rem", minWidth: 36 }}
+              >
+                {formatTime(currentTime)}
+              </Typography>
+              <Slider
+                value={duration > 0 ? Math.min(currentTime, duration) : 0}
+                min={0}
+                max={Math.max(duration, 1)}
+                step={1}
+                onChange={(_, value) => handleSeek(Array.isArray(value) ? value[0] : value)}
+                sx={{
+                  color: "#C8102E",
+                  height: 4,
+                  "& .MuiSlider-thumb": { width: 12, height: 12 },
+                  "& .MuiSlider-rail": { opacity: 0.32, bgcolor: "rgba(255,255,255,0.5)" },
+                }}
+                aria-label="Tua phim"
+              />
+              <Typography
+                sx={{
+                  color: "rgba(255,255,255,0.82)",
+                  fontSize: "0.72rem",
+                  minWidth: 40,
+                  textAlign: "right",
+                }}
+              >
+                {formatTime(duration)}
+              </Typography>
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 0.5,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <IconButton
+                  onClick={togglePlay}
+                  sx={{ color: "#fff" }}
+                  aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+                >
+                  {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                </IconButton>
+                {movie.movieType === "SERIES" &&
+                  episodes.length > 1 &&
+                  (() => {
+                    const idx = episodes.findIndex((e) => e.id === selectedEpisode.id);
+                    const prev = idx > 0 ? episodes[idx - 1] : null;
+                    const next = idx >= 0 && idx < episodes.length - 1 ? episodes[idx + 1] : null;
+                    return (
+                      <>
+                        <IconButton
+                          onClick={() => prev && setSelectedEpisode(prev)}
+                          disabled={!prev}
+                          sx={{
+                            color: "#fff",
+                            "&.Mui-disabled": { color: "rgba(255,255,255,0.28)" },
+                          }}
+                          aria-label="Tập trước"
+                        >
+                          <SkipPreviousIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => next && setSelectedEpisode(next)}
+                          disabled={!next}
+                          sx={{
+                            color: "#fff",
+                            "&.Mui-disabled": { color: "rgba(255,255,255,0.28)" },
+                          }}
+                          aria-label="Tập tiếp theo"
+                        >
+                          <SkipNextIcon />
+                        </IconButton>
+                      </>
+                    );
+                  })()}
+              </Box>
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <IconButton
+                  onClick={() => setIPhoneShowQuality(true)}
+                  sx={{ color: selectedQuality !== "720p" ? "#ff4963" : "#fff" }}
+                  aria-label="Chất lượng"
+                >
+                  <HdIcon />
+                </IconButton>
+                {movie.movieType === "SERIES" && episodes.length > 1 && (
+                  <IconButton
+                    onClick={() => setIPhoneShowEpisodes(true)}
+                    sx={{ color: "#fff" }}
+                    aria-label="Danh sách tập"
+                  >
+                    <ListAltIcon />
+                  </IconButton>
+                )}
+                <IconButton
+                  onClick={() => setShowComments((prev) => !prev)}
+                  sx={{ color: showComments ? "#ff4963" : "#fff" }}
+                  aria-label="Bình luận"
+                >
+                  <ForumIcon />
+                </IconButton>
+                <IconButton
+                  onClick={handleFullscreen}
+                  sx={{ color: "#fff" }}
+                  aria-label={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+                >
+                  {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                </IconButton>
+              </Box>
+            </Box>
+          </Box>
+        </>
+      )}
+
+      {isIPhone && iPhoneShowEpisodes && (
+        <EpisodeList
+          episodes={episodes}
+          currentEpisode={selectedEpisode}
+          onSelect={(ep) => {
+            setSelectedEpisode(ep);
+            setIPhoneShowEpisodes(false);
+          }}
+          onClose={() => setIPhoneShowEpisodes(false)}
+        />
+      )}
+
+      {isIPhone && iPhoneShowQuality && (
+        <Dialog
+          data-iphone-player-control="true"
+          open
+          onClose={() => setIPhoneShowQuality(false)}
+          PaperProps={{
+            sx: {
+              bgcolor: "rgba(20,20,20,0.97)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 2,
+              color: "#fff",
+              minWidth: 240,
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontSize: "0.95rem", fontWeight: 700, pb: 1 }}>
+            Chất lượng video
+          </DialogTitle>
+          <DialogContent sx={{ p: 0, "&:first-of-type": { pt: 0 } }}>
+            {QUALITY_ORDER.slice()
+              .reverse()
+              .map((q) => {
+                const qIdx = QUALITY_ORDER.indexOf(q);
+                const maxIdx = QUALITY_ORDER.indexOf(maxQuality);
+                const isLocked = qIdx > maxIdx;
+                const available = selectedEpisode.availableQualities ?? [];
+                const isAvailable = available.length === 0 || available.includes(q);
+                const isActive = q === selectedQuality;
+                return (
+                  <Box
+                    key={q}
+                    onClick={() => {
+                      if (isLocked) {
+                        router.push("/pricing");
+                        return;
+                      }
+                      if (!isAvailable) return;
+                      setSelectedQuality(q);
+                      setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
+                      setIPhoneShowQuality(false);
+                    }}
+                    sx={{
+                      px: 3,
+                      py: 1.25,
+                      color: isLocked
+                        ? "rgba(255,255,255,0.35)"
+                        : isActive
+                          ? "#C8102E"
+                          : isAvailable
+                            ? "#fff"
+                            : "rgba(255,255,255,0.35)",
+                      fontSize: "0.9rem",
+                      cursor: isAvailable || isLocked ? "pointer" : "default",
+                      fontWeight: isActive ? 700 : 400,
+                      "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+                    }}
+                  >
+                    {q === "4K" ? "4K Ultra HD" : q === "1080p" ? "Full HD 1080p" : "HD 720p"}
+                  </Box>
+                );
+              })}
+          </DialogContent>
+        </Dialog>
       )}
 
       <PlayerCommentDrawer
@@ -756,7 +1359,6 @@ export default function WatchPlayer({
         onClose={() => setShowComments(false)}
       />
 
-      {/* Preview wall dialog */}
       <Dialog
         open={showPreviewWall}
         PaperProps={{
@@ -820,7 +1422,6 @@ export default function WatchPlayer({
         </DialogContent>
       </Dialog>
 
-      {/* Kicked dialog */}
       <Dialog
         open={isKicked}
         PaperProps={{

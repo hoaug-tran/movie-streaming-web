@@ -95,10 +95,7 @@ export default function PlayerCommentDrawer({
     () => flattenComments(commentsQuery.data ?? []),
     [commentsQuery.data]
   );
-  const rootComments = useMemo(
-    () => allComments.filter((c) => !c.parentCommentId),
-    [allComments]
-  );
+  const rootComments = useMemo(() => allComments.filter((c) => !c.parentCommentId), [allComments]);
   const repliesByParent = useMemo(() => {
     return allComments.reduce<Record<number, MovieComment[]>>((acc, c) => {
       if (!c.parentCommentId) return acc;
@@ -311,7 +308,10 @@ export default function PlayerCommentDrawer({
                         fullWidth
                         autoFocus
                         value={replyContent}
-                        onChange={(e) => { setReplyContent(e.target.value); setReplyError(null); }}
+                        onChange={(e) => {
+                          setReplyContent(e.target.value);
+                          setReplyError(null);
+                        }}
                         onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
@@ -320,15 +320,31 @@ export default function PlayerCommentDrawer({
                         }}
                         placeholder="Phản hồi... (Enter để gửi)"
                         error={Boolean(replyError)}
-                        helperText={replyError && (
-                          <Typography component="span" sx={{ color: "#ff6b6b", fontSize: "0.72rem" }}>{replyError}</Typography>
-                        )}
+                        helperText={
+                          replyError && (
+                            <Typography
+                              component="span"
+                              sx={{ color: "#ff6b6b", fontSize: "0.72rem" }}
+                            >
+                              {replyError}
+                            </Typography>
+                          )
+                        }
                         sx={inputSx}
                       />
-                      <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 0.75 }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="flex-end"
+                        spacing={1}
+                        sx={{ mt: 0.75 }}
+                      >
                         <Button
                           size="small"
-                          onClick={() => { setReplyingTo(null); setReplyError(null); setReplyContent(""); }}
+                          onClick={() => {
+                            setReplyingTo(null);
+                            setReplyError(null);
+                            setReplyContent("");
+                          }}
                           sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.75rem" }}
                         >
                           Hủy
@@ -337,8 +353,14 @@ export default function PlayerCommentDrawer({
                           size="small"
                           type="submit"
                           variant="contained"
-                          disabled={replyContent.trim().length < MIN_LENGTH || createComment.isPending}
-                          sx={{ fontSize: "0.75rem", bgcolor: "#C8102E", "&:hover": { bgcolor: "#A00B24" } }}
+                          disabled={
+                            replyContent.trim().length < MIN_LENGTH || createComment.isPending
+                          }
+                          sx={{
+                            fontSize: "0.75rem",
+                            bgcolor: "#C8102E",
+                            "&:hover": { bgcolor: "#A00B24" },
+                          }}
                         >
                           Gửi
                         </Button>
@@ -369,11 +391,7 @@ export default function PlayerCommentDrawer({
               </Typography>
             </Stack>
           ) : (
-            <Stack
-              component="form"
-              onSubmit={handleSubmit}
-              spacing={1}
-            >
+            <Stack component="form" onSubmit={handleSubmit} spacing={1}>
               <Stack direction="row" spacing={1} alignItems="flex-end">
                 <TextField
                   multiline
@@ -381,14 +399,21 @@ export default function PlayerCommentDrawer({
                   size="small"
                   fullWidth
                   value={content}
-                  onChange={(e) => { setContent(e.target.value); setContentError(null); }}
+                  onChange={(e) => {
+                    setContent(e.target.value);
+                    setContentError(null);
+                  }}
                   onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleSubmit(e as unknown as FormEvent);
                     }
                   }}
-                  placeholder={isAuthenticated ? `Nhập bình luận... (tối thiểu ${MIN_LENGTH} ký tự)` : "Đăng nhập để bình luận"}
+                  placeholder={
+                    isAuthenticated
+                      ? `Nhập bình luận... (tối thiểu ${MIN_LENGTH} ký tự)`
+                      : "Đăng nhập để bình luận"
+                  }
                   disabled={!isAuthenticated || createComment.isPending}
                   sx={inputSx}
                 />
@@ -396,9 +421,16 @@ export default function PlayerCommentDrawer({
                   <span>
                     <IconButton
                       type="submit"
-                      disabled={content.trim().length < MIN_LENGTH || createComment.isPending || !isAuthenticated}
+                      disabled={
+                        content.trim().length < MIN_LENGTH ||
+                        createComment.isPending ||
+                        !isAuthenticated
+                      }
                       sx={{
-                        color: content.trim().length >= MIN_LENGTH && isAuthenticated ? "#C8102E" : "rgba(255,255,255,0.3)",
+                        color:
+                          content.trim().length >= MIN_LENGTH && isAuthenticated
+                            ? "#C8102E"
+                            : "rgba(255,255,255,0.3)",
                         "&:hover": { bgcolor: alpha("#C8102E", 0.12) },
                         mb: 0.25,
                       }}
@@ -433,8 +465,6 @@ export default function PlayerCommentDrawer({
     </>
   );
 }
-
-// ─── CommentItem ─────────────────────────────────────────────────────────────
 
 function CommentItem({
   comment,
@@ -490,7 +520,9 @@ function CommentItem({
           >
             {displayName}
           </Typography>
-          <Typography sx={{ color: "rgba(255,255,255,0.35)", fontSize: "0.68rem", whiteSpace: "nowrap" }}>
+          <Typography
+            sx={{ color: "rgba(255,255,255,0.35)", fontSize: "0.68rem", whiteSpace: "nowrap" }}
+          >
             {formatRelativeTime(comment.createdAt)}
           </Typography>
         </Stack>
@@ -559,7 +591,10 @@ function CommentItem({
           {/* More menu */}
           <IconButton
             size="small"
-            onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuAnchor(e.currentTarget);
+            }}
             sx={{
               color: "rgba(255,255,255,0.5)",
               p: 0.5,
@@ -576,7 +611,10 @@ function CommentItem({
             PaperProps={{ sx: { minWidth: 180, borderRadius: 1.5 } }}
           >
             <MenuItem
-              onClick={() => { setMenuAnchor(null); onReport(); }}
+              onClick={() => {
+                setMenuAnchor(null);
+                onReport();
+              }}
               sx={{ fontSize: "0.85rem" }}
             >
               Báo cáo bình luận

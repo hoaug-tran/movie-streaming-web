@@ -1,8 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, IconButton, Slider, Tooltip, Typography, Fade } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  Slider,
+  Tooltip,
+  Typography,
+  Fade,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Popover,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import {
   PlayArrow,
   Pause,
@@ -17,10 +36,19 @@ import {
   Lock,
   Hd,
   ChatBubbleOutlineRounded,
+  FileDownloadOutlined,
+  FileDownloadDone,
+  DownloadingOutlined,
+  MoreVert,
+  SkipNext,
+  SkipPrevious,
 } from "@mui/icons-material";
 import { Episode, MovieDetail } from "@/modules/movie/types/movie";
 import { VideoQuality } from "@/hooks/use-subscription";
 import EpisodeList from "./EpisodeList";
+import { useOfflineDownload } from "@/hooks/use-offline-download";
+import IOSInstallInstructions from "@/components/PWA/IOSInstallInstructions";
+import { isIOSDevice } from "@/lib/platform";
 
 interface PlayerControlsProps {
   show: boolean;
@@ -46,19 +74,21 @@ interface PlayerControlsProps {
   onQualityChange: (q: VideoQuality) => void;
   commentOpen?: boolean;
   onCommentToggle?: () => void;
+  fullscreenContainer?: HTMLElement | null;
 }
 
-function formatTime(sec: number): string {
-  if (!sec || isNaN(sec)) return "0:00";
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = Math.floor(sec % 60);
+export function formatTime(sec: number): string {
+  if (typeof sec !== "number" || !Number.isFinite(sec) || sec <= 0) return "0:00";
+  const total = Math.floor(sec);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
   if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
-const ALL_QUALITIES: VideoQuality[] = ["720p", "1080p", "4K"];
+const ALL_QUALITIES: VideoQuality[] = ["4K", "1080p", "720p"];
 const QUALITY_ORDER: VideoQuality[] = ["720p", "1080p", "4K"];
 
 const menuBoxSx = {
@@ -99,21 +129,52 @@ export default function PlayerControls({
   onQualityChange,
   commentOpen,
   onCommentToggle,
+  fullscreenContainer,
 }: PlayerControlsProps) {
   const router = useRouter();
+  const theme = useTheme();
+  const isCompact = useMediaQuery(theme.breakpoints.down("md"));
+
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [overflowAnchor, setOverflowAnchor] = useState<HTMLElement | null>(null);
+  const [volumeAnchor, setVolumeAnchor] = useState<HTMLElement | null>(null);
+  const [isIOS, setIsIOS] = useState(false);
+
+  const muteButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const download = useOfflineDownload(episode.id);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [installing, setInstalling] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const isSeries = movie.movieType === "SERIES" && episodes.length > 1;
+  const showIOSGuide = download.needsManualInstall && download.isSafari;
+  const isUnsupportedIOSBrowser = download.isIOS && !download.isSafari;
 
   const maxQualityIdx = QUALITY_ORDER.indexOf(maxQuality);
+
+  const currentEpisodeIndex = episodes.findIndex((e) => e.id === episode.id);
+  const previousEpisode = currentEpisodeIndex > 0 ? episodes[currentEpisodeIndex - 1] : null;
+  const nextEpisode =
+    currentEpisodeIndex >= 0 && currentEpisodeIndex < episodes.length - 1
+      ? episodes[currentEpisodeIndex + 1]
+      : null;
+
+  useEffect(() => {
+    setIsIOS(isIOSDevice());
+  }, []);
+
+  useEffect(() => {
+    if (!isCompact && volumeAnchor) setVolumeAnchor(null);
+  }, [isCompact, volumeAnchor]);
 
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
     const videoEl = document.querySelector("video");
     if (videoEl) videoEl.playbackRate = speed;
     setShowSpeedMenu(false);
+    setOverflowAnchor(null);
   };
 
   const handlePiP = async () => {
@@ -125,7 +186,10 @@ export default function PlayerControls({
       } else {
         await videoEl.requestPictureInPicture();
       }
-    } catch {}
+    } catch {
+      // PiP not supported on this device or permission denied
+    }
+    setOverflowAnchor(null);
   };
 
   const handleQualityClick = (q: VideoQuality) => {
@@ -146,6 +210,63 @@ export default function PlayerControls({
     return "HD 720p";
   };
 
+  const handleVolumeButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (isCompact) {
+      setVolumeAnchor((prev) => (prev ? null : (e.currentTarget as HTMLElement)));
+      return;
+    }
+    onMuteToggle();
+  };
+
+  const handleDownloadClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!download.isPWA) {
+      setShowDownloadDialog(true);
+      return;
+    }
+    if (download.status === "idle" || download.status === "error") {
+      download.startDownload("720p");
+    } else if (download.status === "downloading") {
+      download.cancelDownload();
+    } else if (download.status === "downloaded") {
+      download.deleteDownload();
+    }
+    setOverflowAnchor(null);
+  };
+
+  const handleInstallFromDialog = async () => {
+    if (!download.canInstall) return;
+    setInstalling(true);
+    await download.promptInstall();
+    setInstalling(false);
+    setShowDownloadDialog(false);
+  };
+
+  const downloadIcon =
+    download.status === "downloaded" ? (
+      <FileDownloadDone sx={{ fontSize: 22 }} />
+    ) : download.status === "downloading" ? (
+      <DownloadingOutlined sx={{ fontSize: 22 }} />
+    ) : (
+      <FileDownloadOutlined sx={{ fontSize: 22 }} />
+    );
+
+  const downloadColor =
+    download.status === "downloaded"
+      ? "#22c55e"
+      : download.status === "downloading"
+        ? "#C8102E"
+        : "#fff";
+
+  const downloadTooltip = !download.isPWA
+    ? "Tải phim — Cần cài ứng dụng"
+    : download.status === "downloading"
+      ? `Đang tải ${download.progress?.percent ?? 0}%`
+      : download.status === "downloaded"
+        ? "Đã Tải phim"
+        : "Tải phim";
+
   return (
     <>
       <Fade in={show} timeout={300}>
@@ -162,6 +283,8 @@ export default function PlayerControls({
 
       <Fade in={show} timeout={300}>
         <Box
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           sx={{
             position: "absolute",
             top: 0,
@@ -170,8 +293,8 @@ export default function PlayerControls({
             display: "flex",
             alignItems: "center",
             gap: 1.5,
-            px: { xs: 2, md: 4 },
-            py: 2.5,
+            px: { xs: 1.5, md: 4 },
+            py: { xs: 1.5, md: 2.5 },
             pointerEvents: show ? "auto" : "none",
           }}
         >
@@ -193,6 +316,9 @@ export default function PlayerControls({
                 fontWeight: 600,
                 fontSize: { xs: "0.9rem", md: "1.1rem" },
                 lineHeight: 1.2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
               {movie.title}
@@ -204,16 +330,22 @@ export default function PlayerControls({
                   fontFamily: "Inter, sans-serif",
                   fontSize: "0.78rem",
                   mt: 0.3,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 Tập {episode.episodeNumber} · {episode.title}
               </Typography>
             )}
           </Box>
-          {/* Mobile comment toggle */}
+
           {onCommentToggle && (
             <IconButton
-              onClick={(e) => { e.stopPropagation(); onCommentToggle(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCommentToggle();
+              }}
               sx={{
                 color: commentOpen ? "#C8102E" : "rgba(255,255,255,0.8)",
                 display: { xs: "flex", md: "none" },
@@ -234,13 +366,14 @@ export default function PlayerControls({
             bottom: 0,
             left: 0,
             right: 0,
-            px: { xs: 2, md: 4 },
-            pb: 2,
+            px: { xs: 1.5, md: 4 },
+            pb: { xs: 1.5, md: 2 },
             pointerEvents: show ? "auto" : "none",
           }}
           onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          <Box sx={{ mb: 1 }}>
+          <Box sx={{ mb: { xs: 0.25, md: 1 } }}>
             <Slider
               value={currentTime}
               min={0}
@@ -266,7 +399,30 @@ export default function PlayerControls({
             />
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.25, md: 0.5 } }}>
+            {isSeries && (
+              <Tooltip
+                title={
+                  previousEpisode ? `Tập trước: ${previousEpisode.title}` : "Không có tập trước"
+                }
+              >
+                <span>
+                  <IconButton
+                    onClick={() => previousEpisode && onEpisodeSelect(previousEpisode)}
+                    disabled={!previousEpisode}
+                    sx={{
+                      color: "#fff",
+                      "&.Mui-disabled": { color: "rgba(255,255,255,0.3)" },
+                      "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                    }}
+                    aria-label="Tập trước"
+                  >
+                    <SkipPrevious />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+
             <Tooltip title={isPlaying ? "Tạm dừng (Space)" : "Phát (Space)"}>
               <IconButton
                 onClick={onPlay}
@@ -276,36 +432,71 @@ export default function PlayerControls({
               </IconButton>
             </Tooltip>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 120 }}>
-              <Tooltip title={isMuted ? "Bật âm (M)" : "Tắt âm (M)"}>
-                <IconButton
-                  onClick={onMuteToggle}
-                  sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
-                >
-                  {isMuted ? <VolumeOff /> : <VolumeUp />}
-                </IconButton>
+            {isSeries && (
+              <Tooltip
+                title={
+                  nextEpisode ? `Tập tiếp theo: ${nextEpisode.title}` : "Không có tập tiếp theo"
+                }
+              >
+                <span>
+                  <IconButton
+                    onClick={() => nextEpisode && onEpisodeSelect(nextEpisode)}
+                    disabled={!nextEpisode}
+                    sx={{
+                      color: "#fff",
+                      "&.Mui-disabled": { color: "rgba(255,255,255,0.3)" },
+                      "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                    }}
+                    aria-label="Tập tiếp theo"
+                  >
+                    <SkipNext />
+                  </IconButton>
+                </span>
               </Tooltip>
-              <Slider
-                value={isMuted ? 0 : volume}
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={(_, val) => onVolumeChange(val as number)}
+            )}
+
+            {!isIOS && (
+              <Box
                 sx={{
-                  color: "#fff",
-                  width: 72,
-                  "& .MuiSlider-rail": { bgcolor: "rgba(255,255,255,0.3)" },
-                  "& .MuiSlider-thumb": { width: 12, height: 12 },
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  minWidth: { xs: "auto", md: 120 },
                 }}
-              />
-            </Box>
+              >
+                <Tooltip title={isMuted ? "Bật âm (M)" : "Tắt âm (M)"}>
+                  <IconButton
+                    ref={muteButtonRef}
+                    onClick={handleVolumeButtonClick}
+                    sx={{ color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}
+                    aria-label={isMuted ? "Bật âm" : "Tắt âm"}
+                  >
+                    {isMuted ? <VolumeOff /> : <VolumeUp />}
+                  </IconButton>
+                </Tooltip>
+                <Slider
+                  value={isMuted ? 0 : volume}
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  onChange={(_, val) => onVolumeChange(val as number)}
+                  sx={{
+                    color: "#fff",
+                    width: 72,
+                    display: { xs: "none", md: "block" },
+                    "& .MuiSlider-rail": { bgcolor: "rgba(255,255,255,0.3)" },
+                    "& .MuiSlider-thumb": { width: 12, height: 12 },
+                  }}
+                />
+              </Box>
+            )}
 
             <Typography
               sx={{
                 color: "rgba(255,255,255,0.7)",
                 fontFamily: "Inter, sans-serif",
-                fontSize: "0.82rem",
-                ml: 1,
+                fontSize: { xs: "0.72rem", md: "0.82rem" },
+                ml: { xs: 0.5, md: 1 },
                 whiteSpace: "nowrap",
               }}
             >
@@ -314,7 +505,7 @@ export default function PlayerControls({
 
             <Box sx={{ flex: 1 }} />
 
-            <Box sx={{ position: "relative" }}>
+            <Box sx={{ position: "relative", display: { xs: "none", md: "block" } }}>
               <Tooltip title="Tốc độ phát">
                 <IconButton
                   onClick={() => {
@@ -357,7 +548,7 @@ export default function PlayerControls({
               )}
             </Box>
 
-            <Box sx={{ position: "relative" }}>
+            <Box sx={{ position: "relative", display: { xs: "none", md: "block" } }}>
               <Tooltip title="Chất lượng video">
                 <IconButton
                   onClick={() => {
@@ -459,16 +650,48 @@ export default function PlayerControls({
               </Tooltip>
             )}
 
-            <Tooltip title="Picture in Picture">
+            {download.mounted && (
+              <Tooltip title={downloadTooltip}>
+                <IconButton
+                  onClick={handleDownloadClick}
+                  sx={{
+                    color: downloadColor,
+                    display: { xs: "none", md: "inline-flex" },
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                  }}
+                  aria-label="Tải phim"
+                >
+                  {downloadIcon}
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {!isIOS && (
+              <Tooltip title="Picture in Picture">
+                <IconButton
+                  onClick={handlePiP}
+                  sx={{
+                    color: "#fff",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                    display: { xs: "none", md: "flex" },
+                  }}
+                >
+                  <PictureInPicture sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            <Tooltip title="Tuỳ chọn khác">
               <IconButton
-                onClick={handlePiP}
+                onClick={(e) => setOverflowAnchor(e.currentTarget)}
                 sx={{
                   color: "#fff",
+                  display: { xs: "inline-flex", md: "none" },
                   "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
-                  display: { xs: "none", md: "flex" },
                 }}
+                aria-label="Tuỳ chọn khác"
               >
-                <PictureInPicture sx={{ fontSize: 20 }} />
+                <MoreVert />
               </IconButton>
             </Tooltip>
 
@@ -484,6 +707,268 @@ export default function PlayerControls({
         </Box>
       </Fade>
 
+      <Popover
+        open={Boolean(volumeAnchor)}
+        anchorEl={volumeAnchor}
+        onClose={() => setVolumeAnchor(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+        slotProps={{
+          paper: {
+            onClick: (e) => e.stopPropagation(),
+            onPointerDown: (e) => e.stopPropagation(),
+            sx: {
+              bgcolor: "rgba(20,20,20,0.95)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 2,
+              px: 1,
+              py: 1.5,
+              mb: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 1,
+              height: 140,
+              backgroundImage: "none",
+            },
+          },
+        }}
+        sx={{ zIndex: 2147483647 }}
+        container={fullscreenContainer ?? undefined}
+        disableScrollLock
+      >
+        <Slider
+          orientation="vertical"
+          value={isMuted ? 0 : volume}
+          min={0}
+          max={1}
+          step={0.05}
+          onChange={(_, val) => onVolumeChange(val as number)}
+          sx={{
+            color: "#C8102E",
+            height: 96,
+            "& .MuiSlider-rail": { bgcolor: "rgba(255,255,255,0.3)" },
+            "& .MuiSlider-thumb": { width: 18, height: 18 },
+          }}
+        />
+        <IconButton
+          onClick={(e) => {
+            e.stopPropagation();
+            onMuteToggle();
+          }}
+          size="small"
+          sx={{ color: "#fff" }}
+          aria-label={isMuted ? "Bật âm" : "Tắt âm"}
+        >
+          {isMuted ? <VolumeOff fontSize="small" /> : <VolumeUp fontSize="small" />}
+        </IconButton>
+      </Popover>
+
+      <Menu
+        anchorEl={overflowAnchor}
+        open={Boolean(overflowAnchor)}
+        onClose={() => setOverflowAnchor(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            bgcolor: "rgba(20,20,20,0.95)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 2,
+            color: "#fff",
+            minWidth: 220,
+            backgroundImage: "none",
+          },
+        }}
+        sx={{ zIndex: 2147483647 }}
+        container={fullscreenContainer ?? undefined}
+        disableScrollLock
+      >
+        <MenuItem
+          onClick={() => {
+            setOverflowAnchor(null);
+            setShowQualityMenu(true);
+          }}
+          sx={{ "&:hover": { bgcolor: "rgba(255,255,255,0.06)" } }}
+        >
+          <ListItemIcon>
+            <Hd sx={{ color: currentQuality !== "720p" ? "#C8102E" : "#fff" }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Chất lượng"
+            secondary={qualityLabel(currentQuality)}
+            primaryTypographyProps={{ fontSize: "0.88rem" }}
+            secondaryTypographyProps={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)" }}
+          />
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setOverflowAnchor(null);
+            setShowSpeedMenu(true);
+          }}
+          sx={{ "&:hover": { bgcolor: "rgba(255,255,255,0.06)" } }}
+        >
+          <ListItemIcon>
+            <SlowMotionVideo sx={{ color: "#fff" }} />
+          </ListItemIcon>
+          <ListItemText
+            primary="Tốc độ phát"
+            secondary={`${playbackSpeed}x`}
+            primaryTypographyProps={{ fontSize: "0.88rem" }}
+            secondaryTypographyProps={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)" }}
+          />
+        </MenuItem>
+        {download.mounted && (
+          <MenuItem
+            onClick={handleDownloadClick}
+            sx={{ "&:hover": { bgcolor: "rgba(255,255,255,0.06)" } }}
+          >
+            <ListItemIcon sx={{ color: downloadColor }}>{downloadIcon}</ListItemIcon>
+            <ListItemText
+              primary="Tải phim"
+              secondary={
+                download.status === "downloading"
+                  ? `${download.progress?.percent ?? 0}%`
+                  : download.status === "downloaded"
+                    ? "Đã tải"
+                    : !download.isPWA
+                      ? "Cần cài ứng dụng"
+                      : undefined
+              }
+              primaryTypographyProps={{ fontSize: "0.88rem" }}
+              secondaryTypographyProps={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)" }}
+            />
+          </MenuItem>
+        )}
+        {!isIOS && (
+          <MenuItem onClick={handlePiP} sx={{ "&:hover": { bgcolor: "rgba(255,255,255,0.06)" } }}>
+            <ListItemIcon>
+              <PictureInPicture sx={{ color: "#fff" }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Picture in Picture"
+              primaryTypographyProps={{ fontSize: "0.88rem" }}
+            />
+          </MenuItem>
+        )}
+      </Menu>
+
+      {showSpeedMenu && isCompact && (
+        <Dialog
+          open
+          onClose={() => setShowSpeedMenu(false)}
+          container={fullscreenContainer ?? undefined}
+          sx={{ zIndex: 2147483647 }}
+          PaperProps={{
+            sx: {
+              bgcolor: "rgba(20,20,20,0.97)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 2,
+              color: "#fff",
+              minWidth: 220,
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontSize: "0.95rem", fontWeight: 700, pb: 1 }}>
+            Tốc độ phát
+          </DialogTitle>
+          <DialogContent sx={{ p: 0, "&:first-of-type": { pt: 0 } }}>
+            {PLAYBACK_SPEEDS.map((speed) => (
+              <Box
+                key={speed}
+                onClick={() => handleSpeedChange(speed)}
+                sx={{
+                  px: 3,
+                  py: 1.25,
+                  color: speed === playbackSpeed ? "#C8102E" : "#fff",
+                  fontSize: "0.9rem",
+                  cursor: "pointer",
+                  fontWeight: speed === playbackSpeed ? 700 : 400,
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+                }}
+              >
+                {speed}x
+              </Box>
+            ))}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showQualityMenu && isCompact && (
+        <Dialog
+          open
+          onClose={() => setShowQualityMenu(false)}
+          container={fullscreenContainer ?? undefined}
+          sx={{ zIndex: 2147483647 }}
+          PaperProps={{
+            sx: {
+              bgcolor: "rgba(20,20,20,0.97)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 2,
+              color: "#fff",
+              minWidth: 240,
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontSize: "0.95rem", fontWeight: 700, pb: 1 }}>
+            Chất lượng video
+          </DialogTitle>
+          <DialogContent sx={{ p: 0, "&:first-of-type": { pt: 0 } }}>
+            {ALL_QUALITIES.map((q) => {
+              const qIdx = QUALITY_ORDER.indexOf(q);
+              const isLocked = qIdx > maxQualityIdx;
+              const isAvailable = availableQualities.length === 0 || availableQualities.includes(q);
+              const isActive = q === currentQuality;
+              return (
+                <Box
+                  key={q}
+                  onClick={() => {
+                    handleQualityClick(q);
+                    setShowQualityMenu(false);
+                  }}
+                  sx={{
+                    px: 3,
+                    py: 1.25,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    color: isLocked
+                      ? "rgba(255,255,255,0.35)"
+                      : isActive
+                        ? "#C8102E"
+                        : isAvailable
+                          ? "#fff"
+                          : "rgba(255,255,255,0.35)",
+                    fontSize: "0.9rem",
+                    cursor: isAvailable || isLocked ? "pointer" : "default",
+                    fontWeight: isActive ? 700 : 400,
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+                  }}
+                >
+                  <span>{qualityLabel(q)}</span>
+                  {isLocked && <Lock sx={{ fontSize: 14, opacity: 0.6 }} />}
+                  {!isLocked && isActive && (
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        bgcolor: "#C8102E",
+                      }}
+                    />
+                  )}
+                </Box>
+              );
+            })}
+          </DialogContent>
+        </Dialog>
+      )}
+
       {showEpisodes && isSeries && (
         <EpisodeList
           episodes={episodes}
@@ -493,8 +978,165 @@ export default function PlayerControls({
             setShowEpisodes(false);
           }}
           onClose={() => setShowEpisodes(false)}
+          container={fullscreenContainer ?? undefined}
         />
       )}
+
+      <Dialog
+        open={showDownloadDialog}
+        onClose={() => setShowDownloadDialog(false)}
+        onClick={(e) => e.stopPropagation()}
+        container={fullscreenContainer ?? undefined}
+        maxWidth="xs"
+        fullWidth
+        sx={{ zIndex: 2147483647 }}
+        PaperProps={{
+          sx: {
+            bgcolor: "#161616",
+            border: "1px solid rgba(200,16,46,0.25)",
+            borderRadius: 3,
+            backgroundImage: "none",
+            mx: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
+            <Box
+              component="img"
+              src="/icons/logo.webp"
+              alt="Gió Phim"
+              sx={{ width: 48, height: 48, borderRadius: 2, flexShrink: 0 }}
+            />
+            <Box>
+              <Typography
+                sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#F0F0F0", lineHeight: 1.2 }}
+              >
+                Cài Gió Phim để Tải phim
+              </Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "#8A8A8A", mt: 0.3 }}>
+                Tải phim và xem khi không có mạng
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            px: 3,
+            pt: "8px !important",
+            pb: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: "rgba(200,16,46,0.06)",
+              border: "1px solid rgba(200,16,46,0.15)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 1.25,
+            }}
+          >
+            {[
+              "Xem phim không cần mạng",
+              "Lưu trữ an toàn trên thiết bị",
+              "Tự động xoá sau 48 giờ",
+            ].map((item) => (
+              <Box key={item} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    bgcolor: "#C8102E",
+                    flexShrink: 0,
+                  }}
+                />
+                <Typography sx={{ fontSize: "0.85rem", color: "#C0C0C0" }}>{item}</Typography>
+              </Box>
+            ))}
+          </Box>
+
+          {showIOSGuide && <IOSInstallInstructions />}
+
+          {isUnsupportedIOSBrowser && (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1.5,
+                bgcolor: "rgba(255,193,7,0.08)",
+                border: "1px solid rgba(255,193,7,0.25)",
+              }}
+            >
+              <Typography sx={{ fontSize: "0.8rem", color: "#FFC107", lineHeight: 1.6 }}>
+                Trên iPhone/iPad, vui lòng mở trong <strong>Safari</strong> để cài đặt.
+              </Typography>
+            </Box>
+          )}
+
+          {!download.canInstall && !showIOSGuide && !isUnsupportedIOSBrowser && (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1.5,
+                bgcolor: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <Typography sx={{ fontSize: "0.8rem", color: "#8A8A8A", lineHeight: 1.6 }}>
+                Để cài: nhấn biểu tượng <strong style={{ color: "#C0C0C0" }}>⋮</strong> hoặc{" "}
+                <strong style={{ color: "#C0C0C0" }}>Chia sẻ</strong> trên trình duyệt → chọn{" "}
+                <strong style={{ color: "#C0C0C0" }}>Thêm vào màn hình chính</strong>.
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2, gap: 1 }}>
+          <Button
+            onClick={() => setShowDownloadDialog(false)}
+            sx={{ color: "#8A8A8A", textTransform: "none", fontWeight: 600, flex: 1 }}
+          >
+            Để sau
+          </Button>
+          {download.canInstall ? (
+            <Button
+              variant="contained"
+              onClick={handleInstallFromDialog}
+              disabled={installing}
+              startIcon={<FileDownloadOutlined />}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: 1.5,
+                bgcolor: "#C8102E",
+                "&:hover": { bgcolor: "#a50d26" },
+                flex: 2,
+              }}
+            >
+              {installing ? "Đang cài..." : "Cài đặt ngay"}
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              onClick={() => setShowDownloadDialog(false)}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: 1.5,
+                borderColor: "rgba(255,255,255,0.2)",
+                color: "#F0F0F0",
+                flex: 2,
+              }}
+            >
+              Đã hiểu
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
