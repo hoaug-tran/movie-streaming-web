@@ -1,0 +1,47 @@
+{
+  "name": "Gió Phim - Gió đưa, phim tới",
+  "short_name": "Gió Phim",
+  "description": "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0C0C0C",
+  "theme_color": "#C8102E",
+  "lang": "vi",
+  "scope": "/",
+  "categories": ["entertainment"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Trang chủ",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192.webp", "sizes": "192x192", "type": "image/webp" }]
+    },
+    {
+      "name": "Phim đã tải",
+      "url": "/downloads",
+      "icons": [{ "src": "/icons/icon-192.webp", "sizes": "192x192", "type": "image/webp" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
