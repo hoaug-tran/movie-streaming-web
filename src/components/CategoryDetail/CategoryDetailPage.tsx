@@ -448,19 +448,20 @@ export default function CategoryDetailPage({ categorySlug }: CategoryDetailPageP
   const movies = moviesQuery.data?.pages.flatMap((page) => page.content) ?? [];
   const hasMore = Boolean(moviesQuery.hasNextPage);
 
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = moviesQuery;
   useEffect(() => {
     const handleScroll = () => {
       if (
         window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 520 &&
-        moviesQuery.hasNextPage &&
-        !moviesQuery.isFetchingNextPage
+        hasNextPage &&
+        !isFetchingNextPage
       ) {
-        moviesQuery.fetchNextPage();
+        fetchNextPage();
       }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [moviesQuery.hasNextPage, moviesQuery.isFetchingNextPage, moviesQuery.fetchNextPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (categoriesQuery.isError || moviesQuery.isError) {
     return (

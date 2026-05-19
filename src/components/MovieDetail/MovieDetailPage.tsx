@@ -21,6 +21,7 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
   useTheme,
 } from "@mui/material";
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
@@ -49,6 +50,9 @@ import { useMyWatchHistories } from "@/modules/watch-history/hooks/useWatchHisto
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { getAbsoluteAvatarUrl } from "@/utils/avatar";
 import { ReportContentDialog } from "@/modules/report/components/ReportContentDialog";
+import OfflineDownloadButton from "@/components/PWA/OfflineDownloadButton";
+import SeriesDownloadModal from "@/components/PWA/SeriesDownloadModal";
+import { Download } from "lucide-react";
 
 type MovieDetailPageProps = {
   slug: string;
@@ -163,6 +167,7 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
   const theme = useTheme();
   const { navigateToWatch } = usePlayNavigation();
   const firstEpisode = movie.episodes?.[0];
+  const [showSeriesDownload, setShowSeriesDownload] = useState(false);
 
   return (
     <Box
@@ -281,9 +286,42 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                   }
                   label="Phát phim"
                 />
-                <Stack direction="row" spacing={1.25} justifyContent="flex-end">
+                <Stack direction="row" spacing={1.25} justifyContent="flex-end" alignItems="center">
                   <WatchlistToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
                   <FavoriteToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
+
+                  {movie.movieType === "SERIES" && movie.episodes && movie.episodes.length > 0 ? (
+                    <Button
+                      onClick={() => setShowSeriesDownload(true)}
+                      variant="outlined"
+                      size="small"
+                      startIcon={<Download size={15} />}
+                      sx={{
+                        height: 36,
+                        px: 2,
+                        textTransform: "none",
+                        fontWeight: 700,
+                        borderRadius: 1.5,
+                        fontSize: "0.78rem",
+                        borderColor: "rgba(255,255,255,0.18)",
+                        color: "#F0F0F0",
+                        bgcolor: "rgba(255,255,255,0.04)",
+                        "&:hover": {
+                          borderColor: "rgba(255,255,255,0.35)",
+                          bgcolor: "rgba(255,255,255,0.08)",
+                        },
+                      }}
+                    >
+                      Tải phim
+                    </Button>
+                  ) : firstEpisode ? (
+                    <OfflineDownloadButton
+                      episodeId={firstEpisode.id}
+                      quality="720p"
+                      variant="pill"
+                      size="small"
+                    />
+                  ) : null}
                 </Stack>
                 <Typography
                   color="text.secondary"
@@ -316,6 +354,14 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
           </Grid>
         </Grid>
       </Container>
+
+      {movie.movieType === "SERIES" && movie.episodes && (
+        <SeriesDownloadModal
+          open={showSeriesDownload}
+          onClose={() => setShowSeriesDownload(false)}
+          episodes={movie.episodes}
+        />
+      )}
     </Box>
   );
 }
@@ -358,6 +404,9 @@ interface GroupedPerson {
 
 function PersonCard({ person }: { person: GroupedPerson }) {
   const theme = useTheme();
+  const hasHoverPointer = useMediaQuery("(hover: hover) and (pointer: fine)", {
+    defaultMatches: false,
+  });
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const isValidAvatar =
     person.avatarUrl &&
@@ -369,8 +418,8 @@ function PersonCard({ person }: { person: GroupedPerson }) {
   return (
     <>
       <Box
-        onMouseEnter={(e) => setAnchor(e.currentTarget)}
-        onMouseLeave={() => setAnchor(null)}
+        onMouseEnter={hasHoverPointer ? (e) => setAnchor(e.currentTarget) : undefined}
+        onMouseLeave={hasHoverPointer ? () => setAnchor(null) : undefined}
         sx={{
           display: "flex",
           alignItems: "center",
@@ -634,7 +683,6 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
   const visibleEpisodes = showAll ? episodes : episodes.slice(0, EPISODES_PER_PAGE);
   const hasMore = episodes.length > EPISODES_PER_PAGE;
 
-
   const handleJump = () => {
     const num = parseInt(jumpInput, 10);
     if (isNaN(num) || num < 1) return;
@@ -866,9 +914,24 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
                 <Typography variant="subtitle1" fontWeight={900} letterSpacing="-0.02em" noWrap>
                   {episode.title || "Chưa có tiêu đề"}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatRuntime(episode.durationSeconds)}
-                </Typography>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ mt: 0.5 }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    {formatRuntime(episode.durationSeconds)}
+                  </Typography>
+                  <Box onClick={(e) => e.stopPropagation()}>
+                    <OfflineDownloadButton
+                      episodeId={episode.id}
+                      quality="720p"
+                      variant="pill"
+                      size="small"
+                    />
+                  </Box>
+                </Stack>
               </Stack>
             </Paper>
           </Box>

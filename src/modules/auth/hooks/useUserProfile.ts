@@ -23,6 +23,13 @@ export const useUserProfile = () => {
   const [userProfile, setUserProfile] = useState<UserInfo | null>(user || null);
   const [loading, setLoading] = useState(false);
   const fetchedUserIdRef = useRef<string | null>(null);
+  const userRef = useRef(user);
+  const setUserRef = useRef(setUser);
+
+  useEffect(() => {
+    userRef.current = user;
+    setUserRef.current = setUser;
+  }, [user, setUser]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -31,16 +38,17 @@ export const useUserProfile = () => {
       return;
     }
 
-    if (!user?.id) {
+    const currentUser = userRef.current;
+    if (!currentUser?.id) {
       return;
     }
 
-    if (fetchedUserIdRef.current === user.id) {
-      setUserProfile(user);
+    if (fetchedUserIdRef.current === currentUser.id) {
+      setUserProfile(currentUser);
       return;
     }
 
-    fetchedUserIdRef.current = user.id;
+    fetchedUserIdRef.current = currentUser.id;
 
     const fetchFullUserProfile = async () => {
       setLoading(true);
@@ -56,12 +64,13 @@ export const useUserProfile = () => {
           return fullProfile;
         });
 
-        if (!isSameUserProfile(user, fullProfile)) {
-          setUser(fullProfile);
+        const latestUser = userRef.current;
+        if (!isSameUserProfile(latestUser, fullProfile)) {
+          setUserRef.current(fullProfile);
           setInLocalStorage("user", fullProfile);
         }
       } catch {
-        setUserProfile(user);
+        setUserProfile(userRef.current);
       } finally {
         setLoading(false);
       }
