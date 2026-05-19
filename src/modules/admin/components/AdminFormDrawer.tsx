@@ -104,7 +104,7 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
       });
       setLocalStrings(strings);
     }
-  }, [initialValues, open]);
+  }, [initialValues, open, fields]);
 
   const requiredFields = useMemo(() => fields.filter((field) => field.required), [fields]);
 
@@ -305,11 +305,17 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                           error={Boolean(validationErrors[field.name])}
                           fullWidth
                         />
-                         <Button
+                        <Button
                           component="label"
                           variant="outlined"
                           size="small"
-                          startIcon={uploadingField === field.name ? <CircularProgress size={14} /> : <CloudUploadRoundedIcon />}
+                          startIcon={
+                            uploadingField === field.name ? (
+                              <CircularProgress size={14} />
+                            ) : (
+                              <CloudUploadRoundedIcon />
+                            )
+                          }
                           disabled={uploadingField === field.name}
                           sx={{ alignSelf: "flex-start", borderRadius: 1, fontWeight: 800 }}
                         >
@@ -318,7 +324,9 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                             hidden
                             accept="image/*"
                             type="file"
-                            ref={(el) => { fileInputRefs.current[field.name] = el; }}
+                            ref={(el) => {
+                              fileInputRefs.current[field.name] = el;
+                            }}
                             onChange={async (event) => {
                               const file = event.target.files?.[0];
                               if (!file) return;
@@ -327,7 +335,10 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                               try {
                                 const { file: webpFile } = await convertToWebPObjectUrl(file);
                                 const res = await adminService.uploadImage(webpFile);
-                                setValues((current) => ({ ...current, [field.name]: res.videoUrl }));
+                                setValues((current) => ({
+                                  ...current,
+                                  [field.name]: res.videoUrl,
+                                }));
                               } catch {
                                 // keep existing value on error
                               } finally {
@@ -399,7 +410,13 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                           component="label"
                           variant="outlined"
                           size="small"
-                          startIcon={uploadingField === field.name ? <CircularProgress size={14} /> : <CloudUploadRoundedIcon />}
+                          startIcon={
+                            uploadingField === field.name ? (
+                              <CircularProgress size={14} />
+                            ) : (
+                              <CloudUploadRoundedIcon />
+                            )
+                          }
                           disabled={uploadingField === field.name}
                           sx={{ alignSelf: "flex-start", borderRadius: 1, fontWeight: 800 }}
                         >
@@ -408,7 +425,9 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                             hidden
                             accept="video/*"
                             type="file"
-                            ref={(el) => { fileInputRefs.current[field.name] = el; }}
+                            ref={(el) => {
+                              fileInputRefs.current[field.name] = el;
+                            }}
                             onChange={async (event) => {
                               const file = event.target.files?.[0];
                               if (!file) return;
@@ -416,7 +435,10 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                               setUploadingField(field.name);
                               try {
                                 const res = await adminService.uploadVideo(file);
-                                setValues((current) => ({ ...current, [field.name]: res.videoUrl }));
+                                setValues((current) => ({
+                                  ...current,
+                                  [field.name]: res.videoUrl,
+                                }));
                               } catch {
                                 // keep existing value on error
                               } finally {
@@ -444,7 +466,11 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                     error={Boolean(validationErrors[field.name])}
                     helperText={validationErrors[field.name] || field.helperText}
                     InputLabelProps={{ shrink: true }}
-                    inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: field.maxLength }}
+                    inputProps={{
+                      inputMode: "numeric",
+                      pattern: "[0-9]*",
+                      maxLength: field.maxLength,
+                    }}
                     onChange={(event) => {
                       const raw = event.target.value;
                       setLocalStrings((s) => ({ ...s, [field.name]: raw }));
@@ -452,7 +478,10 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                       if (!isNaN(n)) setValues((current) => ({ ...current, [field.name]: n }));
                     }}
                     onBlur={() => {
-                      setLocalStrings((s) => ({ ...s, [field.name]: String(values[field.name] ?? "") }));
+                      setLocalStrings((s) => ({
+                        ...s,
+                        [field.name]: String(values[field.name] ?? ""),
+                      }));
                     }}
                   />
                 );

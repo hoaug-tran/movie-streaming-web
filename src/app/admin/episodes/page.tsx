@@ -23,10 +23,12 @@ import { AdminMovie, AdminEpisodePayload, adminService } from "@/modules/admin/a
 import { useState, useEffect, useRef } from "react";
 import { convertToWebPObjectUrl } from "@/utils/convert-to-webp";
 import Autocomplete from "@mui/material/Autocomplete";
+import { useUploadProgress } from "@/context/upload-progress-context";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
 
 export default function AdminEpisodesPage() {
+  const uploadProgress = useUploadProgress();
   return (
     <AdminManagementPage<AdminMovie>
       permission="movies:manage"
@@ -35,7 +37,9 @@ export default function AdminEpisodesPage() {
       queryKey={["admin", "episodes", "movies"]}
       queryFn={adminService.getMovies}
       searchPlaceholder="Tìm phim, slug, trạng thái..."
-      getSearchText={(movie) => `${movie.title} ${movie.slug ?? ""} ${movie.movieStatus ?? ""} ${movie.country ?? ""}`}
+      getSearchText={(movie) =>
+        `${movie.title} ${movie.slug ?? ""} ${movie.movieStatus ?? ""} ${movie.country ?? ""}`
+      }
       getStatus={(movie) => movie.movieStatus ?? "UNKNOWN"}
       extraFilters={[
         {
@@ -92,7 +96,9 @@ export default function AdminEpisodesPage() {
           key: "views",
           label: "Lượt xem",
           render: (movie) => (
-            <Typography variant="caption">{(movie.viewCount ?? 0).toLocaleString("vi-VN")}</Typography>
+            <Typography variant="caption">
+              {(movie.viewCount ?? 0).toLocaleString("vi-VN")}
+            </Typography>
           ),
         },
         {
@@ -123,18 +129,41 @@ export default function AdminEpisodesPage() {
           thumbnailUrl: _thumbnailPreview || undefined,
         } as AdminEpisodePayload);
         if (_videoFile) {
-          await new Promise<void>((resolve, reject) => {
-            const fd = new FormData();
-            fd.append("file", _videoFile);
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", `${API_BASE}/admin/media/episodes/${created.id}/source`);
-            const token =
-              typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-            if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-            xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error("Upload failed")));
-            xhr.onerror = () => reject(new Error("Upload error"));
-            xhr.send(fd);
+          const taskId = uploadProgress.startTask({
+            label: `Tập ${episodeData.episodeNumber}: ${episodeData.title}`,
+            fileName: (_videoFile as File).name,
+            totalBytes: (_videoFile as File).size,
           });
+          try {
+            await adminService.uploadEpisodeSourceSmart(
+              created.id,
+              _videoFile,
+              (s) => {
+                uploadProgress.updateTask(taskId, {
+                  percent: s.percent,
+                  phase: s.phase,
+                  bytesUploaded: s.bytesUploaded,
+                  totalBytes: s.totalBytes,
+                  speedKBps: s.speedKBps,
+                  etaSeconds: s.etaSeconds,
+                  message: s.message,
+                });
+              },
+              API_BASE
+            );
+            uploadProgress.finishTask(
+              taskId,
+              true,
+              "Upload xong, server đang transcode 720p/1080p/4K..."
+            );
+          } catch (err) {
+            uploadProgress.finishTask(
+              taskId,
+              false,
+              err instanceof Error ? err.message : String(err)
+            );
+            throw err;
+          }
         }
         return created;
       }}

@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Autocomplete, Box, FormControlLabel, Stack, Switch, TextField, Typography } from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Autocomplete,
+  Box,
+  FormControlLabel,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
+} from "@mui/material";
 import AdminManagementPage, {
   AdminStatusChip,
 } from "@/modules/admin/components/AdminManagementPage";
@@ -281,6 +289,7 @@ function CreateNotificationDrawer({
 }
 
 export default function AdminNotificationsPage() {
+  const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -297,8 +306,12 @@ export default function AdminNotificationsPage() {
       } else {
         await adminService.createNotification(payload as AdminNotificationPayload);
       }
+      console.log("[AdminNotif] create/broadcast success — invalidating query");
       setCreateOpen(false);
-    } catch {
+      await queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      console.log("[AdminNotif] invalidateQueries done");
+    } catch (err) {
+      console.error("[AdminNotif] create/broadcast failed:", err);
       setCreateError("Gửi thất bại. Kiểm tra lại backend.");
     } finally {
       setCreateSubmitting(false);

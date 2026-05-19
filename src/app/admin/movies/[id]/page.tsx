@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  DialogContentText,
   Alert,
   Stack,
   Paper,
@@ -24,7 +25,9 @@ import {
   InputLabel,
   Switch,
   FormControlLabel,
+  Snackbar,
 } from "@mui/material";
+import type { AlertColor } from "@mui/material";
 import {
   ArrowBack,
   Add,
@@ -35,6 +38,7 @@ import {
   Business,
   VideoLibrary,
   Edit,
+  Refresh,
 } from "@mui/icons-material";
 import {
   adminService,
@@ -52,11 +56,136 @@ import {
   AdminMovieStudioPayload,
   AdminEpisodePayload,
   AdminMoviePayload,
+  TranscodeProgress,
 } from "@/modules/admin/api";
 import AvatarCropUpload from "@/components/Common/AvatarCropUpload";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { convertToWebPObjectUrl } from "@/utils/convert-to-webp";
+import { useUploadProgress } from "@/context/upload-progress-context";
 import LinearProgress from "@mui/material/LinearProgress";
+import CloudUpload from "@mui/icons-material/CloudUpload";
+import CheckCircle from "@mui/icons-material/CheckCircle";
+import HourglassTop from "@mui/icons-material/HourglassTop";
+
+type UploadStatus = {
+  percent: number;
+  phase: "uploading" | "finalizing" | "done";
+  bytesUploaded: number;
+  totalBytes: number;
+  currentChunk: number;
+  totalChunks: number;
+  speedKBps: number;
+  etaSeconds: number | null;
+  message: string;
+};
+
+function formatBytes(b: number) {
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  if (b < 1024 * 1024 * 1024) return `${(b / 1024 / 1024).toFixed(1)} MB`;
+  return `${(b / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function formatEta(s: number | null) {
+  if (s == null || !isFinite(s)) return "--";
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}m ${sec}s`;
+}
+
+function UploadStatusBar({ status }: { status: UploadStatus | null }) {
+  if (!status) {
+    return (
+      <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: "action.hover" }}>
+        <Typography variant="caption" color="text.secondary">
+          Đang chuẩn bị upload...
+        </Typography>
+        <LinearProgress sx={{ mt: 0.5, borderRadius: 1, height: 6 }} />
+      </Box>
+    );
+  }
+  const isDone = status.phase === "done";
+  const isFinalizing = status.phase === "finalizing";
+  const phaseColor = isDone ? "success.main" : isFinalizing ? "warning.main" : "primary.main";
+  const phaseIcon = isDone ? (
+    <CheckCircle sx={{ fontSize: 18, color: "success.main" }} />
+  ) : isFinalizing ? (
+    <HourglassTop sx={{ fontSize: 18, color: "warning.main" }} />
+  ) : (
+    <CloudUpload sx={{ fontSize: 18, color: "primary.main" }} />
+  );
+  const phaseLabel = isDone
+    ? "Hoàn tất"
+    : isFinalizing
+      ? "Đang ghép file"
+      : `Upload ${status.percent}%`;
+  return (
+    <Box
+      sx={{
+        p: 1.5,
+        borderRadius: 1.5,
+        bgcolor: "action.hover",
+        border: "1px solid",
+        borderColor: "divider",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.75 }}>
+        {phaseIcon}
+        <Typography variant="body2" fontWeight={700} color={phaseColor}>
+          {phaseLabel}
+        </Typography>
+        <Box sx={{ flex: 1 }} />
+        <Typography variant="caption" color="text.secondary">
+          {formatBytes(status.bytesUploaded)} / {formatBytes(status.totalBytes)}
+        </Typography>
+      </Box>
+      <LinearProgress
+        variant={isFinalizing ? "indeterminate" : "determinate"}
+        value={status.percent}
+        sx={{
+          height: 8,
+          borderRadius: 1,
+          bgcolor: "divider",
+          "& .MuiLinearProgress-bar": {
+            borderRadius: 1,
+            background: isDone
+              ? "linear-gradient(90deg, #10b981, #34d399)"
+              : isFinalizing
+                ? "linear-gradient(90deg, #f59e0b, #fbbf24)"
+                : "linear-gradient(90deg, #6366f1, #8b5cf6)",
+          },
+        }}
+      />
+      <Box sx={{ mt: 0.75, display: "flex", flexWrap: "wrap", gap: 1.25 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ flex: 1, minWidth: "100%" }}>
+          {status.message}
+        </Typography>
+        {status.totalChunks > 1 && (
+          <Chip
+            size="small"
+            label={`Chunk ${status.currentChunk}/${status.totalChunks}`}
+            sx={{ height: 20, fontSize: 11 }}
+          />
+        )}
+        {status.phase === "uploading" && status.speedKBps > 0 && (
+          <Chip
+            size="small"
+            label={`${(status.speedKBps / 1024).toFixed(2)} MB/s`}
+            sx={{ height: 20, fontSize: 11 }}
+          />
+        )}
+        {status.phase === "uploading" && status.etaSeconds != null && (
+          <Chip
+            size="small"
+            label={`Còn ~${formatEta(status.etaSeconds)}`}
+            sx={{ height: 20, fontSize: 11 }}
+          />
+        )}
+      </Box>
+    </Box>
+  );
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
 
@@ -79,6 +208,7 @@ export default function AdminMovieDetailPage() {
   const movieId = Number(id);
   const router = useRouter();
   const qc = useQueryClient();
+  const uploadProgress = useUploadProgress();
 
   const { data: movie, isLoading } = useQuery<AdminMovieDetail>({
     queryKey: ["admin", "movie", movieId],
@@ -179,6 +309,82 @@ export default function AdminMovieDetailPage() {
     mutationFn: (episodeId: number) => adminService.deleteEpisode(movieId, episodeId),
     onSuccess: invalidate,
   });
+  const retranscodeEpisode = useMutation({
+    mutationFn: (episodeId: number) => adminService.retranscodeEpisode(episodeId),
+    onSuccess: (_data, episodeId) => {
+      setTranscodeJobs((prev) => ({
+        ...prev,
+        [episodeId]: {
+          episodeId,
+          status: "PENDING",
+          targetQualities: ["720p", "1080p", "4K"],
+          completedQualities: [],
+          failedQualities: [],
+          skippedQualities: [],
+          percent: 0,
+        },
+      }));
+      setSnackbar({
+        open: true,
+        severity: "info",
+        message: `Đã khởi chạy render lại HLS cho tập #${episodeId}. Theo dõi tiến trình bên dưới.`,
+      });
+      invalidate();
+    },
+    onError: (err: unknown) => {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: `Render lại thất bại: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    },
+  });
+  const retranscodeMovie = useMutation({
+    mutationFn: () => adminService.retranscodeMovie(movieId),
+    onSuccess: (results) => {
+      const seed: Record<number, TranscodeProgress> = {};
+      results.forEach((r) => {
+        const epId = Number(r.id ?? 0);
+        if (!epId) return;
+        seed[epId] = {
+          episodeId: epId,
+          status: "PENDING",
+          targetQualities: ["720p", "1080p", "4K"],
+          completedQualities: [],
+          failedQualities: [],
+          skippedQualities: [],
+          percent: 0,
+        };
+      });
+      (movie?.episodes ?? []).forEach((ep) => {
+        if (!seed[ep.id]) {
+          seed[ep.id] = {
+            episodeId: ep.id,
+            status: "PENDING",
+            targetQualities: ["720p", "1080p", "4K"],
+            completedQualities: [],
+            failedQualities: [],
+            skippedQualities: [],
+            percent: 0,
+          };
+        }
+      });
+      setTranscodeJobs((prev) => ({ ...prev, ...seed }));
+      setSnackbar({
+        open: true,
+        severity: "info",
+        message: `Đã khởi chạy render lại ${Object.keys(seed).length} tập.`,
+      });
+      invalidate();
+    },
+    onError: (err: unknown) => {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: `Render lại tất cả thất bại: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    },
+  });
   const createTag = useMutation({
     mutationFn: (p: AdminTagPayload) => adminService.createTag(p),
     onSuccess: (tag) => {
@@ -202,6 +408,53 @@ export default function AdminMovieDetailPage() {
   });
 
   const [addCatId, setAddCatId] = useState<number | "">("");
+  const [transcodeJobs, setTranscodeJobs] = useState<Record<number, TranscodeProgress>>({});
+  const [confirmRetranscodeEpisodeId, setConfirmRetranscodeEpisodeId] = useState<number | null>(
+    null
+  );
+  const [confirmRetranscodeAll, setConfirmRetranscodeAll] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    severity: AlertColor;
+    message: string;
+  }>({ open: false, severity: "info", message: "" });
+
+  useEffect(() => {
+    const ids = Object.keys(transcodeJobs).map(Number);
+    if (ids.length === 0) return;
+    const allDone = ids.every((id) => {
+      const j = transcodeJobs[id];
+      return j && (j.status === "DONE" || j.status === "FAILED");
+    });
+    if (allDone) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const data = await adminService.transcodeProgressBatch(ids);
+        if (cancelled) return;
+        setTranscodeJobs((prev) => {
+          const next = { ...prev };
+          ids.forEach((id) => {
+            const fresh = (data as Record<string, TranscodeProgress>)[String(id)];
+            if (fresh) next[id] = fresh;
+          });
+          return next;
+        });
+        const finishedSomething = Object.values(data as Record<string, TranscodeProgress>).some(
+          (p) => p.status === "DONE" || p.status === "FAILED"
+        );
+        if (finishedSomething) invalidate();
+      } catch {
+        // best-effort polling, ignore network blips
+      }
+    };
+    const interval = setInterval(tick, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcodeJobs]);
   const [addTagId, setAddTagId] = useState<number | "">("");
   const [newTagName, setNewTagName] = useState("");
   const [newCatName, setNewCatName] = useState("");
@@ -235,7 +488,7 @@ export default function AdminMovieDetailPage() {
   const [editEpisodeVideoPreviewUrl, setEditEpisodeVideoPreviewUrl] = useState<string>("");
   const [editEpisodeThumbnailPreview, setEditEpisodeThumbnailPreview] = useState<string>("");
   const [editEpisodeUploading, setEditEpisodeUploading] = useState(false);
-  const [editEpisodeUploadProgress, setEditEpisodeUploadProgress] = useState(0);
+  const [editEpisodeUploadStatus, setEditEpisodeUploadStatus] = useState<UploadStatus | null>(null);
   const [editEpisodeThumbnailUploading, setEditEpisodeThumbnailUploading] = useState(false);
   const editEpisodeVideoInputRef = useRef<HTMLInputElement>(null);
   const editEpisodeThumbInputRef = useRef<HTMLInputElement>(null);
@@ -294,7 +547,7 @@ export default function AdminMovieDetailPage() {
   });
   const [episodeVideoFile, setEpisodeVideoFile] = useState<File | null>(null);
   const [episodeThumbnailPreview, setEpisodeThumbnailPreview] = useState<string>("");
-  const [episodeUploadProgress, setEpisodeUploadProgress] = useState(0);
+  const [episodeUploadStatus, setEpisodeUploadStatus] = useState<UploadStatus | null>(null);
   const [episodeUploading, setEpisodeUploading] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
@@ -333,7 +586,7 @@ export default function AdminMovieDetailPage() {
     });
     setEpisodeVideoFile(null);
     setEpisodeThumbnailPreview("");
-    setEpisodeUploadProgress(0);
+    setEpisodeUploadStatus(null);
   };
 
   const sectionSx = {
@@ -412,9 +665,7 @@ export default function AdminMovieDetailPage() {
                   Khóa bình luận
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {movie.commentsLocked
-                    ? "Người dùng không thể bình luận"
-                    : "Bình luận đang mở"}
+                  {movie.commentsLocked ? "Người dùng không thể bình luận" : "Bình luận đang mở"}
                 </Typography>
               </Box>
             }
@@ -439,9 +690,7 @@ export default function AdminMovieDetailPage() {
                   Khóa đánh giá
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {movie.reviewsLocked
-                    ? "Người dùng không thể đánh giá"
-                    : "Đánh giá đang mở"}
+                  {movie.reviewsLocked ? "Người dùng không thể đánh giá" : "Đánh giá đang mở"}
                 </Typography>
               </Box>
             }
@@ -667,7 +916,11 @@ export default function AdminMovieDetailPage() {
             {(() => {
               const grouped = new Map<
                 number,
-                { personId: number; name: string; entries: NonNullable<AdminMovieDetail["persons"]>[number][] }
+                {
+                  personId: number;
+                  name: string;
+                  entries: NonNullable<AdminMovieDetail["persons"]>[number][];
+                }
               >();
               (movie.persons ?? []).forEach((mp) => {
                 const pid = mp.person?.id ?? 0;
@@ -812,6 +1065,30 @@ export default function AdminMovieDetailPage() {
                 ? "Video phim"
                 : `Tập phim (${(movie.episodes ?? []).length})`}
             </Typography>
+            {movie.movieType !== "SINGLE" && (movie.episodes ?? []).length > 0 && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                startIcon={
+                  retranscodeMovie.isPending ? (
+                    <CircularProgress size={14} color="inherit" />
+                  ) : (
+                    <Refresh />
+                  )
+                }
+                onClick={() => setConfirmRetranscodeAll(true)}
+                disabled={
+                  retranscodeMovie.isPending ||
+                  Object.values(transcodeJobs).some(
+                    (j) => j.status === "PENDING" || j.status === "RUNNING"
+                  )
+                }
+                sx={{ mr: 1 }}
+              >
+                Render lại tất cả
+              </Button>
+            )}
             {movie.movieType !== "SINGLE" && (
               <Button
                 size="small"
@@ -894,6 +1171,11 @@ export default function AdminMovieDetailPage() {
                     if (!movieVideoFile) return;
                     setMovieUploading(true);
                     setMovieUploadProgress(0);
+                    const taskId = uploadProgress.startTask({
+                      label: `Phim: ${movie?.title ?? ""}`,
+                      fileName: movieVideoFile.name,
+                      totalBytes: movieVideoFile.size,
+                    });
                     const fd = new FormData();
                     fd.append("file", movieVideoFile);
                     const xhr = new XMLHttpRequest();
@@ -901,17 +1183,43 @@ export default function AdminMovieDetailPage() {
                     const token =
                       typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
                     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                    let lastTs = Date.now();
+                    let lastBytes = 0;
                     xhr.upload.onprogress = (ev) => {
-                      if (ev.lengthComputable)
-                        setMovieUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                      if (!ev.lengthComputable) return;
+                      const percent = Math.round((ev.loaded / ev.total) * 100);
+                      setMovieUploadProgress(percent);
+                      const now = Date.now();
+                      const dt = (now - lastTs) / 1000;
+                      const speedKBps = dt > 0 ? (ev.loaded - lastBytes) / 1024 / dt : 0;
+                      const eta = speedKBps > 0 ? (ev.total - ev.loaded) / 1024 / speedKBps : null;
+                      lastTs = now;
+                      lastBytes = ev.loaded;
+                      uploadProgress.updateTask(taskId, {
+                        percent,
+                        phase: "uploading",
+                        bytesUploaded: ev.loaded,
+                        totalBytes: ev.total,
+                        speedKBps,
+                        etaSeconds: eta != null ? Math.round(eta) : null,
+                        message: `Đang upload ${percent}%`,
+                      });
                     };
                     xhr.onload = () => {
                       setMovieUploading(false);
                       setMovieVideoFile(null);
                       setMovieUploadProgress(0);
+                      uploadProgress.finishTask(
+                        taskId,
+                        true,
+                        "Upload xong, server đang transcode 720p/1080p/4K..."
+                      );
                       invalidate();
                     };
-                    xhr.onerror = () => setMovieUploading(false);
+                    xhr.onerror = () => {
+                      setMovieUploading(false);
+                      uploadProgress.finishTask(taskId, false, "Lỗi kết nối upload");
+                    };
                     xhr.send(fd);
                   }}
                 >
@@ -926,89 +1234,214 @@ export default function AdminMovieDetailPage() {
             </Typography>
           )}
           <Stack spacing={0.5}>
-            {(movie.episodes ?? []).map((ep) => (
-              <Box
-                key={ep.id}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  py: 0.75,
-                  px: 1,
-                  borderRadius: 1,
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <Chip
-                  label={`Tập ${ep.episodeNumber}`}
-                  size="small"
-                  sx={{ minWidth: 60, fontSize: "0.7rem" }}
-                />
-                <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
-                  {ep.title}
-                </Typography>
-                <Chip
-                  label={ep.videoUrl ? "Có video" : "Chưa có video"}
-                  size="small"
-                  color={ep.videoUrl ? "success" : "warning"}
-                  variant="outlined"
-                  sx={{ fontSize: "0.68rem" }}
-                />
-                <Chip
-                  label={ep.status}
-                  size="small"
-                  variant="outlined"
-                  color={
-                    ep.status === "PUBLISHED"
-                      ? "success"
-                      : ep.status === "HIDDEN"
-                        ? "error"
-                        : "default"
-                  }
-                  sx={{ fontSize: "0.68rem" }}
-                />
-                <Tooltip title="Sửa tập">
-                  <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={() => {
-                      setEditEpisodeId(ep.id);
-                      setEditEpisodeForm({
-                        title: ep.title,
-                        episodeNumber: ep.episodeNumber,
-                        durationSeconds: ep.durationSeconds,
-                        isFreePreview: ep.isFreePreview,
-                        status: ep.status,
-                        videoUrl: ep.videoUrl ?? "",
-                        thumbnailUrl: ep.thumbnailUrl ?? "",
-                      });
-                      setEditEpisodeNumberStr(String(ep.episodeNumber));
-                      setEditEpisodeDurationStr(String(ep.durationSeconds));
-                      setEditEpisodeThumbnailPreview(ep.thumbnailUrl ?? "");
-                      setEditEpisodeVideoFile(null);
-                      if (editEpisodeVideoPreviewUrl)
-                        URL.revokeObjectURL(editEpisodeVideoPreviewUrl);
-                      setEditEpisodeVideoPreviewUrl("");
-                      setEditEpisodeUploading(false);
-                      setEditEpisodeUploadProgress(0);
-                      setEditEpisodeDialog(true);
-                    }}
-                  >
-                    <Edit sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Xóa tập">
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => deleteEpisode.mutate(ep.id)}
-                    disabled={deleteEpisode.isPending}
-                  >
-                    <Delete sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            ))}
+            {(movie.episodes ?? []).map((ep) => {
+              const job = transcodeJobs[ep.id];
+              const isActive = !!job && (job.status === "PENDING" || job.status === "RUNNING");
+              const isFinished = !!job && (job.status === "DONE" || job.status === "FAILED");
+              return (
+                <Box
+                  key={ep.id}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.75,
+                    py: 0.75,
+                    px: 1,
+                    borderRadius: 1,
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Chip
+                      label={`Tập ${ep.episodeNumber}`}
+                      size="small"
+                      sx={{ minWidth: 60, fontSize: "0.7rem" }}
+                    />
+                    <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
+                      {ep.title}
+                    </Typography>
+                    <Chip
+                      label={ep.videoUrl ? "Có video" : "Chưa có video"}
+                      size="small"
+                      color={ep.videoUrl ? "success" : "warning"}
+                      variant="outlined"
+                      sx={{ fontSize: "0.68rem" }}
+                    />
+                    <Chip
+                      label={ep.status}
+                      size="small"
+                      variant="outlined"
+                      color={
+                        ep.status === "PUBLISHED"
+                          ? "success"
+                          : ep.status === "HIDDEN"
+                            ? "error"
+                            : "default"
+                      }
+                      sx={{ fontSize: "0.68rem" }}
+                    />
+                    <Tooltip title="Sửa tập">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => {
+                          setEditEpisodeId(ep.id);
+                          setEditEpisodeForm({
+                            title: ep.title,
+                            episodeNumber: ep.episodeNumber,
+                            durationSeconds: ep.durationSeconds,
+                            isFreePreview: ep.isFreePreview,
+                            status: ep.status,
+                            videoUrl: ep.videoUrl ?? "",
+                            thumbnailUrl: ep.thumbnailUrl ?? "",
+                          });
+                          setEditEpisodeNumberStr(String(ep.episodeNumber));
+                          setEditEpisodeDurationStr(String(ep.durationSeconds));
+                          setEditEpisodeThumbnailPreview(ep.thumbnailUrl ?? "");
+                          setEditEpisodeVideoFile(null);
+                          if (editEpisodeVideoPreviewUrl)
+                            URL.revokeObjectURL(editEpisodeVideoPreviewUrl);
+                          setEditEpisodeVideoPreviewUrl("");
+                          setEditEpisodeUploading(false);
+                          setEditEpisodeUploadStatus(null);
+                          setEditEpisodeDialog(true);
+                        }}
+                      >
+                        <Edit sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Render lại HLS">
+                      <span>
+                        <IconButton
+                          size="small"
+                          color="warning"
+                          onClick={() => setConfirmRetranscodeEpisodeId(ep.id)}
+                          disabled={
+                            (retranscodeEpisode.isPending &&
+                              retranscodeEpisode.variables === ep.id) ||
+                            transcodeJobs[ep.id]?.status === "PENDING" ||
+                            transcodeJobs[ep.id]?.status === "RUNNING"
+                          }
+                        >
+                          {(retranscodeEpisode.isPending &&
+                            retranscodeEpisode.variables === ep.id) ||
+                          transcodeJobs[ep.id]?.status === "PENDING" ||
+                          transcodeJobs[ep.id]?.status === "RUNNING" ? (
+                            <CircularProgress size={14} color="inherit" />
+                          ) : (
+                            <Refresh sx={{ fontSize: 16 }} />
+                          )}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Xóa tập">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deleteEpisode.mutate(ep.id)}
+                        disabled={deleteEpisode.isPending}
+                      >
+                        <Delete sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  {(isActive || isFinished) && (
+                    <Box
+                      sx={{
+                        mx: 1,
+                        px: 1.25,
+                        py: 1,
+                        borderRadius: 1,
+                        bgcolor: "action.hover",
+                        border: "1px solid",
+                        borderColor: "divider",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                        <Typography variant="caption" fontWeight={700}>
+                          {isActive
+                            ? job.status === "PENDING"
+                              ? "Đang chờ khởi chạy…"
+                              : `Đang transcode ${job.currentQuality ?? ""}…`
+                            : job.status === "DONE"
+                              ? "Render lại hoàn tất"
+                              : "Render lại thất bại"}
+                        </Typography>
+                        <Box sx={{ flex: 1 }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {job.percent}%
+                        </Typography>
+                        {isFinished && (
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              setTranscodeJobs((prev) => {
+                                const next = { ...prev };
+                                delete next[ep.id];
+                                return next;
+                              })
+                            }
+                          >
+                            <Delete sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        )}
+                      </Box>
+                      <LinearProgress
+                        variant={
+                          isActive && job.status === "PENDING" ? "indeterminate" : "determinate"
+                        }
+                        value={job.percent}
+                        color={
+                          isFinished && job.status === "FAILED"
+                            ? "error"
+                            : isFinished
+                              ? "success"
+                              : "warning"
+                        }
+                        sx={{ borderRadius: 1, height: 6 }}
+                      />
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.75 }}>
+                        {job.targetQualities.map((q) => {
+                          const done = job.completedQualities.includes(q);
+                          const failed = job.failedQualities.includes(q);
+                          const skipped = job.skippedQualities.includes(q);
+                          const current = job.currentQuality === q && isActive;
+                          return (
+                            <Chip
+                              key={q}
+                              size="small"
+                              label={q}
+                              color={
+                                done
+                                  ? "success"
+                                  : failed
+                                    ? "error"
+                                    : skipped
+                                      ? "default"
+                                      : current
+                                        ? "warning"
+                                        : "default"
+                              }
+                              variant={done || failed || current ? "filled" : "outlined"}
+                              sx={{ height: 20, fontSize: "0.65rem" }}
+                            />
+                          );
+                        })}
+                      </Box>
+                      {job.message && (
+                        <Typography
+                          variant="caption"
+                          color={isFinished && job.status === "FAILED" ? "error" : "text.secondary"}
+                          sx={{ display: "block", mt: 0.5 }}
+                        >
+                          {job.message}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
           </Stack>
         </Paper>
       </Stack>
@@ -1220,18 +1653,7 @@ export default function AdminMovieDetailPage() {
             </FormControl>
           </Box>
 
-          {episodeUploading && (
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Đang upload video... {episodeUploadProgress}%
-              </Typography>
-              <LinearProgress
-                variant="determinate"
-                value={episodeUploadProgress}
-                sx={{ mt: 0.5, borderRadius: 1 }}
-              />
-            </Box>
-          )}
+          {episodeUploading && <UploadStatusBar status={episodeUploadStatus} />}
         </DialogContent>
         <DialogActions>
           <Button
@@ -1261,28 +1683,50 @@ export default function AdminMovieDetailPage() {
                     return;
                   }
                   setEpisodeUploading(true);
-                  setEpisodeUploadProgress(0);
-                  const fd = new FormData();
-                  fd.append("file", episodeVideoFile);
-                  const xhr = new XMLHttpRequest();
-                  xhr.open("POST", `${API_BASE}/admin/media/episodes/${created.id}/source`);
-                  const token =
-                    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-                  if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-                  xhr.upload.onprogress = (ev) => {
-                    if (ev.lengthComputable)
-                      setEpisodeUploadProgress(Math.round((ev.loaded / ev.total) * 100));
-                  };
-                  xhr.onload = () => {
-                    setEpisodeUploading(false);
-                    setEpisodeDialog(false);
-                    resetEpisodeForm();
-                    invalidate();
-                  };
-                  xhr.onerror = () => {
-                    setEpisodeUploading(false);
-                  };
-                  xhr.send(fd);
+                  setEpisodeUploadStatus(null);
+                  const taskId = uploadProgress.startTask({
+                    label: `Tập ${payload.episodeNumber}: ${payload.title}`,
+                    fileName: episodeVideoFile.name,
+                    totalBytes: episodeVideoFile.size,
+                  });
+                  adminService
+                    .uploadEpisodeSourceSmart(
+                      created.id,
+                      episodeVideoFile,
+                      (s) => {
+                        setEpisodeUploadStatus(s);
+                        uploadProgress.updateTask(taskId, {
+                          percent: s.percent,
+                          phase: s.phase,
+                          bytesUploaded: s.bytesUploaded,
+                          totalBytes: s.totalBytes,
+                          speedKBps: s.speedKBps,
+                          etaSeconds: s.etaSeconds,
+                          message: s.message,
+                        });
+                      },
+                      API_BASE
+                    )
+                    .then(() => {
+                      setEpisodeUploading(false);
+                      setEpisodeDialog(false);
+                      resetEpisodeForm();
+                      uploadProgress.finishTask(
+                        taskId,
+                        true,
+                        "Upload xong, server đang transcode 720p/1080p/4K (chạy ngầm vài phút)..."
+                      );
+                      invalidate();
+                    })
+                    .catch((err) => {
+                      console.error("[Upload]", err);
+                      setEpisodeUploading(false);
+                      uploadProgress.finishTask(
+                        taskId,
+                        false,
+                        err instanceof Error ? err.message : String(err)
+                      );
+                    });
                 },
               });
             }}
@@ -1410,14 +1854,7 @@ export default function AdminMovieDetailPage() {
             )}
             {editEpisodeUploading && (
               <Box sx={{ mt: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Đang upload... {editEpisodeUploadProgress}%
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={editEpisodeUploadProgress}
-                  sx={{ mt: 0.5, borderRadius: 1 }}
-                />
+                <UploadStatusBar status={editEpisodeUploadStatus} />
               </Box>
             )}
           </Box>
@@ -1555,25 +1992,49 @@ export default function AdminMovieDetailPage() {
                   onSuccess: () => {
                     if (!editEpisodeVideoFile) return;
                     setEditEpisodeUploading(true);
-                    setEditEpisodeUploadProgress(0);
-                    const fd = new FormData();
-                    fd.append("file", editEpisodeVideoFile);
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("POST", `${API_BASE}/admin/media/episodes/${editEpisodeId}/source`);
-                    const token =
-                      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-                    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-                    xhr.upload.onprogress = (ev) => {
-                      if (ev.lengthComputable)
-                        setEditEpisodeUploadProgress(Math.round((ev.loaded / ev.total) * 100));
-                    };
-                    xhr.onload = () => {
-                      setEditEpisodeUploading(false);
-                      setEditEpisodeVideoFile(null);
-                      invalidate();
-                    };
-                    xhr.onerror = () => setEditEpisodeUploading(false);
-                    xhr.send(fd);
+                    setEditEpisodeUploadStatus(null);
+                    const taskId = uploadProgress.startTask({
+                      label: `Sửa tập ${finalForm.episodeNumber}: ${finalForm.title}`,
+                      fileName: editEpisodeVideoFile.name,
+                      totalBytes: editEpisodeVideoFile.size,
+                    });
+                    adminService
+                      .uploadEpisodeSourceSmart(
+                        editEpisodeId,
+                        editEpisodeVideoFile,
+                        (s) => {
+                          setEditEpisodeUploadStatus(s);
+                          uploadProgress.updateTask(taskId, {
+                            percent: s.percent,
+                            phase: s.phase,
+                            bytesUploaded: s.bytesUploaded,
+                            totalBytes: s.totalBytes,
+                            speedKBps: s.speedKBps,
+                            etaSeconds: s.etaSeconds,
+                            message: s.message,
+                          });
+                        },
+                        API_BASE
+                      )
+                      .then(() => {
+                        setEditEpisodeUploading(false);
+                        setEditEpisodeVideoFile(null);
+                        uploadProgress.finishTask(
+                          taskId,
+                          true,
+                          "Upload xong, server đang transcode 720p/1080p/4K..."
+                        );
+                        invalidate();
+                      })
+                      .catch((err) => {
+                        console.error("[Upload]", err);
+                        setEditEpisodeUploading(false);
+                        uploadProgress.finishTask(
+                          taskId,
+                          false,
+                          err instanceof Error ? err.message : String(err)
+                        );
+                      });
                   },
                 }
               );
@@ -2332,6 +2793,11 @@ export default function AdminMovieDetailPage() {
                     if (!movieVideoFile) return;
                     setMovieUploading(true);
                     setMovieUploadProgress(0);
+                    const taskId = uploadProgress.startTask({
+                      label: `Phim: ${movie?.title ?? ""}`,
+                      fileName: movieVideoFile.name,
+                      totalBytes: movieVideoFile.size,
+                    });
                     const fd = new FormData();
                     fd.append("file", movieVideoFile);
                     const xhr = new XMLHttpRequest();
@@ -2339,9 +2805,27 @@ export default function AdminMovieDetailPage() {
                     const token =
                       typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
                     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+                    let lastTs = Date.now();
+                    let lastBytes = 0;
                     xhr.upload.onprogress = (ev) => {
-                      if (ev.lengthComputable)
-                        setMovieUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+                      if (!ev.lengthComputable) return;
+                      const percent = Math.round((ev.loaded / ev.total) * 100);
+                      setMovieUploadProgress(percent);
+                      const now = Date.now();
+                      const dt = (now - lastTs) / 1000;
+                      const speedKBps = dt > 0 ? (ev.loaded - lastBytes) / 1024 / dt : 0;
+                      const eta = speedKBps > 0 ? (ev.total - ev.loaded) / 1024 / speedKBps : null;
+                      lastTs = now;
+                      lastBytes = ev.loaded;
+                      uploadProgress.updateTask(taskId, {
+                        percent,
+                        phase: "uploading",
+                        bytesUploaded: ev.loaded,
+                        totalBytes: ev.total,
+                        speedKBps,
+                        etaSeconds: eta != null ? Math.round(eta) : null,
+                        message: `Đang upload ${percent}%`,
+                      });
                     };
                     xhr.onload = () => {
                       setMovieUploading(false);
@@ -2351,9 +2835,17 @@ export default function AdminMovieDetailPage() {
                         const res = JSON.parse(xhr.responseText);
                         setInfoForm((f) => f && { ...f, trailerUrl: res.videoUrl });
                       } catch {}
+                      uploadProgress.finishTask(
+                        taskId,
+                        true,
+                        "Upload xong, server đang transcode 720p/1080p/4K..."
+                      );
                       invalidate();
                     };
-                    xhr.onerror = () => setMovieUploading(false);
+                    xhr.onerror = () => {
+                      setMovieUploading(false);
+                      uploadProgress.finishTask(taskId, false, "Lỗi kết nối upload");
+                    };
                     xhr.send(fd);
                   }}
                 >
@@ -2376,6 +2868,87 @@ export default function AdminMovieDetailPage() {
           </DialogActions>
         </Dialog>
       )}
+
+      <Dialog
+        open={confirmRetranscodeEpisodeId !== null}
+        onClose={() => setConfirmRetranscodeEpisodeId(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle fontWeight={700}>Render lại HLS cho tập này?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Hệ thống sẽ transcode lại video gốc thành 3 chất lượng (720p, 1080p, 4K) và ghi đè các
+            segment hiện có. Quá trình chạy ngầm và mất vài phút. Người xem có thể gặp gián đoạn
+            ngắn cho tới khi 720p sẵn sàng.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmRetranscodeEpisodeId(null)}>Hủy</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<Refresh />}
+            onClick={() => {
+              if (confirmRetranscodeEpisodeId !== null) {
+                retranscodeEpisode.mutate(confirmRetranscodeEpisodeId);
+              }
+              setConfirmRetranscodeEpisodeId(null);
+            }}
+          >
+            Render lại
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmRetranscodeAll}
+        onClose={() => setConfirmRetranscodeAll(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle fontWeight={700}>Render lại HLS cho tất cả tập?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Hệ thống sẽ transcode lại{" "}
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              {(movie?.episodes ?? []).length} tập
+            </Box>{" "}
+            thành 3 chất lượng. Mỗi tập mất vài phút, các tập chạy tuần tự nên có thể tốn nhiều giờ.
+            Bạn có thể theo dõi tiến trình ngay tại danh sách tập.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmRetranscodeAll(false)}>Hủy</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<Refresh />}
+            onClick={() => {
+              retranscodeMovie.mutate();
+              setConfirmRetranscodeAll(false);
+            }}
+          >
+            Render lại tất cả
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

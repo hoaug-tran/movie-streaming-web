@@ -23,16 +23,9 @@ import AdminFormDrawer, { AdminFormField } from "@/modules/admin/components/Admi
 import AdminManagementPage, {
   AdminStatusChip,
 } from "@/modules/admin/components/AdminManagementPage";
-import {
-  AdminComment,
-  AdminCommentPayload,
-  AdminReview,
-  adminService,
-} from "@/modules/admin/api";
+import { AdminComment, AdminCommentPayload, AdminReview, adminService } from "@/modules/admin/api";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { getAbsoluteAvatarUrl } from "@/utils/avatar";
-
-// ─── Comment tab ────────────────────────────────────────────────────────────
 
 type CommentFormValues = AdminCommentPayload & Record<string, unknown>;
 
@@ -65,8 +58,6 @@ function toCommentForm(c?: AdminComment | null): CommentFormValues {
     status: c?.status ?? "VISIBLE",
   };
 }
-
-// ─── Review tab ─────────────────────────────────────────────────────────────
 
 type ReviewFormValues = {
   title: string;
@@ -101,17 +92,31 @@ function toReviewForm(r?: AdminReview | null): ReviewFormValues {
   };
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 function formatTime(value?: string | null) {
   if (!value) return "Chưa rõ";
-  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(value)
+  );
 }
 
 function StatusChip({ status }: { status?: string | null }) {
-  const label = status === "VISIBLE" ? "Hiển thị" : status === "HIDDEN" ? "Ẩn" : status === "PENDING" ? "Chờ duyệt" : status || "UNKNOWN";
+  const label =
+    status === "VISIBLE"
+      ? "Hiển thị"
+      : status === "HIDDEN"
+        ? "Ẩn"
+        : status === "PENDING"
+          ? "Chờ duyệt"
+          : status || "UNKNOWN";
   const color = status === "VISIBLE" ? "success" : status === "HIDDEN" ? "error" : "warning";
-  return <Chip label={label} color={color as "success" | "error" | "warning"} size="small" sx={{ borderRadius: 1, fontWeight: 800 }} />;
+  return (
+    <Chip
+      label={label}
+      color={color as "success" | "error" | "warning"}
+      size="small"
+      sx={{ borderRadius: 1, fontWeight: 800 }}
+    />
+  );
 }
 
 export default function AdminModerationPage() {
@@ -218,7 +223,12 @@ export default function AdminModerationPage() {
                     <Typography
                       variant="caption"
                       color="text.secondary"
-                      sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        display: "block",
+                      }}
                     >
                       {c.parentCommentId ? `Phản hồi #${c.parentCommentId}` : "Bình luận gốc"}
                       {c.episodeId ? ` · Tập #${c.episodeId}` : ""}
@@ -242,12 +252,17 @@ export default function AdminModerationPage() {
                 render: (c) => (
                   <AdminStatusChip
                     label={
-                      c.status === "VISIBLE" ? "Hiển thị"
-                      : c.status === "HIDDEN" ? "Ẩn"
-                      : c.status === "PENDING" ? "Chờ duyệt"
-                      : c.status || "UNKNOWN"
+                      c.status === "VISIBLE"
+                        ? "Hiển thị"
+                        : c.status === "HIDDEN"
+                          ? "Ẩn"
+                          : c.status === "PENDING"
+                            ? "Chờ duyệt"
+                            : c.status || "UNKNOWN"
                     }
-                    tone={c.status === "VISIBLE" ? "emerald" : c.status === "HIDDEN" ? "rose" : "amber"}
+                    tone={
+                      c.status === "VISIBLE" ? "emerald" : c.status === "HIDDEN" ? "rose" : "amber"
+                    }
                   />
                 ),
               },
@@ -271,7 +286,9 @@ export default function AdminModerationPage() {
               },
             ]}
             createLabel={isAdmin ? "Thêm bình luận" : undefined}
-            onCreate={isAdmin ? (p) => adminService.createComment(p as AdminCommentPayload) : undefined}
+            onCreate={
+              isAdmin ? (p) => adminService.createComment(p as AdminCommentPayload) : undefined
+            }
             onEdit={
               isAdmin
                 ? (c, p) => adminService.updateComment(c.id, p as AdminCommentPayload)
@@ -283,7 +300,9 @@ export default function AdminModerationPage() {
                     <AdminFormDrawer<CommentFormValues>
                       open={open}
                       mode={mode}
-                      title={mode === "create" ? "Thêm bình luận" : `Sửa bình luận #${item?.id ?? ""}`}
+                      title={
+                        mode === "create" ? "Thêm bình luận" : `Sửa bình luận #${item?.id ?? ""}`
+                      }
                       description="Chỉnh sửa nội dung hoặc trạng thái bình luận."
                       fields={commentFields}
                       initialValues={toCommentForm(item)}
@@ -292,7 +311,8 @@ export default function AdminModerationPage() {
                           ? [
                               {
                                 label: "Người dùng",
-                                value: item?.authorFullName || item?.authorUsername || "Chưa có tên",
+                                value:
+                                  item?.authorFullName || item?.authorUsername || "Chưa có tên",
                                 helperText: `User ID: ${item?.userId ?? "-"}`,
                               },
                               {
@@ -390,7 +410,12 @@ export default function AdminModerationPage() {
                     <Typography
                       variant="caption"
                       color="text.secondary"
-                      sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        display: "block",
+                      }}
                     >
                       {r.content || "Không có nội dung"}
                     </Typography>
@@ -403,7 +428,9 @@ export default function AdminModerationPage() {
                 render: (r) => (
                   <AdminStatusChip
                     label={`${r.rating ?? "-"} ★`}
-                    tone={(r.rating ?? 0) >= 4 ? "emerald" : (r.rating ?? 0) >= 3 ? "amber" : "rose"}
+                    tone={
+                      (r.rating ?? 0) >= 4 ? "emerald" : (r.rating ?? 0) >= 3 ? "amber" : "rose"
+                    }
                   />
                 ),
               },
@@ -423,12 +450,17 @@ export default function AdminModerationPage() {
                 render: (r) => (
                   <AdminStatusChip
                     label={
-                      r.status === "VISIBLE" ? "Hiển thị"
-                      : r.status === "HIDDEN" ? "Ẩn"
-                      : r.status === "PENDING" ? "Chờ duyệt"
-                      : r.status || "UNKNOWN"
+                      r.status === "VISIBLE"
+                        ? "Hiển thị"
+                        : r.status === "HIDDEN"
+                          ? "Ẩn"
+                          : r.status === "PENDING"
+                            ? "Chờ duyệt"
+                            : r.status || "UNKNOWN"
                     }
-                    tone={r.status === "VISIBLE" ? "emerald" : r.status === "HIDDEN" ? "rose" : "amber"}
+                    tone={
+                      r.status === "VISIBLE" ? "emerald" : r.status === "HIDDEN" ? "rose" : "amber"
+                    }
                   />
                 ),
               },
@@ -439,7 +471,10 @@ export default function AdminModerationPage() {
                 label: (r) => (r.status === "HIDDEN" ? "Hiện" : "Ẩn"),
                 tone: (r) => (r.status === "HIDDEN" ? "emerald" : "amber"),
                 run: (r) =>
-                  adminService.updateReviewStatus(r.id, r.status === "HIDDEN" ? "VISIBLE" : "HIDDEN"),
+                  adminService.updateReviewStatus(
+                    r.id,
+                    r.status === "HIDDEN" ? "VISIBLE" : "HIDDEN"
+                  ),
               },
               ...(isAdmin
                 ? [
@@ -452,9 +487,7 @@ export default function AdminModerationPage() {
                   ]
                 : []),
             ]}
-            onEdit={(r, p) =>
-              adminService.updateReviewStatus(r.id, (p as ReviewFormValues).status)
-            }
+            onEdit={(r, p) => adminService.updateReviewStatus(r.id, (p as ReviewFormValues).status)}
             renderForm={({ mode, item, open, submitting, error, onClose, onSubmit }) => (
               <AdminFormDrawer<ReviewFormValues>
                 open={open}
@@ -490,48 +523,121 @@ export default function AdminModerationPage() {
       </Box>
 
       {/* Comment detail modal */}
-      <Dialog open={Boolean(selectedComment)} onClose={() => setSelectedComment(null)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
-          <Typography variant="h6" fontWeight={800}>Chi tiết bình luận #{selectedComment?.id}</Typography>
-          <IconButton size="small" onClick={() => setSelectedComment(null)}><CloseRoundedIcon /></IconButton>
+      <Dialog
+        open={Boolean(selectedComment)}
+        onClose={() => setSelectedComment(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}
+        >
+          <Typography variant="h6" fontWeight={800}>
+            Chi tiết bình luận #{selectedComment?.id}
+          </Typography>
+          <IconButton size="small" onClick={() => setSelectedComment(null)}>
+            <CloseRoundedIcon />
+          </IconButton>
         </DialogTitle>
         <DialogContent sx={{ pt: 0 }}>
           {selectedComment && (
             <Stack spacing={2}>
               <Stack direction="row" spacing={1.5} alignItems="center">
-                <Avatar src={getAbsoluteAvatarUrl(selectedComment.authorAvatarUrl) || undefined} sx={{ width: 40, height: 40 }}>
-                  {(selectedComment.authorFullName || selectedComment.authorUsername || "U").charAt(0).toUpperCase()}
+                <Avatar
+                  src={getAbsoluteAvatarUrl(selectedComment.authorAvatarUrl) || undefined}
+                  sx={{ width: 40, height: 40 }}
+                >
+                  {(selectedComment.authorFullName || selectedComment.authorUsername || "U")
+                    .charAt(0)
+                    .toUpperCase()}
                 </Avatar>
                 <Box>
-                  <Typography fontWeight={700}>{selectedComment.authorFullName || selectedComment.authorUsername || `User #${selectedComment.userId}`}</Typography>
-                  <Typography variant="caption" color="text.secondary">@{selectedComment.authorUsername} · User ID: {selectedComment.userId}</Typography>
+                  <Typography fontWeight={700}>
+                    {selectedComment.authorFullName ||
+                      selectedComment.authorUsername ||
+                      `User #${selectedComment.userId}`}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    @{selectedComment.authorUsername} · User ID: {selectedComment.userId}
+                  </Typography>
                 </Box>
-                <Box sx={{ ml: "auto" }}><StatusChip status={selectedComment.status} /></Box>
+                <Box sx={{ ml: "auto" }}>
+                  <StatusChip status={selectedComment.status} />
+                </Box>
               </Stack>
               <Divider />
               <Box>
-                <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Nội dung</Typography>
-                <Typography sx={{ mt: 0.5, whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{selectedComment.content || "Không có nội dung"}</Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={700}
+                  sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                >
+                  Nội dung
+                </Typography>
+                <Typography sx={{ mt: 0.5, whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
+                  {selectedComment.content || "Không có nội dung"}
+                </Typography>
               </Box>
               <Divider />
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Phim</Typography>
-                  <Typography fontWeight={600}>{selectedComment.movieTitle || `Movie #${selectedComment.movieId}`}</Typography>
-                  {selectedComment.episodeId && <Typography variant="caption" color="text.secondary">Ấp #{selectedComment.episodeId}</Typography>}
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    Phim
+                  </Typography>
+                  <Typography fontWeight={600}>
+                    {selectedComment.movieTitle || `Movie #${selectedComment.movieId}`}
+                  </Typography>
+                  {selectedComment.episodeId && (
+                    <Typography variant="caption" color="text.secondary">
+                      Ấp #{selectedComment.episodeId}
+                    </Typography>
+                  )}
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Loại</Typography>
-                  <Typography fontWeight={600}>{selectedComment.parentCommentId ? `Phản hồi #${selectedComment.parentCommentId}` : "Bình luận gốc"}</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    Loại
+                  </Typography>
+                  <Typography fontWeight={600}>
+                    {selectedComment.parentCommentId
+                      ? `Phản hồi #${selectedComment.parentCommentId}`
+                      : "Bình luận gốc"}
+                  </Typography>
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Thời gian</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    Thời gian
+                  </Typography>
                   <Typography fontWeight={600}>{formatTime(selectedComment.createdAt)}</Typography>
                 </Box>
               </Stack>
               {selectedComment.likeCount != null && (
-                <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: (t) => alpha(t.palette.primary.main, 0.06), border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.15)}` }}>
-                  <Typography variant="caption" color="primary" fontWeight={700}>♥ {selectedComment.likeCount} lượt thích</Typography>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1.5,
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
+                    border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.15)}`,
+                  }}
+                >
+                  <Typography variant="caption" color="primary" fontWeight={700}>
+                    ♥ {selectedComment.likeCount} lượt thích
+                  </Typography>
                 </Box>
               )}
             </Stack>
@@ -540,51 +646,128 @@ export default function AdminModerationPage() {
       </Dialog>
 
       {/* Review detail modal */}
-      <Dialog open={Boolean(selectedReview)} onClose={() => setSelectedReview(null)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}>
-          <Typography variant="h6" fontWeight={800}>Chi tiết đánh giá #{selectedReview?.id}</Typography>
-          <IconButton size="small" onClick={() => setSelectedReview(null)}><CloseRoundedIcon /></IconButton>
+      <Dialog
+        open={Boolean(selectedReview)}
+        onClose={() => setSelectedReview(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 1 }}
+        >
+          <Typography variant="h6" fontWeight={800}>
+            Chi tiết đánh giá #{selectedReview?.id}
+          </Typography>
+          <IconButton size="small" onClick={() => setSelectedReview(null)}>
+            <CloseRoundedIcon />
+          </IconButton>
         </DialogTitle>
         <DialogContent sx={{ pt: 0 }}>
           {selectedReview && (
             <Stack spacing={2}>
               <Stack direction="row" spacing={1.5} alignItems="center">
-                <Avatar src={getAbsoluteAvatarUrl(selectedReview.authorAvatarUrl) || undefined} sx={{ width: 40, height: 40 }}>
-                  {(selectedReview.authorFullName || selectedReview.authorUsername || "U").charAt(0).toUpperCase()}
+                <Avatar
+                  src={getAbsoluteAvatarUrl(selectedReview.authorAvatarUrl) || undefined}
+                  sx={{ width: 40, height: 40 }}
+                >
+                  {(selectedReview.authorFullName || selectedReview.authorUsername || "U")
+                    .charAt(0)
+                    .toUpperCase()}
                 </Avatar>
                 <Box>
-                  <Typography fontWeight={700}>{selectedReview.authorFullName || selectedReview.authorUsername || `User #${selectedReview.userId}`}</Typography>
-                  <Typography variant="caption" color="text.secondary">@{selectedReview.authorUsername} · User ID: {selectedReview.userId}</Typography>
+                  <Typography fontWeight={700}>
+                    {selectedReview.authorFullName ||
+                      selectedReview.authorUsername ||
+                      `User #${selectedReview.userId}`}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    @{selectedReview.authorUsername} · User ID: {selectedReview.userId}
+                  </Typography>
                 </Box>
-                <Box sx={{ ml: "auto" }}><StatusChip status={selectedReview.status} /></Box>
+                <Box sx={{ ml: "auto" }}>
+                  <StatusChip status={selectedReview.status} />
+                </Box>
               </Stack>
               <Divider />
               <Stack direction="row" spacing={2} alignItems="center">
                 <Box>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Điểm</Typography>
-                  <Typography variant="h4" fontWeight={900} color="primary">{selectedReview.rating} <Typography component="span" variant="body2" color="text.secondary">/ 5</Typography></Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    Điểm
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} color="primary">
+                    {selectedReview.rating}{" "}
+                    <Typography component="span" variant="body2" color="text.secondary">
+                      / 5
+                    </Typography>
+                  </Typography>
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Tiêu đề</Typography>
-                  <Typography fontWeight={700}>{selectedReview.title || "(Không có tiêu đề)"}</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    Tiêu đề
+                  </Typography>
+                  <Typography fontWeight={700}>
+                    {selectedReview.title || "(Không có tiêu đề)"}
+                  </Typography>
                 </Box>
               </Stack>
               <Box>
-                <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Nội dung</Typography>
-                <Typography sx={{ mt: 0.5, whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{selectedReview.content || "Không có nội dung"}</Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={700}
+                  sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                >
+                  Nội dung
+                </Typography>
+                <Typography sx={{ mt: 0.5, whiteSpace: "pre-wrap", lineHeight: 1.8 }}>
+                  {selectedReview.content || "Không có nội dung"}
+                </Typography>
               </Box>
               <Divider />
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Phim</Typography>
-                  <Typography fontWeight={600}>{selectedReview.movieTitle || `Movie #${selectedReview.movieId}`}</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    Phim
+                  </Typography>
+                  <Typography fontWeight={600}>
+                    {selectedReview.movieTitle || `Movie #${selectedReview.movieId}`}
+                  </Typography>
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Thời gian</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    Thời gian
+                  </Typography>
                   <Typography fontWeight={600}>{formatTime(selectedReview.createdAt)}</Typography>
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>♥ Thích</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                    sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    ♥ Thích
+                  </Typography>
                   <Typography fontWeight={600}>{selectedReview.likeCount ?? 0}</Typography>
                 </Box>
               </Stack>

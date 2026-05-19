@@ -115,7 +115,7 @@ export default function AdminManagementPage<T extends { id: number }>({
   stats,
   quickActions = [],
   createLabel = "Tạo mới",
-  createHint = "Form tạo mới sẽ mở rộng theo hợp đồng backend chi tiết.",
+  createHint = "Tạo mới",
   renderForm,
   onCreate,
   onCreateClick,
@@ -139,21 +139,22 @@ export default function AdminManagementPage<T extends { id: number }>({
     null
   );
 
-  // Derive a short entity label from the page title, e.g. "Quản lý phim" → "phim"
-  const entityLabel = title
-    .replace(/quản lý/i, "")
-    .replace(/thêm/i, "")
-    .trim()
-    .toLowerCase() || "mục";
+  const entityLabel =
+    title
+      .replace(/quản lý/i, "")
+      .replace(/thêm/i, "")
+      .trim()
+      .toLowerCase() || "mục";
 
   const listQuery = useQuery({ queryKey, queryFn });
   const actionMutation = useMutation({
     mutationFn: ({ item, action }: { item: T; action: AdminQuickAction<T> }) =>
       action.run ? action.run(item) : Promise.resolve(),
     onSuccess: (_data, variables) => {
-      const lbl = typeof variables.action.label === "function"
-        ? variables.action.label(variables.item)
-        : variables.action.label;
+      const lbl =
+        typeof variables.action.label === "function"
+          ? variables.action.label(variables.item)
+          : variables.action.label;
       setNotice(`Thao tác "${lbl}" thành công.`);
       queryClient.invalidateQueries({ queryKey });
     },
@@ -174,7 +175,11 @@ export default function AdminManagementPage<T extends { id: number }>({
       return Promise.reject(new Error("Form action is not configured"));
     },
     onSuccess: (data, variables) => {
-      setNotice(variables.mode === "create" ? `Tạo ${entityLabel} thành công.` : `Cập nhật ${entityLabel} thành công.`);
+      setNotice(
+        variables.mode === "create"
+          ? `Tạo ${entityLabel} thành công.`
+          : `Cập nhật ${entityLabel} thành công.`
+      );
       setFormState(null);
       queryClient.invalidateQueries({ queryKey });
       if (variables.mode === "create" && onCreateSuccess) onCreateSuccess(data);
@@ -439,7 +444,13 @@ export default function AdminManagementPage<T extends { id: number }>({
                         </Box>
                       ))}
                       <Box component="td" sx={{ p: 2, textAlign: "right", verticalAlign: "top" }}>
-                        <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="flex-start" flexWrap="wrap">
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="flex-end"
+                          alignItems="flex-start"
+                          flexWrap="wrap"
+                        >
                           {renderForm && onEdit && (
                             <Button
                               id={`${queryKey.join("-")}-edit-${item.id}`}
@@ -461,7 +472,11 @@ export default function AdminManagementPage<T extends { id: number }>({
                               color="error"
                               disabled={actionMutation.isPending || formMutation.isPending}
                               onClick={() => {
-                                if (window.confirm("Bạn có chắc muốn xóa mục này không? Hành động này không thể hoàn tác.")) {
+                                if (
+                                  window.confirm(
+                                    "Bạn có chắc muốn xóa mục này không? Hành động này không thể hoàn tác."
+                                  )
+                                ) {
                                   actionMutation.mutate({
                                     item,
                                     action: {
@@ -481,8 +496,12 @@ export default function AdminManagementPage<T extends { id: number }>({
                           )}
                           {quickActions.map((action) => {
                             const href = action.href?.(item);
-                            const resolvedLabel = typeof action.label === "function" ? action.label(item) : action.label;
-                            const resolvedTone = typeof action.tone === "function" ? action.tone(item) : action.tone;
+                            const resolvedLabel =
+                              typeof action.label === "function"
+                                ? action.label(item)
+                                : action.label;
+                            const resolvedTone =
+                              typeof action.tone === "function" ? action.tone(item) : action.tone;
                             return (
                               <Button
                                 key={action.id}
@@ -502,11 +521,17 @@ export default function AdminManagementPage<T extends { id: number }>({
                                 }}
                                 href={href}
                                 startIcon={
-                                  resolvedTone === "rose" ? <DeleteRoundedIcon />
-                                  : action.id === "view" || action.id === "detail" ? <VisibilityRoundedIcon />
-                                  : action.id === "upload" ? <CloudUploadRoundedIcon />
-                                  : action.id === "lock" || action.id === "unlock" ? <LockRoundedIcon />
-                                  : <OpenInNewRoundedIcon />
+                                  resolvedTone === "rose" ? (
+                                    <DeleteRoundedIcon />
+                                  ) : action.id === "view" || action.id === "detail" ? (
+                                    <VisibilityRoundedIcon />
+                                  ) : action.id === "upload" ? (
+                                    <CloudUploadRoundedIcon />
+                                  ) : action.id === "lock" || action.id === "unlock" ? (
+                                    <LockRoundedIcon />
+                                  ) : (
+                                    <OpenInNewRoundedIcon />
+                                  )
                                 }
                                 sx={{ borderRadius: 1.25, fontWeight: 800 }}
                               >

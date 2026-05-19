@@ -138,7 +138,10 @@ export default function AdminAdsPage() {
           key: "type",
           label: "Loại",
           render: (ad) => (
-            <AdminStatusChip label={AD_TYPE_LABELS[ad.adType ?? ""] ?? ad.adType ?? "-"} tone="violet" />
+            <AdminStatusChip
+              label={AD_TYPE_LABELS[ad.adType ?? ""] ?? ad.adType ?? "-"}
+              tone="violet"
+            />
           ),
         },
         {

@@ -101,8 +101,6 @@ export default function AdminReportsPage() {
   const commentCount = reports.filter((r) => r.commentId).length;
   const reviewCount = reports.filter((r) => r.reviewId).length;
 
-  // ── Action helpers ──────────────────────────────────────────────────────────
-
   const runAction = async (key: string, fn: () => Promise<unknown>) => {
     setActionLoading(key);
     try {
@@ -170,7 +168,11 @@ export default function AdminReportsPage() {
         <Stack spacing={3}>
           {/* Header */}
           <Box>
-            <Typography component="h1" variant="h3" sx={{ fontWeight: 900, letterSpacing: "-0.04em" }}>
+            <Typography
+              component="h1"
+              variant="h3"
+              sx={{ fontWeight: 900, letterSpacing: "-0.04em" }}
+            >
               Trung tâm kiểm duyệt
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>
@@ -182,7 +184,14 @@ export default function AdminReportsPage() {
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             {statCards.map((item) => (
               <Box key={item.label} sx={{ flex: "1 1 calc(33.333% - 16px)", minWidth: 200 }}>
-                <Card sx={{ borderRadius: 1.5, bgcolor: alpha(theme.palette.background.paper, 0.72), border: `1px solid ${theme.palette.divider}`, boxShadow: "none" }}>
+                <Card
+                  sx={{
+                    borderRadius: 1.5,
+                    bgcolor: alpha(theme.palette.background.paper, 0.72),
+                    border: `1px solid ${theme.palette.divider}`,
+                    boxShadow: "none",
+                  }}
+                >
                   <CardContent>
                     <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 800 }}>
                       {item.label}
@@ -197,21 +206,52 @@ export default function AdminReportsPage() {
           </Box>
 
           {/* Filters */}
-          <Paper sx={{ p: 2, borderRadius: 1.5, bgcolor: alpha(theme.palette.background.paper, 0.72), border: `1px solid ${theme.palette.divider}`, boxShadow: "none" }}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: 1.5,
+              bgcolor: alpha(theme.palette.background.paper, 0.72),
+              border: `1px solid ${theme.palette.divider}`,
+              boxShadow: "none",
+            }}
+          >
             <Stack spacing={1.5}>
               <TextField
                 id="admin-report-search-input"
-                fullWidth size="small"
+                fullWidth
+                size="small"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm theo lý do, mô tả hoặc mã report"
-                InputProps={{ startAdornment: <SearchRoundedIcon sx={{ mr: 1, color: "text.secondary" }} /> }}
+                InputProps={{
+                  startAdornment: <SearchRoundedIcon sx={{ mr: 1, color: "text.secondary" }} />,
+                }}
               />
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <TextField id="admin-report-status-filter" select size="small" label="Trạng thái" value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)} sx={{ minWidth: 160 }}>
-                  {statusOptions.map((o) => <MenuItem key={o} value={o}>{statusLabel[o]}</MenuItem>)}
+                <TextField
+                  id="admin-report-status-filter"
+                  select
+                  size="small"
+                  label="Trạng thái"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as StatusFilter)}
+                  sx={{ minWidth: 160 }}
+                >
+                  {statusOptions.map((o) => (
+                    <MenuItem key={o} value={o}>
+                      {statusLabel[o]}
+                    </MenuItem>
+                  ))}
                 </TextField>
-                <TextField id="admin-report-target-filter" select size="small" label="Loại nội dung" value={target} onChange={(e) => setTarget(e.target.value as TargetFilter)} sx={{ minWidth: 160 }}>
+                <TextField
+                  id="admin-report-target-filter"
+                  select
+                  size="small"
+                  label="Loại nội dung"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value as TargetFilter)}
+                  sx={{ minWidth: 160 }}
+                >
                   {targetOptions.map((o) => (
                     <MenuItem key={o} value={o}>
                       {o === "ALL" ? "Tất cả" : o === "COMMENT" ? "Bình luận" : "Đánh giá"}
@@ -223,14 +263,27 @@ export default function AdminReportsPage() {
           </Paper>
 
           {reportsQuery.isLoading && <LinearProgress color="primary" />}
-          {reportsQuery.isError && <Alert severity="error">Không tải được danh sách báo cáo.</Alert>}
-          {(resolveMutation.isError || actionLoading === null && resolveMutation.isError) && (
+          {reportsQuery.isError && (
+            <Alert severity="error">Không tải được danh sách báo cáo.</Alert>
+          )}
+          {(resolveMutation.isError || (actionLoading === null && resolveMutation.isError)) && (
             <Alert severity="error">Không thể xử lý báo cáo. Vui lòng thử lại.</Alert>
           )}
 
           {!reportsQuery.isLoading && filteredReports.length === 0 ? (
-            <Box sx={{ py: 8, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1, color: "text.secondary" }}>
-              <Typography variant="h6" fontWeight={700}>Không tìm thấy báo cáo phù hợp</Typography>
+            <Box
+              sx={{
+                py: 8,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: 1,
+                color: "text.secondary",
+              }}
+            >
+              <Typography variant="h6" fontWeight={700}>
+                Không tìm thấy báo cáo phù hợp
+              </Typography>
               <Typography variant="body2">Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm.</Typography>
             </Box>
           ) : (
@@ -247,11 +300,19 @@ export default function AdminReportsPage() {
                         role="button"
                         tabIndex={0}
                         onClick={() => setSelectedId(report.id)}
-                        onKeyDown={(e) => { if (e.key === "Enter") setSelectedId(report.id); }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") setSelectedId(report.id);
+                        }}
                         sx={{
-                          p: 2, cursor: "pointer", borderRadius: 1.5,
-                          bgcolor: active ? alpha(theme.palette.primary.main, 0.12) : alpha(theme.palette.background.paper, 0.7),
-                          border: active ? `1px solid ${alpha(theme.palette.primary.main, 0.34)}` : `1px solid ${theme.palette.divider}`,
+                          p: 2,
+                          cursor: "pointer",
+                          borderRadius: 1.5,
+                          bgcolor: active
+                            ? alpha(theme.palette.primary.main, 0.12)
+                            : alpha(theme.palette.background.paper, 0.7),
+                          border: active
+                            ? `1px solid ${alpha(theme.palette.primary.main, 0.34)}`
+                            : `1px solid ${theme.palette.divider}`,
                           boxShadow: "none",
                           "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.08) },
                         }}
@@ -259,7 +320,15 @@ export default function AdminReportsPage() {
                         <Stack direction="row" spacing={1.5} justifyContent="space-between">
                           <Stack spacing={0.75} sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={1} alignItems="center">
-                              <ReportProblemRoundedIcon sx={{ color: report.status === "PENDING" ? theme.palette.warning.main : theme.palette.success.main, fontSize: 18 }} />
+                              <ReportProblemRoundedIcon
+                                sx={{
+                                  color:
+                                    report.status === "PENDING"
+                                      ? theme.palette.warning.main
+                                      : theme.palette.success.main,
+                                  fontSize: 18,
+                                }}
+                              />
                               <Typography sx={{ fontWeight: 800 }} noWrap>
                                 #{report.id} · {report.reason}
                               </Typography>
@@ -272,7 +341,13 @@ export default function AdminReportsPage() {
                             <Chip
                               size="small"
                               label={statusLabel[report.status] ?? report.status}
-                              color={report.status === "PENDING" ? "warning" : report.status === "RESOLVED" ? "success" : "default"}
+                              color={
+                                report.status === "PENDING"
+                                  ? "warning"
+                                  : report.status === "RESOLVED"
+                                    ? "success"
+                                    : "default"
+                              }
                               sx={{ borderRadius: 1, fontWeight: 800 }}
                             />
                             <Typography variant="caption" color="text.secondary">
@@ -288,7 +363,17 @@ export default function AdminReportsPage() {
 
               {/* Detail panel */}
               <Grid item xs={12} lg={5}>
-                <Paper sx={{ p: 3, borderRadius: 1.5, bgcolor: alpha(theme.palette.background.paper, 0.76), border: `1px solid ${theme.palette.divider}`, boxShadow: "none", position: { lg: "sticky" }, top: 24 }}>
+                <Paper
+                  sx={{
+                    p: 3,
+                    borderRadius: 1.5,
+                    bgcolor: alpha(theme.palette.background.paper, 0.76),
+                    border: `1px solid ${theme.palette.divider}`,
+                    boxShadow: "none",
+                    position: { lg: "sticky" },
+                    top: 24,
+                  }}
+                >
                   {selectedReport ? (
                     <Stack spacing={2}>
                       {/* Title row */}
@@ -298,7 +383,13 @@ export default function AdminReportsPage() {
                         </Typography>
                         <Chip
                           label={statusLabel[selectedReport.status] ?? selectedReport.status}
-                          color={selectedReport.status === "PENDING" ? "warning" : selectedReport.status === "RESOLVED" ? "success" : "default"}
+                          color={
+                            selectedReport.status === "PENDING"
+                              ? "warning"
+                              : selectedReport.status === "RESOLVED"
+                                ? "success"
+                                : "default"
+                          }
                           sx={{ borderRadius: 1, fontWeight: 800 }}
                         />
                       </Stack>
@@ -328,12 +419,16 @@ export default function AdminReportsPage() {
 
                       {/* Reason */}
                       <Box>
-                        <Typography variant="overline" color="text.secondary" fontWeight={800}>Lý do</Typography>
+                        <Typography variant="overline" color="text.secondary" fontWeight={800}>
+                          Lý do
+                        </Typography>
                         <Typography fontWeight={700}>{selectedReport.reason}</Typography>
                       </Box>
                       {selectedReport.description && (
                         <Box>
-                          <Typography variant="overline" color="text.secondary" fontWeight={800}>Mô tả chi tiết</Typography>
+                          <Typography variant="overline" color="text.secondary" fontWeight={800}>
+                            Mô tả chi tiết
+                          </Typography>
                           <Typography>{selectedReport.description}</Typography>
                         </Box>
                       )}
@@ -342,10 +437,16 @@ export default function AdminReportsPage() {
 
                       {/* Time */}
                       <Box>
-                        <Typography variant="overline" color="text.secondary" fontWeight={800}>Thời gian</Typography>
-                        <Typography variant="body2">Tạo: {formatTime(selectedReport.createdAt)}</Typography>
+                        <Typography variant="overline" color="text.secondary" fontWeight={800}>
+                          Thời gian
+                        </Typography>
+                        <Typography variant="body2">
+                          Tạo: {formatTime(selectedReport.createdAt)}
+                        </Typography>
                         {selectedReport.resolvedAt && (
-                          <Typography variant="body2">Xử lý: {formatTime(selectedReport.resolvedAt)}</Typography>
+                          <Typography variant="body2">
+                            Xử lý: {formatTime(selectedReport.resolvedAt)}
+                          </Typography>
                         )}
                       </Box>
 
@@ -354,7 +455,12 @@ export default function AdminReportsPage() {
                         <>
                           <Divider />
                           <Box>
-                            <Typography variant="overline" color="text.secondary" fontWeight={800} sx={{ mb: 1.5, display: "block" }}>
+                            <Typography
+                              variant="overline"
+                              color="text.secondary"
+                              fontWeight={800}
+                              sx={{ mb: 1.5, display: "block" }}
+                            >
                               Hành động kiểm duyệt
                             </Typography>
 
@@ -366,10 +472,20 @@ export default function AdminReportsPage() {
                                     fullWidth
                                     variant="contained"
                                     color="warning"
-                                    startIcon={isActing && actionLoading === "hide-comment" ? <CircularProgress size={16} color="inherit" /> : <VisibilityOffRoundedIcon />}
+                                    startIcon={
+                                      isActing && actionLoading === "hide-comment" ? (
+                                        <CircularProgress size={16} color="inherit" />
+                                      ) : (
+                                        <VisibilityOffRoundedIcon />
+                                      )
+                                    }
                                     onClick={handleHideComment}
                                     disabled={isActing}
-                                    sx={{ borderRadius: 1.5, fontWeight: 800, justifyContent: "flex-start" }}
+                                    sx={{
+                                      borderRadius: 1.5,
+                                      fontWeight: 800,
+                                      justifyContent: "flex-start",
+                                    }}
                                   >
                                     Ẩn bình luận
                                   </Button>
@@ -380,10 +496,20 @@ export default function AdminReportsPage() {
                                     fullWidth
                                     variant="contained"
                                     color="error"
-                                    startIcon={isActing && actionLoading === "delete-comment" ? <CircularProgress size={16} color="inherit" /> : <DeleteForeverRoundedIcon />}
+                                    startIcon={
+                                      isActing && actionLoading === "delete-comment" ? (
+                                        <CircularProgress size={16} color="inherit" />
+                                      ) : (
+                                        <DeleteForeverRoundedIcon />
+                                      )
+                                    }
                                     onClick={handleDeleteComment}
                                     disabled={isActing}
-                                    sx={{ borderRadius: 1.5, fontWeight: 800, justifyContent: "flex-start" }}
+                                    sx={{
+                                      borderRadius: 1.5,
+                                      fontWeight: 800,
+                                      justifyContent: "flex-start",
+                                    }}
                                   >
                                     Xóa bình luận
                                   </Button>
@@ -394,10 +520,20 @@ export default function AdminReportsPage() {
                                     fullWidth
                                     variant="outlined"
                                     color="inherit"
-                                    startIcon={resolveMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <CancelRoundedIcon />}
+                                    startIcon={
+                                      resolveMutation.isPending ? (
+                                        <CircularProgress size={16} color="inherit" />
+                                      ) : (
+                                        <CancelRoundedIcon />
+                                      )
+                                    }
                                     onClick={handleReject}
                                     disabled={isActing}
-                                    sx={{ borderRadius: 1.5, fontWeight: 800, justifyContent: "flex-start" }}
+                                    sx={{
+                                      borderRadius: 1.5,
+                                      fontWeight: 800,
+                                      justifyContent: "flex-start",
+                                    }}
                                   >
                                     Từ chối báo cáo
                                   </Button>
@@ -413,10 +549,20 @@ export default function AdminReportsPage() {
                                     fullWidth
                                     variant="contained"
                                     color="warning"
-                                    startIcon={isActing && actionLoading === "hide-review" ? <CircularProgress size={16} color="inherit" /> : <VisibilityOffRoundedIcon />}
+                                    startIcon={
+                                      isActing && actionLoading === "hide-review" ? (
+                                        <CircularProgress size={16} color="inherit" />
+                                      ) : (
+                                        <VisibilityOffRoundedIcon />
+                                      )
+                                    }
                                     onClick={handleHideReview}
                                     disabled={isActing}
-                                    sx={{ borderRadius: 1.5, fontWeight: 800, justifyContent: "flex-start" }}
+                                    sx={{
+                                      borderRadius: 1.5,
+                                      fontWeight: 800,
+                                      justifyContent: "flex-start",
+                                    }}
                                   >
                                     Ẩn đánh giá
                                   </Button>
@@ -428,10 +574,20 @@ export default function AdminReportsPage() {
                                       fullWidth
                                       variant="contained"
                                       color="error"
-                                      startIcon={isActing && actionLoading === "delete-review" ? <CircularProgress size={16} color="inherit" /> : <DeleteForeverRoundedIcon />}
+                                      startIcon={
+                                        isActing && actionLoading === "delete-review" ? (
+                                          <CircularProgress size={16} color="inherit" />
+                                        ) : (
+                                          <DeleteForeverRoundedIcon />
+                                        )
+                                      }
                                       onClick={handleDeleteReview}
                                       disabled={isActing}
-                                      sx={{ borderRadius: 1.5, fontWeight: 800, justifyContent: "flex-start" }}
+                                      sx={{
+                                        borderRadius: 1.5,
+                                        fontWeight: 800,
+                                        justifyContent: "flex-start",
+                                      }}
                                     >
                                       Xóa đánh giá
                                     </Button>
@@ -443,10 +599,20 @@ export default function AdminReportsPage() {
                                     fullWidth
                                     variant="outlined"
                                     color="inherit"
-                                    startIcon={resolveMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <CancelRoundedIcon />}
+                                    startIcon={
+                                      resolveMutation.isPending ? (
+                                        <CircularProgress size={16} color="inherit" />
+                                      ) : (
+                                        <CancelRoundedIcon />
+                                      )
+                                    }
                                     onClick={handleReject}
                                     disabled={isActing}
-                                    sx={{ borderRadius: 1.5, fontWeight: 800, justifyContent: "flex-start" }}
+                                    sx={{
+                                      borderRadius: 1.5,
+                                      fontWeight: 800,
+                                      justifyContent: "flex-start",
+                                    }}
                                   >
                                     Từ chối báo cáo
                                   </Button>
@@ -456,34 +622,55 @@ export default function AdminReportsPage() {
                           </Box>
 
                           {/* Moderator note */}
-                          <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: alpha(theme.palette.info.main, 0.08), border: `1px solid ${alpha(theme.palette.info.main, 0.2)}` }}>
+                          <Box
+                            sx={{
+                              p: 1.5,
+                              borderRadius: 1.5,
+                              bgcolor: alpha(theme.palette.info.main, 0.08),
+                              border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                            }}
+                          >
                             <Typography variant="caption" color="info.main" fontWeight={700}>
                               {isAdmin ? "ADMIN" : "MODERATOR"} · Quyền hạn
                             </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: "block", mt: 0.5 }}
+                            >
                               {targetType === "COMMENT"
                                 ? "Moderator và Admin có thể ẩn hoặc xóa bình luận."
                                 : isAdmin
-                                ? "Admin có thể ẩn hoặc xóa đánh giá."
-                                : "Moderator chỉ có thể ẩn đánh giá. Xóa yêu cầu quyền Admin."}
+                                  ? "Admin có thể ẩn hoặc xóa đánh giá."
+                                  : "Moderator chỉ có thể ẩn đánh giá. Xóa yêu cầu quyền Admin."}
                             </Typography>
                           </Box>
                         </>
                       )}
 
                       {selectedReport.status !== "PENDING" && (
-                        <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: alpha(theme.palette.success.main, 0.08), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.success.main, 0.08),
+                            border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                          }}
+                        >
                           <Stack direction="row" spacing={1} alignItems="center">
                             <CheckCircleRoundedIcon sx={{ color: "success.main", fontSize: 18 }} />
                             <Typography variant="body2" color="success.main" fontWeight={700}>
-                              Báo cáo này đã được xử lý ({statusLabel[selectedReport.status] ?? selectedReport.status})
+                              Báo cáo này đã được xử lý (
+                              {statusLabel[selectedReport.status] ?? selectedReport.status})
                             </Typography>
                           </Stack>
                         </Box>
                       )}
                     </Stack>
                   ) : (
-                    <Typography color="text.secondary">Chọn một báo cáo để xem chi tiết.</Typography>
+                    <Typography color="text.secondary">
+                      Chọn một báo cáo để xem chi tiết.
+                    </Typography>
                   )}
                 </Paper>
               </Grid>

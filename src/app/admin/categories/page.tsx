@@ -87,9 +87,7 @@ export default function AdminCategoriesPage() {
           render: (category) => (
             <AdminStatusChip
               label={
-                category.createdAt
-                  ? new Date(category.createdAt).toLocaleDateString("vi-VN")
-                  : "—"
+                category.createdAt ? new Date(category.createdAt).toLocaleDateString("vi-VN") : "—"
               }
               tone="violet"
             />
