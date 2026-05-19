@@ -34,4 +34,5 @@ class DeviceSessionService {
   }
 }
 
-export default new DeviceSessionService();
+const deviceSessionService = new DeviceSessionService();
+export default deviceSessionService;

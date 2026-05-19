@@ -68,7 +68,12 @@ class ApiClient {
       return {} as T;
     }
 
-    return response.json();
+    const text = await response.text();
+    if (!text) {
+      return {} as T;
+    }
+
+    return JSON.parse(text) as T;
   }
 
   private clearAuth(): void {

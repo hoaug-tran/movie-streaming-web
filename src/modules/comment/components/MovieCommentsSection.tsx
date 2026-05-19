@@ -72,6 +72,7 @@ function flattenComments(comments: MovieComment[]): MovieComment[] {
       flattened.push({
         ...reply,
         parentCommentId: reply.parentCommentId ?? comment.id,
+        episodeId: reply.episodeId ?? comment.episodeId,
       });
     });
   });
@@ -299,7 +300,10 @@ export function MovieCommentsSection({
             minRows={3}
             value={content}
             onFocus={requireAuth}
-            onChange={(event) => { setContent(event.target.value); setContentError(null); }}
+            onChange={(event) => {
+              setContent(event.target.value);
+              setContentError(null);
+            }}
             onKeyDown={handleCommentKeyDown}
             placeholder={
               isAuthenticated
@@ -319,7 +323,9 @@ export function MovieCommentsSection({
               id="movie-comment-submit"
               type="submit"
               variant="contained"
-              disabled={loading || createComment.isPending || content.trim().length < MIN_COMMENT_LENGTH}
+              disabled={
+                loading || createComment.isPending || content.trim().length < MIN_COMMENT_LENGTH
+              }
             >
               <SendRoundedIcon />
             </Button>
@@ -332,7 +338,9 @@ export function MovieCommentsSection({
           rootComments.map((comment) => (
             <Paper
               key={comment.id}
-              ref={(el) => { commentRefs.current[comment.id] = el; }}
+              ref={(el) => {
+                commentRefs.current[comment.id] = el;
+              }}
               elevation={0}
               sx={{
                 p: { xs: 2, md: 2.6 },
@@ -342,9 +350,10 @@ export function MovieCommentsSection({
                     ? theme.palette.primary.main
                     : alpha(theme.palette.text.primary, 0.1)
                 }`,
-                background: highlightedCommentId === comment.id
-                  ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.18)}, ${alpha(theme.palette.background.paper, 0.92)})`
-                  : `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.92)}, ${alpha(theme.palette.primary.main, 0.06)})`,
+                background:
+                  highlightedCommentId === comment.id
+                    ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.18)}, ${alpha(theme.palette.background.paper, 0.92)})`
+                    : `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.92)}, ${alpha(theme.palette.primary.main, 0.06)})`,
                 transition: "border-color 0.4s, background 0.4s",
               }}
             >
@@ -374,7 +383,10 @@ export function MovieCommentsSection({
                     multiline
                     minRows={2}
                     value={replyContent}
-                    onChange={(event) => { setReplyContent(event.target.value); setReplyError(null); }}
+                    onChange={(event) => {
+                      setReplyContent(event.target.value);
+                      setReplyError(null);
+                    }}
                     onKeyDown={(event) => handleReplyKeyDown(event, comment.id)}
                     placeholder={`Enter để gửi · Shift + Enter để xuống dòng (tối thiểu ${MIN_COMMENT_LENGTH} ký tự)`}
                     error={Boolean(replyError)}
@@ -382,11 +394,21 @@ export function MovieCommentsSection({
                     fullWidth
                   />
                   <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 1 }}>
-                    <Button onClick={() => { setReplyingTo(null); setReplyError(null); setReplyContent(""); }}>Hủy</Button>
+                    <Button
+                      onClick={() => {
+                        setReplyingTo(null);
+                        setReplyError(null);
+                        setReplyContent("");
+                      }}
+                    >
+                      Hủy
+                    </Button>
                     <Button
                       type="submit"
                       variant="contained"
-                      disabled={replyContent.trim().length < MIN_COMMENT_LENGTH || createComment.isPending}
+                      disabled={
+                        replyContent.trim().length < MIN_COMMENT_LENGTH || createComment.isPending
+                      }
                     >
                       Gửi trả lời
                     </Button>

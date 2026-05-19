@@ -14,8 +14,6 @@ import { useNotification } from "@/context/notification-context";
 
 type LoadState = "loading" | "ready" | "error";
 type EmailStep = "idle" | "current" | "new";
-type SubtitleLanguage = "vi" | "en" | "zh" | "auto";
-type AutoplayMode = "next" | "off";
 
 type CropSelection = {
   file: File;
@@ -30,9 +28,6 @@ type ProfileSettings = {
   newsletter: boolean;
   releaseDigest: boolean;
   securityAlerts: boolean;
-  subtitleLanguage: SubtitleLanguage;
-  autoplay: AutoplayMode;
-  matureContent: boolean;
 };
 
 const SETTINGS_KEY = "giophim.profile.settings";
@@ -43,16 +38,6 @@ const defaultSettings: ProfileSettings = {
   newsletter: true,
   releaseDigest: true,
   securityAlerts: true,
-  subtitleLanguage: "vi",
-  autoplay: "next",
-  matureContent: false,
-};
-
-export const subtitleLabels: Record<SubtitleLanguage, string> = {
-  vi: "Tiếng Việt",
-  en: "English",
-  zh: "中文",
-  auto: "Tự động",
 };
 
 export const formatDate = (value?: string) => {
@@ -146,14 +131,7 @@ const loadSettings = (): ProfileSettings => {
   }
 };
 
-export type {
-  LoadState,
-  EmailStep,
-  SubtitleLanguage,
-  AutoplayMode,
-  CropSelection,
-  ProfileSettings,
-};
+export type { LoadState, EmailStep, CropSelection, ProfileSettings };
 
 export function useProfileData() {
   const { notify } = useNotification();
@@ -233,9 +211,10 @@ export function useProfileData() {
   }, []);
 
   useEffect(() => {
+    const cropMove = cropMoveRef;
     return () => {
       if (crop?.previewUrl) URL.revokeObjectURL(crop.previewUrl);
-      if (cropMoveRef.current.frame) cancelAnimationFrame(cropMoveRef.current.frame);
+      if (cropMove.current.frame) cancelAnimationFrame(cropMove.current.frame);
     };
   }, [crop?.previewUrl]);
 

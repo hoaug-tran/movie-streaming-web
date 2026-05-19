@@ -14,20 +14,14 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  Divider,
-  FormControl,
-  FormControlLabel,
   Grid,
   IconButton,
-  InputLabel,
   LinearProgress,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  MenuItem,
   Paper,
-  Select,
   Slider,
   Stack,
   Switch,
@@ -49,18 +43,96 @@ import { useAuth } from "@/modules/auth/hooks/useAuth";
 import authService from "@/modules/auth/api/auth-service";
 import { PasswordInput } from "@/modules/auth/components/PasswordInput";
 import { useNotification } from "@/context/notification-context";
+import { usePushNotification } from "@/hooks/use-push-notification";
 import { PaymentTransaction, UserSubscription } from "@/modules/subscription/types/subscription";
-import {
-  AutoplayMode,
-  formatDate,
-  sessionStatus,
-  subtitleLabels,
-  SubtitleLanguage,
-  useProfileData,
-} from "./useProfileData";
+import { formatDate, sessionStatus, useProfileData } from "./useProfileData";
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(v);
+
+function PushNotificationSettings() {
+  const { isSupported, permission, isSubscribed, isLoading, subscribe, unsubscribe } =
+    usePushNotification();
+
+  if (!isSupported) {
+    return (
+      <Box
+        sx={{
+          p: 2.5,
+          borderRadius: 2,
+          bgcolor: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Trình duyệt của bạn không hỗ trợ thông báo đẩy.
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (permission === "denied") {
+    return (
+      <Box
+        sx={{
+          p: 2.5,
+          borderRadius: 2,
+          bgcolor: "rgba(200,16,46,0.06)",
+          border: "1px solid rgba(200,16,46,0.2)",
+        }}
+      >
+        <Typography variant="body2" fontWeight={700} color="error.main" gutterBottom>
+          Thông báo đã bị chặn
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Vào cài đặt trình duyệt → Quyền riêng tư → Thông báo → Cho phép trang web này gửi thông
+          báo.
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Stack spacing={2}>
+      <Box
+        sx={{
+          p: 2.5,
+          borderRadius: 2,
+          bgcolor: isSubscribed ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.04)",
+          border: isSubscribed
+            ? "1px solid rgba(34,197,94,0.2)"
+            : "1px solid rgba(255,255,255,0.08)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="body2" fontWeight={700}>
+            {isSubscribed ? "Thông báo đang bật" : "Thông báo đang tắt"}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {isSubscribed
+              ? "Bạn sẽ nhận được thông báo về phim mới và hoạt động tài khoản."
+              : "Bật để nhận thông báo ngay cả khi không mở ứng dụng."}
+          </Typography>
+        </Box>
+        <Switch
+          checked={isSubscribed}
+          disabled={isLoading}
+          onChange={isSubscribed ? unsubscribe : subscribe}
+          color="success"
+        />
+      </Box>
+      {isSubscribed && (
+        <Typography variant="caption" color="text.disabled">
+          Thiết bị này đã đăng ký nhận thông báo đẩy. Bạn có thể tắt bất cứ lúc nào.
+        </Typography>
+      )}
+    </Stack>
+  );
+}
 
 const cardSx = {
   bgcolor: "rgba(18,18,22,0.66)",
@@ -694,7 +766,7 @@ export function ProfileClient() {
                 >
                   <Tab label="Thông tin tài khoản" id="profile-tab-account" />
                   <Tab label="Bảo mật" id="profile-tab-security" />
-                  <Tab label="Trải nghiệm" id="profile-tab-experience" />
+                  <Tab label="Thông báo" id="profile-tab-notifications" />
                   <Tab label="Đăng ký" id="profile-tab-subscription" />
                 </Tabs>
               </Box>
@@ -774,7 +846,6 @@ export function ProfileClient() {
                 <Grid
                   item
                   xs={12}
-                  md={6}
                   sx={{
                     display: profileTab === 2 ? "block" : "none",
                     p: { xs: 2.5, md: 3 },
@@ -783,105 +854,13 @@ export function ProfileClient() {
                   }}
                 >
                   <Typography variant="h5" fontWeight={900} gutterBottom>
-                    Tùy chỉnh phát phim
+                    Thông báo đẩy
                   </Typography>
-                  <Stack spacing={2.5} sx={{ mt: 2 }}>
-                    <FormControl size="small" fullWidth>
-                      <InputLabel>Phụ đề mặc định</InputLabel>
-                      <Select
-                        value={d.settings.subtitleLanguage}
-                        label="Phụ đề mặc định"
-                        onChange={(e) =>
-                          d.saveSettings({
-                            ...d.settings,
-                            subtitleLanguage: e.target.value as SubtitleLanguage,
-                          })
-                        }
-                      >
-                        {Object.entries(subtitleLabels).map(([k, v]) => (
-                          <MenuItem key={k} value={k}>
-                            {v}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <FormControl size="small" fullWidth>
-                      <InputLabel>Tự động phát tập tiếp</InputLabel>
-                      <Select
-                        value={d.settings.autoplay}
-                        label="Tự động phát tập tiếp"
-                        onChange={(e) =>
-                          d.saveSettings({
-                            ...d.settings,
-                            autoplay: e.target.value as AutoplayMode,
-                          })
-                        }
-                      >
-                        <MenuItem value="next">Bật</MenuItem>
-                        <MenuItem value="off">Tắt</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={d.settings.matureContent}
-                          onChange={(e) =>
-                            d.saveSettings({ ...d.settings, matureContent: e.target.checked })
-                          }
-                        />
-                      }
-                      label="Hiển thị nội dung 18+"
-                    />
-                  </Stack>
-                </Grid>
-
-                <Grid
-                  item
-                  xs={12}
-                  md={6}
-                  sx={{
-                    display: profileTab === 2 ? "block" : "none",
-                    p: { xs: 2.5, md: 3 },
-                    borderBottom: 1,
-                    borderColor: "rgba(255,255,255,0.07)",
-                  }}
-                >
-                  <Typography variant="h5" fontWeight={900} gutterBottom>
-                    Nhịp phim của bạn
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Nhận thông báo ngay trên thiết bị khi có phim mới, ưu đãi hoặc hoạt động tài
+                    khoản - kể cả khi bạn không mở ứng dụng.
                   </Typography>
-                  <Stack spacing={1}>
-                    {[
-                      ["releaseDigest", "Phim mới", "Thông báo khi có phim phù hợp"],
-                      ["newsletter", "Tin tức và ưu đãi", "Cập nhật tính năng mới"],
-                      ["securityAlerts", "Cảnh báo bảo mật", "Đăng nhập và hoạt động bất thường"],
-                    ].map(([key, title, desc], index) => (
-                      <Box key={key}>
-                        {index > 0 && (
-                          <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,0.07)" }} />
-                        )}
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={Boolean(d.settings[key as keyof typeof d.settings])}
-                              onChange={(e) =>
-                                d.saveSettings({ ...d.settings, [key]: e.target.checked })
-                              }
-                            />
-                          }
-                          label={
-                            <Box>
-                              <Typography variant="body2" fontWeight={700}>
-                                {title}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {desc}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                      </Box>
-                    ))}
-                  </Stack>
+                  <PushNotificationSettings />
                 </Grid>
 
                 <Grid

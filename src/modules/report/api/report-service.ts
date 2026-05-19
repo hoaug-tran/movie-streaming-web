@@ -7,4 +7,5 @@ class ReportService {
   }
 }
 
-export default new ReportService();
+const reportService = new ReportService();
+export default reportService;
