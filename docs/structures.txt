@@ -1,0 +1,407 @@
+movie-streaming-web
+├── docs
+│   └── PWA.md
+├── public
+│   ├── icons
+│   │   ├── icon-192.png
+│   │   ├── icon-512.png
+│   │   ├── icon-maskable.png
+│   │   ├── logo.png
+│   │   └── logo.webp
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── manifest.json
+│   ├── offline.html
+│   ├── sw.js
+│   └── window.svg
+├── src
+│   ├── app
+│   │   ├── access
+│   │   │   ├── GateForm.tsx
+│   │   │   └── page.tsx
+│   │   ├── admin
+│   │   │   ├── ads
+│   │   │   │   └── page.tsx
+│   │   │   ├── cast
+│   │   │   │   └── page.tsx
+│   │   │   ├── categories
+│   │   │   │   └── page.tsx
+│   │   │   ├── comments
+│   │   │   │   └── page.tsx
+│   │   │   ├── countries
+│   │   │   ├── directors
+│   │   │   │   └── page.tsx
+│   │   │   ├── episodes
+│   │   │   │   └── page.tsx
+│   │   │   ├── moderation
+│   │   │   │   └── page.tsx
+│   │   │   ├── movies
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── notifications
+│   │   │   │   └── page.tsx
+│   │   │   ├── persons
+│   │   │   │   └── page.tsx
+│   │   │   ├── producers
+│   │   │   │   └── page.tsx
+│   │   │   ├── reports
+│   │   │   │   └── page.tsx
+│   │   │   ├── settings
+│   │   │   │   └── page.tsx
+│   │   │   ├── subscriptions
+│   │   │   │   └── page.tsx
+│   │   │   ├── tags
+│   │   │   │   └── page.tsx
+│   │   │   ├── users
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── api
+│   │   │   └── access
+│   │   │       └── verify
+│   │   │           └── route.ts
+│   │   ├── auth
+│   │   │   ├── callback
+│   │   │   │   └── google
+│   │   │   │       └── page.tsx
+│   │   │   ├── forgot-password
+│   │   │   │   └── page.tsx
+│   │   │   ├── login
+│   │   │   │   └── page.tsx
+│   │   │   ├── register
+│   │   │   │   └── page.tsx
+│   │   │   ├── reset-password
+│   │   │   │   └── [token]
+│   │   │   │       └── page.tsx
+│   │   │   └── layout.tsx
+│   │   ├── discovery
+│   │   │   └── page.tsx
+│   │   ├── downloads
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── error
+│   │   ├── favorites
+│   │   │   └── page.tsx
+│   │   ├── history
+│   │   │   └── page.tsx
+│   │   ├── legal
+│   │   │   ├── cookies
+│   │   │   │   └── page.tsx
+│   │   │   ├── privacy
+│   │   │   │   └── page.tsx
+│   │   │   └── terms
+│   │   │       └── page.tsx
+│   │   ├── movies
+│   │   │   ├── [slug]
+│   │   │   │   └── page.tsx
+│   │   │   ├── category
+│   │   │   │   └── [slug]
+│   │   │   │       └── page.tsx
+│   │   │   └── page.tsx
+│   │   ├── pricing
+│   │   │   └── page.tsx
+│   │   ├── profile
+│   │   │   └── page.tsx
+│   │   ├── subscription
+│   │   │   ├── cancel
+│   │   │   │   └── page.tsx
+│   │   │   ├── checkout
+│   │   │   │   └── page.tsx
+│   │   │   └── success
+│   │   │       └── page.tsx
+│   │   ├── support
+│   │   │   ├── contact
+│   │   │   │   └── page.tsx
+│   │   │   ├── faq
+│   │   │   │   └── page.tsx
+│   │   │   ├── status
+│   │   │   │   └── page.tsx
+│   │   │   └── page.tsx
+│   │   ├── tv
+│   │   │   ├── [slug]
+│   │   │   │   └── page.tsx
+│   │   │   └── page.tsx
+│   │   ├── watch
+│   │   │   └── [movieSlug]
+│   │   │       └── page.tsx
+│   │   ├── watchlist
+│   │   │   └── page.tsx
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── not-found.tsx
+│   │   ├── page.tsx
+│   │   └── providers.tsx
+│   ├── components
+│   │   ├── Browse
+│   │   │   ├── CinematicBrowsePage.tsx
+│   │   │   ├── MediaBrowser.tsx
+│   │   │   ├── MovieBrowser.tsx
+│   │   │   └── TVSeriesBrowser.tsx
+│   │   ├── CategoryDetail
+│   │   │   └── CategoryDetailPage.tsx
+│   │   ├── Chatbot
+│   │   │   ├── ChatBubble.tsx
+│   │   │   ├── ChatComposer.tsx
+│   │   │   ├── ChatPanel.tsx
+│   │   │   └── GioPhimBot.tsx
+│   │   ├── Common
+│   │   │   ├── AvatarCropUpload.tsx
+│   │   │   ├── CategoryCard.tsx
+│   │   │   ├── HorizontalScrollGrid.tsx
+│   │   │   ├── MovieCard.tsx
+│   │   │   ├── SectionGrid.tsx
+│   │   │   ├── SectionHeader.tsx
+│   │   │   └── movie-card-props.ts
+│   │   ├── Discovery
+│   │   │   └── VibeExplorer.tsx
+│   │   ├── Error
+│   │   │   └── ErrorComponent.tsx
+│   │   ├── Form
+│   │   ├── Homepage
+│   │   │   ├── BingeUniverseSection.tsx
+│   │   │   ├── CategoriesSection.tsx
+│   │   │   ├── ContinueWatchingSection.tsx
+│   │   │   ├── DiscoverySection.tsx
+│   │   │   ├── GenrePulseSection.tsx
+│   │   │   ├── HeroBanner.tsx
+│   │   │   ├── LatestReleasesSection.tsx
+│   │   │   ├── RecommendedSection.tsx
+│   │   │   ├── RegionalDiscovery.tsx
+│   │   │   ├── SingleFilmSection.tsx
+│   │   │   ├── SocialEngagementSection.tsx
+│   │   │   ├── TopRankedSection.tsx
+│   │   │   └── TrendingSection.tsx
+│   │   ├── Layout
+│   │   │   ├── Footer.tsx
+│   │   │   ├── InfoPageShell.tsx
+│   │   │   └── Navbar.tsx
+│   │   ├── Loading
+│   │   │   └── LoadingSpinner.tsx
+│   │   ├── MovieDetail
+│   │   │   └── MovieDetailPage.tsx
+│   │   ├── Notification
+│   │   │   ├── NotificationBell.tsx
+│   │   │   ├── NotificationDetailModal.tsx
+│   │   │   ├── NotificationItem.tsx
+│   │   │   └── NotificationPopup.tsx
+│   │   ├── PWA
+│   │   │   ├── InstallBanner.tsx
+│   │   │   ├── OfflineBadge.tsx
+│   │   │   ├── OfflineDownloadButton.tsx
+│   │   │   └── SeriesDownloadModal.tsx
+│   │   ├── Search
+│   │   │   ├── SearchBar.tsx
+│   │   │   ├── SearchMovieCard.tsx
+│   │   │   └── SearchResultsPage.tsx
+│   │   ├── UI
+│   │   │   ├── Badge.tsx
+│   │   │   ├── GradientOverlay.tsx
+│   │   │   ├── HoverScaleContainer.tsx
+│   │   │   ├── SubscriptionBadge.tsx
+│   │   │   └── UserProfileDropdown.tsx
+│   │   ├── Watch
+│   │   │   ├── AdOverlay.tsx
+│   │   │   ├── EpisodeList.tsx
+│   │   │   ├── HlsPlayer.tsx
+│   │   │   ├── PlayerCommentDrawer.tsx
+│   │   │   ├── PlayerControls.tsx
+│   │   │   └── WatchPlayer.tsx
+│   │   └── ClientOnly.tsx
+│   ├── config
+│   │   ├── palettes.ts
+│   │   ├── react-query.ts
+│   │   └── theme.ts
+│   ├── constants
+│   │   ├── api.ts
+│   │   ├── config.ts
+│   │   └── ui.ts
+│   ├── context
+│   │   ├── auth-context.tsx
+│   │   ├── notification-context.tsx
+│   │   └── search-context.tsx
+│   ├── hooks
+│   │   ├── use-chat-stream.ts
+│   │   ├── use-offline-download.ts
+│   │   ├── use-play-navigation.ts
+│   │   ├── use-push-notification.ts
+│   │   ├── use-pwa.ts
+│   │   ├── use-subscription.ts
+│   │   └── useApi.ts
+│   ├── lib
+│   │   ├── offline-downloader.ts
+│   │   ├── offline-storage.ts
+│   │   └── push-notification.ts
+│   ├── middleware
+│   ├── modules
+│   │   ├── admin
+│   │   │   ├── api
+│   │   │   ├── components
+│   │   │   │   ├── dashboard
+│   │   │   │   │   ├── charts
+│   │   │   │   │   │   ├── MainAreaChart.tsx
+│   │   │   │   │   │   ├── MultiLineChart.tsx
+│   │   │   │   │   │   ├── RadialProgress.tsx
+│   │   │   │   │   │   └── SparklineBar.tsx
+│   │   │   │   │   ├── sections
+│   │   │   │   │   │   ├── ContentRadar.tsx
+│   │   │   │   │   │   ├── ExecutivePanel.tsx
+│   │   │   │   │   │   └── SystemTerminal.tsx
+│   │   │   │   │   └── BentoContainer.tsx
+│   │   │   │   ├── AdminFormDrawer.tsx
+│   │   │   │   ├── AdminGuard.tsx
+│   │   │   │   ├── AdminLayoutShell.tsx
+│   │   │   │   ├── AdminManagementPage.tsx
+│   │   │   │   └── AdminPermissionGate.tsx
+│   │   │   ├── types
+│   │   │   ├── api.ts
+│   │   │   └── permissions.ts
+│   │   ├── advertisement
+│   │   │   ├── api
+│   │   │   │   └── advertisement-service.ts
+│   │   │   └── types
+│   │   │       └── advertisement.ts
+│   │   ├── auth
+│   │   │   ├── api
+│   │   │   │   └── auth-service.ts
+│   │   │   ├── components
+│   │   │   │   ├── AuthContainer.tsx
+│   │   │   │   ├── AuthLayout.tsx
+│   │   │   │   ├── GoogleOAuthButton.tsx
+│   │   │   │   ├── LucideIcons.tsx
+│   │   │   │   ├── OtpInput.tsx
+│   │   │   │   ├── OtpVerifyStep.tsx
+│   │   │   │   ├── PasswordInput.tsx
+│   │   │   │   └── SpaceBackground.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useAuth.ts
+│   │   │   │   └── useUserProfile.ts
+│   │   │   └── types
+│   │   │       └── auth.ts
+│   │   ├── comment
+│   │   │   ├── api
+│   │   │   │   └── comment-service.ts
+│   │   │   ├── components
+│   │   │   │   └── MovieCommentsSection.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useMovieComments.ts
+│   │   │   └── types
+│   │   │       └── comment.ts
+│   │   ├── favorite
+│   │   │   ├── api
+│   │   │   │   └── favorite-service.ts
+│   │   │   ├── components
+│   │   │   │   ├── FavoriteToggleButton.tsx
+│   │   │   │   └── FavoritesClient.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useFavorite.ts
+│   │   │   └── types
+│   │   │       └── favorite.ts
+│   │   ├── movie
+│   │   │   ├── api
+│   │   │   │   └── movie-service.ts
+│   │   │   ├── components
+│   │   │   ├── hooks
+│   │   │   │   ├── useClientMovies.ts
+│   │   │   │   ├── useDiscovery.ts
+│   │   │   │   └── useMovieDetailPage.ts
+│   │   │   └── types
+│   │   │       └── movie.ts
+│   │   ├── notification
+│   │   │   ├── hooks
+│   │   │   │   └── useNotifications.ts
+│   │   │   ├── service.ts
+│   │   │   └── types.ts
+│   │   ├── report
+│   │   │   ├── api
+│   │   │   │   └── report-service.ts
+│   │   │   ├── components
+│   │   │   │   └── ReportContentDialog.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useCreateReport.ts
+│   │   │   └── types
+│   │   │       └── report.ts
+│   │   ├── review
+│   │   │   ├── api
+│   │   │   │   └── review-service.ts
+│   │   │   ├── components
+│   │   │   ├── hooks
+│   │   │   │   └── useMovieReviews.ts
+│   │   │   └── types
+│   │   │       └── review.ts
+│   │   ├── search-history
+│   │   │   ├── api
+│   │   │   │   └── search-history-service.ts
+│   │   │   └── hooks
+│   │   │       └── useSearchHistory.ts
+│   │   ├── streaming
+│   │   │   └── api
+│   │   │       └── streaming-service.ts
+│   │   ├── subscription
+│   │   │   ├── api
+│   │   │   │   └── subscription-service.ts
+│   │   │   ├── components
+│   │   │   └── types
+│   │   │       └── subscription.ts
+│   │   ├── user
+│   │   │   ├── api
+│   │   │   │   ├── device-session-service.ts
+│   │   │   │   └── user-service.ts
+│   │   │   ├── components
+│   │   │   │   ├── ProfileClient.tsx
+│   │   │   │   └── useProfileData.ts
+│   │   │   ├── hooks
+│   │   │   └── types
+│   │   │       └── user.ts
+│   │   ├── watch-history
+│   │   │   ├── api
+│   │   │   │   └── watch-history-service.ts
+│   │   │   ├── components
+│   │   │   │   └── HistoryClient.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useWatchHistory.ts
+│   │   │   └── types
+│   │   │       └── watch-history.ts
+│   │   └── watchlist
+│   │       ├── api
+│   │       │   └── watchlist-service.ts
+│   │       ├── components
+│   │       │   ├── WatchlistClient.tsx
+│   │       │   └── WatchlistToggleButton.tsx
+│   │       ├── hooks
+│   │       │   └── useWatchlist.ts
+│   │       └── types
+│   │           └── watchlist.ts
+│   ├── services
+│   │   ├── api-client.ts
+│   │   ├── chatbot-service.ts
+│   │   ├── index.ts
+│   │   ├── streaming-service.ts
+│   │   ├── support-service.ts
+│   │   └── system-service.ts
+│   ├── styles
+│   │   └── globals.css
+│   ├── types
+│   │   ├── api.ts
+│   │   ├── index.ts
+│   │   └── page-response.ts
+│   ├── utils
+│   │   ├── avatar.ts
+│   │   ├── convert-to-webp.ts
+│   │   └── helpers.ts
+│   ├── global.d.ts
+│   └── middleware.ts
+├── .env.example
+├── .eslintrc.json
+├── .prettierrc.json
+├── ARCHITECTURE.md
+├── README.md
+├── jest.config.js
+├── jest.setup.js
+├── next-env.d.ts
+├── next.config.js
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── tree.txt
+└── tsconfig.json
