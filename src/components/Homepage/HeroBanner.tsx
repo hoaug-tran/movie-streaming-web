@@ -107,7 +107,7 @@ export function HeroBanner() {
           sx={{
             position: "relative",
             zIndex: 2,
-            pb: { xs: 4, sm: "260px", md: "300px" },
+            pb: { xs: "190px", sm: "260px", md: "300px" },
             pt: { xs: 12, md: 0 },
             px: { xs: 3, md: 5 },
             display: "flex",
@@ -172,13 +172,13 @@ export function HeroBanner() {
               variant="body1"
               sx={{
                 maxWidth: { xs: "100%", md: "480px" },
-                mb: 4.5,
+                mb: { xs: 3, md: 4.5 },
                 display: "-webkit-box",
-                WebkitLineClamp: { xs: 4, md: 2 },
+                WebkitLineClamp: { xs: 3, md: 2 },
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                lineHeight: 1.7,
-                fontSize: { xs: "1rem", md: "1rem" },
+                lineHeight: 1.6,
+                fontSize: { xs: "0.95rem", md: "1rem" },
                 color: "rgba(255, 255, 255, 0.75)",
                 fontWeight: 400,
                 px: { xs: 1, md: 0 },
@@ -237,56 +237,103 @@ export function HeroBanner() {
       <Box
         sx={{
           position: "absolute",
-          bottom: { xs: 150, sm: "240px", md: "270px" },
-          right: { xs: 0, sm: 16, md: 32 },
+          bottom: { xs: 170, sm: 210, md: "270px" },
           left: { xs: 0, md: "auto" },
-          px: { xs: 3, md: 0 },
+          right: { xs: 0, md: 32 },
+          px: { xs: 2.5, md: 0 },
           py: 1,
           zIndex: 10,
           display: "flex",
-          gap: 2,
+          gap: { xs: 1.25, md: 2 },
           justifyContent: { xs: "center", md: "flex-end" },
-          overflow: { xs: "hidden", md: "visible" },
-          pb: { xs: 1, md: 0 },
+          alignItems: "center",
+          pointerEvents: "auto",
         }}
       >
-        {movies.slice(0, 4).map((movie, index) => (
-          <Box
-            key={movie.id}
-            onClick={() => handleCardClick(index)}
-            sx={{
-              cursor: "pointer",
-              width: { xs: 120, sm: 130, md: 160 },
-              height: { xs: 70, sm: 74, md: 90 },
-              borderRadius: 1.5,
-              overflow: "hidden",
-              border: "2px solid",
-              borderColor: currentIndex === index ? "#ffffff" : "rgba(255,255,255,0.1)",
-              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-              position: "relative",
-              flexShrink: 0,
-              opacity: currentIndex === index ? 1 : 0.4,
-              scale: currentIndex === index ? "1.05" : "1",
-              "&:hover": { borderColor: "rgba(255,255,255,0.6)", opacity: 0.8 },
-              boxShadow: currentIndex === index ? "0 10px 30px rgba(0,0,0,0.5)" : "none",
-              display: {
-                xs: index >= 3 ? "none" : "block",
-                md: index >= 2 ? "none" : "block",
-                lg: "block",
-              },
-            }}
-          >
-            {movie.bannerUrl && (
-              <Image
-                src={movie.bannerUrl}
-                alt={movie.title}
-                fill
-                sizes="(max-width: 768px) 100px, 160px"
-                style={{ objectFit: "cover" }}
-              />
-            )}
-          </Box>
-        ))}
+        <Box
+          sx={{
+            display: { xs: "flex", md: "none" },
+            gap: 1,
+            alignItems: "center",
+            overflowX: "auto",
+            maxWidth: "100%",
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
+          {movies.slice(0, 4).map((movie, index) => (
+            <Box
+              key={movie.id}
+              onClick={() => handleCardClick(index)}
+              sx={{
+                cursor: "pointer",
+                width: 86,
+                height: 50,
+                borderRadius: 1,
+                overflow: "hidden",
+                border: "1.5px solid",
+                borderColor: currentIndex === index ? "#ffffff" : "rgba(255,255,255,0.18)",
+                transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+                position: "relative",
+                flexShrink: 0,
+                opacity: currentIndex === index ? 1 : 0.55,
+                boxShadow: currentIndex === index ? "0 6px 18px rgba(0,0,0,0.55)" : "none",
+              }}
+            >
+              {movie.bannerUrl && (
+                <Image
+                  src={movie.bannerUrl}
+                  alt={movie.title}
+                  fill
+                  sizes="86px"
+                  style={{ objectFit: "cover" }}
+                />
+              )}
+            </Box>
+          ))}
+        </Box>
+
+        <Box
+          sx={{
+            display: { xs: "none", md: "flex" },
+            gap: 2,
+            justifyContent: "flex-end",
+          }}
+        >
+          {movies.slice(0, 4).map((movie, index) => (
+            <Box
+              key={movie.id}
+              onClick={() => handleCardClick(index)}
+              sx={{
+                cursor: "pointer",
+                width: { md: 160 },
+                height: { md: 90 },
+                borderRadius: 1.5,
+                overflow: "hidden",
+                border: "2px solid",
+                borderColor: currentIndex === index ? "#ffffff" : "rgba(255,255,255,0.1)",
+                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                position: "relative",
+                flexShrink: 0,
+                opacity: currentIndex === index ? 1 : 0.4,
+                scale: currentIndex === index ? "1.05" : "1",
+                "&:hover": { borderColor: "rgba(255,255,255,0.6)", opacity: 0.8 },
+                boxShadow: currentIndex === index ? "0 10px 30px rgba(0,0,0,0.5)" : "none",
+                display: { md: index >= 2 ? "none" : "block", lg: "block" },
+              }}
+            >
+              {movie.bannerUrl && (
+                <Image
+                  src={movie.bannerUrl}
+                  alt={movie.title}
+                  fill
+                  sizes="160px"
+                  style={{ objectFit: "cover" }}
+                />
+              )}
+            </Box>
+          ))}
+        </Box>
       </Box>
     </Box>
   );

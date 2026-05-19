@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   AppBar,
   Toolbar,
@@ -14,25 +14,49 @@ import {
   ListItemText,
   Divider,
   alpha,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
 } from "@mui/material";
 import Link from "next/link";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserProfileDropdown } from "@/components/UI/UserProfileDropdown";
 import SearchBar from "@/components/Search/SearchBar";
 import { useSearch } from "@/context/search-context";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import { Compass, Tv, Film, Bookmark, ShieldCheck, LogIn, Heart, History } from "lucide-react";
+import {
+  Compass,
+  Tv,
+  Film,
+  Bookmark,
+  ShieldCheck,
+  LogIn,
+  Heart,
+  History,
+  HardDrive,
+  Download,
+  WifiOff,
+  Shield,
+  Clock,
+} from "lucide-react";
 import NotificationBell from "@/components/Notification/NotificationBell";
+import { usePwa } from "@/hooks/use-pwa";
 
 const Navbar: React.FC = () => {
   const theme = useTheme();
+  const router = useRouter();
   const { isAuthenticated, user, logout, loading } = useAuth();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { searchOpen, setSearchOpen, searchQuery, setSearchQuery } = useSearch();
+  const { isPWA, canInstall, promptInstall, mounted } = usePwa();
+  const [installDialogOpen, setInstallDialogOpen] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 12);
@@ -41,9 +65,32 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const handleInstall = useCallback(async () => {
+    if (!canInstall) {
+      setInstallDialogOpen(false);
+      return;
+    }
+    setInstalling(true);
+    const accepted = await promptInstall();
+    setInstalling(false);
+    if (accepted) {
+      setInstallDialogOpen(false);
+      router.push("/downloads");
+    }
+  }, [canInstall, promptInstall, router]);
+
   if (pathname.startsWith("/auth")) return null;
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+
+  const handleOfflineClick = (e: React.MouseEvent) => {
+    if (!mounted) return;
+    if (!isPWA) {
+      e.preventDefault();
+      setInstallDialogOpen(true);
+      setMobileOpen(false);
+    }
+  };
 
   const desktopNavLinks = [
     { label: "Khám phá", href: "/discovery", icon: <Compass size={20} /> },
@@ -54,6 +101,12 @@ const Navbar: React.FC = () => {
           { label: "Xem sau", href: "/watchlist", icon: <Bookmark size={20} /> },
           { label: "Yêu thích", href: "/favorites", icon: <Heart size={20} /> },
           { label: "Lịch sử", href: "/history", icon: <History size={20} /> },
+          {
+            label: "Ngoại tuyến",
+            href: "/downloads",
+            icon: <HardDrive size={20} />,
+            isOffline: true,
+          },
         ]
       : []),
   ];
@@ -91,14 +144,101 @@ const Navbar: React.FC = () => {
 
   const handleSearchOpen = (open: boolean) => {
     setSearchOpen(open);
-    if (!open) {
-      setSearchQuery("");
-    }
+    if (!open) setSearchQuery("");
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
+
+  const installDialog = (
+    <Dialog
+      open={installDialogOpen}
+      onClose={() => setInstallDialogOpen(false)}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: "#161616",
+          border: "1px solid rgba(200,16,46,0.25)",
+          borderRadius: 3,
+          backgroundImage: "none",
+          mx: 2,
+        },
+      }}
+    >
+      <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
+          <Box
+            component="img"
+            src="/icons/logo.webp"
+            alt="Gió Phim"
+            sx={{ width: 48, height: 48, borderRadius: 2, flexShrink: 0 }}
+          />
+          <Box>
+            <Typography
+              sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#F0F0F0", lineHeight: 1.2 }}
+            >
+              Cài Gió Phim để xem offline
+            </Typography>
+            <Typography sx={{ fontSize: "0.78rem", color: "#8A8A8A", mt: 0.3 }}>
+              Tải phim và xem khi không có mạng
+            </Typography>
+          </Box>
+        </Box>
+      </DialogTitle>
+      <DialogContent sx={{ px: 3, pt: "8px !important", pb: 1 }}>
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 2,
+            bgcolor: "rgba(200,16,46,0.06)",
+            border: "1px solid rgba(200,16,46,0.15)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.25,
+          }}
+        >
+          {[
+            { icon: <WifiOff size={15} />, text: "Xem phim không cần mạng" },
+            { icon: <Shield size={15} />, text: "Lưu trữ an toàn trên thiết bị" },
+            { icon: <Clock size={15} />, text: "Tự động xoá sau 48 giờ" },
+          ].map((f) => (
+            <Box key={f.text} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box sx={{ color: "#C8102E", flexShrink: 0, display: "flex" }}>{f.icon}</Box>
+              <Typography sx={{ fontSize: "0.85rem", color: "#C0C0C0" }}>{f.text}</Typography>
+            </Box>
+          ))}
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 3, pt: 2, gap: 1 }}>
+        <Button
+          onClick={() => setInstallDialogOpen(false)}
+          sx={{ color: "#8A8A8A", textTransform: "none", fontWeight: 600, flex: 1 }}
+        >
+          Để sau
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleInstall}
+          disabled={installing}
+          startIcon={
+            installing ? <CircularProgress size={16} color="inherit" /> : <Download size={16} />
+          }
+          sx={{
+            textTransform: "none",
+            fontWeight: 700,
+            borderRadius: 1.5,
+            bgcolor: "#C8102E",
+            "&:hover": { bgcolor: "#A00B24" },
+            flex: 2,
+          }}
+        >
+          {canInstall ? (installing ? "Đang cài..." : "Cài đặt ngay") : "Đã hiểu"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 
   return (
     <>
@@ -117,6 +257,7 @@ const Navbar: React.FC = () => {
           transition:
             "background-color 0.35s ease, border-color 0.35s ease, backdrop-filter 0.35s ease",
           zIndex: 1000,
+          paddingTop: "env(safe-area-inset-top, 0px)",
         }}
       >
         <Toolbar
@@ -173,6 +314,7 @@ const Navbar: React.FC = () => {
                   key={link.href}
                   component={Link}
                   href={link.href}
+                  onClick={(link as any).isOffline ? handleOfflineClick : undefined}
                   sx={{
                     ...navLinkSx,
                     color: pathname === link.href ? "primary.main" : navLinkSx.color,
@@ -253,6 +395,7 @@ const Navbar: React.FC = () => {
             backgroundImage: "none",
             borderRight: `1px solid ${theme.palette.divider}`,
             boxShadow: "10px 0 30px rgba(0,0,0,0.5)",
+            paddingTop: "env(safe-area-inset-top, 0px)",
           },
         }}
       >
@@ -273,7 +416,10 @@ const Navbar: React.FC = () => {
               <ListItemButton
                 component={Link}
                 href={link.href}
-                onClick={handleDrawerToggle}
+                onClick={(e: React.MouseEvent) => {
+                  if ((link as any).isOffline) handleOfflineClick(e);
+                  else handleDrawerToggle();
+                }}
                 sx={{
                   borderRadius: 1.5,
                   py: 1.2,
@@ -336,6 +482,8 @@ const Navbar: React.FC = () => {
           </Box>
         )}
       </Drawer>
+
+      {installDialog}
     </>
   );
 };

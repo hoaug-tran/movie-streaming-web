@@ -90,16 +90,16 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
       isSearchingRef.current = false;
       lastPageRef.current = -1;
 
-      debounceTimerRef.current = setTimeout(() => {
-        handleSearch(query, 0);
-      }, 100);
+      handleSearch(query, 0);
     }
   }, [query, handleSearch]);
 
   useEffect(() => {
+    const debounceTimer = debounceTimerRef;
+    const observerTimeout = observerTimeoutRef;
     return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      if (observerTimeoutRef.current) clearTimeout(observerTimeoutRef.current);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      if (observerTimeout.current) clearTimeout(observerTimeout.current);
     };
   }, []);
 

@@ -392,9 +392,10 @@ export default function PricingPage() {
                 variant="h1"
                 fontWeight={950}
                 sx={{
-                  fontSize: { xs: "2.5rem", md: "4.8rem" },
-                  lineHeight: 0.92,
-                  letterSpacing: "-0.075em",
+                  fontSize: { xs: "2.25rem", sm: "2.75rem", md: "4.8rem" },
+                  lineHeight: { xs: 1.12, md: 0.92 },
+                  letterSpacing: { xs: "-0.02em", md: "-0.075em" },
+                  wordSpacing: { xs: "0.04em", md: "normal" },
                 }}
               >
                 Trải nghiệm điện ảnh theo cách của bạn.

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -13,16 +13,27 @@ import SearchResultsPage from "@/components/Search/SearchResultsPage";
 import { darkTheme } from "@/config/theme";
 import { Box } from "@mui/material";
 import { NotificationProvider } from "@/context/notification-context";
+import { UploadProgressProvider } from "@/context/upload-progress-context";
+import UploadProgressSnackbar from "@/components/Upload/UploadProgressSnackbar";
+import InstallBanner from "@/components/PWA/InstallBanner";
+import GioPhimBot from "@/components/Chatbot/GioPhimBot";
+import { usePushNotification } from "@/hooks/use-push-notification";
 
 function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { searchOpen, searchQuery, setSearchOpen, setSearchQuery } = useSearch();
   const isAdminRoute = pathname?.startsWith("/admin");
+  usePushNotification();
 
   const handleCloseSearch = () => {
     setSearchOpen(false);
     setSearchQuery("");
   };
+
+  useEffect(() => {
+    setSearchOpen(false);
+    setSearchQuery("");
+  }, [pathname, setSearchOpen, setSearchQuery]);
 
   if (isAdminRoute) {
     return <Box>{children}</Box>;
@@ -31,12 +42,12 @@ function LayoutWrapper({ children }: { children: ReactNode }) {
   return (
     <>
       <Navbar />
-
-      {searchOpen && searchQuery ? (
+      <Box sx={{ display: searchOpen && searchQuery ? "none" : "block" }}>{children}</Box>
+      {searchOpen && searchQuery && (
         <SearchResultsPage query={searchQuery} onClose={handleCloseSearch} />
-      ) : (
-        <Box>{children}</Box>
       )}
+      <InstallBanner />
+      <GioPhimBot />
     </>
   );
 }
@@ -49,7 +60,10 @@ export default function Providers({ children }: { children: ReactNode }) {
         <AuthProvider>
           <SearchProvider>
             <NotificationProvider>
-              <LayoutWrapper>{children}</LayoutWrapper>
+              <UploadProgressProvider>
+                <LayoutWrapper>{children}</LayoutWrapper>
+                <UploadProgressSnackbar />
+              </UploadProgressProvider>
             </NotificationProvider>
           </SearchProvider>
         </AuthProvider>

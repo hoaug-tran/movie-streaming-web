@@ -12,6 +12,7 @@ import {
   Chip,
   alpha,
   useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import Image from "next/image";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
@@ -92,6 +93,11 @@ export function MovieCard({
   sx: sxOverride,
 }: MovieCardProps) {
   const theme = useTheme();
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up("lg"), { defaultMatches: false });
+  const hasHoverPointer = useMediaQuery("(hover: hover) and (pointer: fine)", {
+    defaultMatches: false,
+  });
+  const isDesktop = isLargeScreen && hasHoverPointer;
   const { navigateToWatch } = usePlayNavigation();
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -145,6 +151,7 @@ export function MovieCard({
   };
 
   const handleMouseEnter = () => {
+    if (!isDesktop) return;
     if (posterRef.current) {
       setRect(posterRef.current.getBoundingClientRect());
     }
@@ -154,6 +161,7 @@ export function MovieCard({
   };
 
   const handleMouseLeave = () => {
+    if (!isDesktop) return;
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
     leaveTimeout.current = setTimeout(() => setIsHovered(false), 200);
   };
@@ -563,7 +571,7 @@ export function MovieCard({
         {renderBaseCard()}
       </Box>
 
-      {hasMounted && rect && typeof window !== "undefined" && (
+      {isDesktop && hasMounted && rect && typeof window !== "undefined" && (
         <Portal>
           <Box
             onMouseEnter={handlePortalMouseEnter}

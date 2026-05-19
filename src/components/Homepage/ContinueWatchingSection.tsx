@@ -18,7 +18,7 @@ export function ContinueWatchingSection() {
 
   return (
     <Box sx={{ width: "100%", py: { xs: 0.75, md: 1 }, px: { xs: 2, md: 4 }, mt: 2 }}>
-      <SectionHeader title="Tiếp tục xem" />
+      <SectionHeader title="Tiếp tục xem" subtitle="Xem tiếp các tập phim đang xem dở" />
 
       <HorizontalScrollGrid itemWidth={280}>
         {isLoading
