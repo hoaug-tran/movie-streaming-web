@@ -3,10 +3,32 @@ const path = require("path");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  allowedDevOrigins: ["localhost"],
+  allowedDevOrigins: ["localhost", "giophim.libsys.me", "api.libsys.me"],
   outputFileTracingRoot: path.join(__dirname),
   compiler: {
     emotion: true,
+  },
+  productionBrowserSourceMaps: false,
+  experimental: {
+    optimizePackageImports: ["@mui/material", "@mui/icons-material", "lucide-react"],
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.cache = {
+        type: "memory",
+        maxGenerations: 1,
+      };
+      if (!isServer) {
+        config.optimization = config.optimization || {};
+        config.optimization.runtimeChunk = "single";
+        config.optimization.splitChunks = {
+          chunks: "all",
+          maxInitialRequests: 25,
+          minSize: 20000,
+        };
+      }
+    }
+    return config;
   },
   images: {
     remotePatterns: [
@@ -23,6 +45,14 @@ const nextConfig = {
         protocol: "http",
         hostname: "localhost",
         port: "3000",
+      },
+      {
+        protocol: "https",
+        hostname: "giophim.libsys.me",
+      },
+      {
+        protocol: "https",
+        hostname: "api.libsys.me",
       },
       {
         protocol: "https",
@@ -50,12 +80,34 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+          {
+            key: "Service-Worker-Allowed",
+            value: "/",
+          },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
     ];
   },
   env: {
     NEXT_PUBLIC_API_BASE_URL:
-      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1",
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.libsys.me/api/v1",
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "https://giophim.libsys.me",
   },
 };
 
