@@ -13,7 +13,8 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { Bell } from "lucide-react";
+import { Bell, BellRing } from "lucide-react";
+import { useState } from "react";
 import NotificationItem from "./NotificationItem";
 import {
   useDeleteNotification,
@@ -21,6 +22,7 @@ import {
   useMarkAsRead,
   useMyNotifications,
 } from "@/modules/notification/hooks/useNotifications";
+import { usePushNotification } from "@/hooks/use-push-notification";
 
 interface NotificationPopupProps {
   anchorEl: HTMLElement | null;
@@ -209,6 +211,67 @@ function NotificationFooter({ count }: { count: number }) {
   );
 }
 
+function PushPermissionBanner() {
+  const { isSupported, permission, isSubscribed, isLoading, subscribe } = usePushNotification();
+  const theme = useTheme();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!isSupported || permission === "denied" || isSubscribed || dismissed) return null;
+
+  return (
+    <Box
+      sx={{
+        mx: 2,
+        my: 1.25,
+        p: 1.5,
+        borderRadius: 2,
+        bgcolor: alpha(theme.palette.primary.main, 0.08),
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+        display: "flex",
+        alignItems: "center",
+        gap: 1.5,
+        flexShrink: 0,
+      }}
+    >
+      <BellRing size={18} color={theme.palette.primary.main} />
+      <Typography sx={{ flex: 1, fontSize: "0.78rem", color: "text.secondary", lineHeight: 1.4 }}>
+        Bật thông báo để nhận tin tức phim mới
+      </Typography>
+      <Button
+        size="small"
+        variant="contained"
+        onClick={subscribe}
+        disabled={isLoading}
+        sx={{
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          px: 1.25,
+          py: 0.5,
+          borderRadius: 1.5,
+          bgcolor: "primary.main",
+          "&:hover": { bgcolor: "primary.dark" },
+          flexShrink: 0,
+          textTransform: "none",
+          minWidth: 60,
+        }}
+      >
+        {isLoading ? <CircularProgress size={12} /> : "Bật"}
+      </Button>
+      <Box
+        onClick={() => setDismissed(true)}
+        sx={{
+          cursor: "pointer",
+          color: "text.disabled",
+          display: "flex",
+          "&:hover": { color: "text.secondary" },
+        }}
+      >
+        <Bell size={14} />
+      </Box>
+    </Box>
+  );
+}
+
 export default function NotificationPopup({ anchorEl, onClose }: NotificationPopupProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -270,6 +333,7 @@ export default function NotificationPopup({ anchorEl, onClose }: NotificationPop
           onMarkAll={() => markAllAsRead.mutate()}
         />
         <Divider />
+        <PushPermissionBanner />
         <NotificationList {...sharedProps} needsScroll={true} />
         <NotificationFooter count={notifications.length} />
       </Drawer>
@@ -313,6 +377,7 @@ export default function NotificationPopup({ anchorEl, onClose }: NotificationPop
         onMarkAll={() => markAllAsRead.mutate()}
       />
       <Divider />
+      <PushPermissionBanner />
       <NotificationList {...sharedProps} />
       <NotificationFooter count={notifications.length} />
     </Popover>
