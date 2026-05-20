@@ -14,11 +14,13 @@ import {
   DialogTitle,
   Divider,
   Grid,
+  IconButton,
   LinearProgress,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -654,55 +656,123 @@ export default function AdminUsersPage() {
                               : "Chưa đăng nhập"}
                           </Typography>
                         </Box>
-                        <Box component="td" sx={{ p: 2 }}>
-                          <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                            <Button
-                              id={`admin-users-toggle-lock-${user.id}`}
-                              size="small"
-                              variant="outlined"
-                              color={user.accountStatus === "BLOCKED" ? "success" : "warning"}
-                              disabled={statusMutation.isPending}
-                              startIcon={
-                                user.accountStatus === "BLOCKED" ? (
-                                  <LockOpenIcon fontSize="small" />
-                                ) : (
-                                  <LockIcon fontSize="small" />
-                                )
+                        <Box
+                          component="td"
+                          sx={{
+                            p: 2,
+                            whiteSpace: "nowrap",
+                            minWidth: 160,
+                            textAlign: "right",
+                          }}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={0.5}
+                            justifyContent="flex-end"
+                            alignItems="center"
+                            flexWrap="nowrap"
+                          >
+                            <Tooltip
+                              title={
+                                user.accountStatus === "BLOCKED" ? "Mở khóa" : "Khóa tài khoản"
                               }
-                              onClick={() =>
-                                statusMutation.mutate({
-                                  id: user.id,
-                                  status: user.accountStatus === "BLOCKED" ? "ACTIVE" : "BLOCKED",
-                                })
-                              }
-                              sx={{ borderRadius: 1.25, fontWeight: 800, fontSize: "0.72rem" }}
+                              arrow
+                              placement="top"
                             >
-                              {user.accountStatus === "BLOCKED" ? "Mở khóa" : "Khóa"}
-                            </Button>
-                            <Button
-                              id={`admin-users-edit-${user.id}`}
-                              size="small"
-                              variant="outlined"
-                              startIcon={<EditIcon fontSize="small" />}
-                              onClick={() => {
-                                setFormError(null);
-                                setFormState({ mode: "edit", user });
-                              }}
-                              sx={{ borderRadius: 1.25, fontWeight: 800, fontSize: "0.72rem" }}
-                            >
-                              Sửa
-                            </Button>
-                            <Button
-                              id={`admin-users-delete-${user.id}`}
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              startIcon={<DeleteIcon fontSize="small" />}
-                              onClick={() => setDeleteTarget(user)}
-                              sx={{ borderRadius: 1.25, fontWeight: 800, fontSize: "0.72rem" }}
-                            >
-                              Xóa
-                            </Button>
+                              <span>
+                                <IconButton
+                                  id={`admin-users-toggle-lock-${user.id}`}
+                                  size="small"
+                                  color={user.accountStatus === "BLOCKED" ? "success" : "warning"}
+                                  disabled={statusMutation.isPending}
+                                  onClick={() =>
+                                    statusMutation.mutate({
+                                      id: user.id,
+                                      status:
+                                        user.accountStatus === "BLOCKED" ? "ACTIVE" : "BLOCKED",
+                                    })
+                                  }
+                                  aria-label={
+                                    user.accountStatus === "BLOCKED" ? "Mở khóa" : "Khóa tài khoản"
+                                  }
+                                  sx={{
+                                    borderRadius: 1.25,
+                                    border: `1px solid ${theme.palette.divider}`,
+                                    bgcolor: alpha(theme.palette.background.default, 0.4),
+                                    flexShrink: 0,
+                                    "&:hover": {
+                                      bgcolor: alpha(
+                                        user.accountStatus === "BLOCKED"
+                                          ? theme.palette.success.main
+                                          : theme.palette.warning.main,
+                                        0.12
+                                      ),
+                                      borderColor: alpha(
+                                        user.accountStatus === "BLOCKED"
+                                          ? theme.palette.success.main
+                                          : theme.palette.warning.main,
+                                        0.4
+                                      ),
+                                    },
+                                  }}
+                                >
+                                  {user.accountStatus === "BLOCKED" ? (
+                                    <LockOpenIcon fontSize="small" />
+                                  ) : (
+                                    <LockIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Sửa" arrow placement="top">
+                              <span>
+                                <IconButton
+                                  id={`admin-users-edit-${user.id}`}
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => {
+                                    setFormError(null);
+                                    setFormState({ mode: "edit", user });
+                                  }}
+                                  aria-label="Sửa"
+                                  sx={{
+                                    borderRadius: 1.25,
+                                    border: `1px solid ${theme.palette.divider}`,
+                                    bgcolor: alpha(theme.palette.background.default, 0.4),
+                                    flexShrink: 0,
+                                    "&:hover": {
+                                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                                      borderColor: alpha(theme.palette.primary.main, 0.4),
+                                    },
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Xóa" arrow placement="top">
+                              <span>
+                                <IconButton
+                                  id={`admin-users-delete-${user.id}`}
+                                  size="small"
+                                  color="error"
+                                  onClick={() => setDeleteTarget(user)}
+                                  aria-label="Xóa"
+                                  sx={{
+                                    borderRadius: 1.25,
+                                    border: `1px solid ${theme.palette.divider}`,
+                                    bgcolor: alpha(theme.palette.background.default, 0.4),
+                                    flexShrink: 0,
+                                    "&:hover": {
+                                      bgcolor: alpha(theme.palette.error.main, 0.12),
+                                      borderColor: alpha(theme.palette.error.main, 0.4),
+                                    },
+                                  }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                           </Stack>
                         </Box>
                       </Box>

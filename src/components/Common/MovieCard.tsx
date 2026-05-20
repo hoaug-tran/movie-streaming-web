@@ -427,9 +427,11 @@ export function MovieCard({
           border: "1px solid",
           borderColor: "divider",
           transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-          "&:hover": {
-            borderColor: "rgba(255,255,255,0.18)",
-            boxShadow: "0 6px 24px rgba(0,0,0,0.4)",
+          "@media (hover: hover) and (pointer: fine)": {
+            "&:hover": {
+              borderColor: "rgba(255,255,255,0.18)",
+              boxShadow: "0 6px 24px rgba(0,0,0,0.4)",
+            },
           },
         }}
       >
@@ -563,8 +565,11 @@ export function MovieCard({
           height: variant === "ranked" ? 220 : "auto",
           aspectRatio: variant === "ranked" ? "auto" : "16 / 9",
           cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
           transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-          "&:hover": { transform: "translateY(-4px)" },
+          "@media (hover: hover) and (pointer: fine)": {
+            "&:hover": { transform: "translateY(-4px)" },
+          },
           ...sxOverride,
         }}
       >

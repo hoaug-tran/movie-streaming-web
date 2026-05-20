@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, RefObject } from "react";
 import Hls from "hls.js";
 import { Box, Typography } from "@mui/material";
 
@@ -67,6 +67,11 @@ export default function HlsPlayer({
   const shouldPlayRef = useRef(shouldPlay);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [useNativeHls] = useState<boolean>(detectNativeHls);
+  // Khi phát offline (m3u8 từ blob với same-origin segments) PHẢI dùng HLS.js
+  // để fetch đi qua Service Worker. Native HLS trên Safari bypass SW không truy
+  // xuất được IndexedDB.
+  const isOffline = Boolean(offlineSrc);
+  const useNative = useNativeHls && !isOffline;
 
   const actualSrc = offlineSrc || src;
 
@@ -83,28 +88,31 @@ export default function HlsPlayer({
     setErrorMsg(null);
   }, [src, offlineSrc]);
 
-  const tryPlayWithMutedFallback = async (video: HTMLVideoElement) => {
-    const wasMuted = video.muted;
-    if (wasMuted) {
-      video.muted = false;
-    }
-    try {
-      await video.play();
-      onMutedChange?.(false);
-      return;
-    } catch {
-      video.muted = true;
-      onMutedChange?.(true);
+  const tryPlayWithMutedFallback = useCallback(
+    async (video: HTMLVideoElement) => {
+      const wasMuted = video.muted;
+      if (wasMuted) {
+        video.muted = false;
+      }
       try {
         await video.play();
+        onMutedChange?.(false);
+        return;
       } catch {
-        // playback still blocked. user must tap.
+        video.muted = true;
+        onMutedChange?.(true);
+        try {
+          await video.play();
+        } catch {
+          // IOS suck
+        }
       }
-    }
-  };
+    },
+    [onMutedChange]
+  );
 
   useEffect(() => {
-    if (useNativeHls) return;
+    if (useNative) return;
     const video = videoRef.current;
     if (!video) return;
     if (!actualSrc) return;
@@ -194,12 +202,12 @@ export default function HlsPlayer({
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
-  }, [actualSrc, videoRef, useNativeHls]);
+  }, [actualSrc, videoRef, useNative]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (!useNativeHls) return;
+    if (!useNative) return;
     if (!actualSrc) return;
 
     const onLoadedMeta = () => {
@@ -218,7 +226,7 @@ export default function HlsPlayer({
     return () => {
       video.removeEventListener("loadedmetadata", onLoadedMeta);
     };
-  }, [actualSrc, videoRef, useNativeHls]);
+  }, [actualSrc, videoRef, useNative]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -232,22 +240,52 @@ export default function HlsPlayer({
     video.pause();
   }, [shouldPlay, videoRef]);
 
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  const onDurationChangeRef = useRef(onDurationChange);
+  const onPlayRef = useRef(onPlay);
+  const onPauseRef = useRef(onPause);
+  const onEndedRef = useRef(onEnded);
+  const onLoadedRef = useRef(onLoaded);
+  const onMutedChangeRef = useRef(onMutedChange);
+
+  useEffect(() => {
+    onTimeUpdateRef.current = onTimeUpdate;
+  });
+  useEffect(() => {
+    onDurationChangeRef.current = onDurationChange;
+  });
+  useEffect(() => {
+    onPlayRef.current = onPlay;
+  });
+  useEffect(() => {
+    onPauseRef.current = onPause;
+  });
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  });
+  useEffect(() => {
+    onLoadedRef.current = onLoaded;
+  });
+  useEffect(() => {
+    onMutedChangeRef.current = onMutedChange;
+  });
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleTimeUpdate = () => onTimeUpdate?.();
+    const handleTimeUpdate = () => onTimeUpdateRef.current?.();
     const emitDurationIfReady = () => {
       const d = video.duration;
       if (typeof d === "number" && Number.isFinite(d) && d > 0) {
-        onDurationChange?.(d);
+        onDurationChangeRef.current?.(d);
       }
     };
     const handleDuration = () => emitDurationIfReady();
-    const handlePlay = () => onPlay?.();
-    const handlePause = () => onPause?.();
-    const handleEnded = () => onEnded?.();
-    const handleVolumeChange = () => onMutedChange?.(video.muted);
+    const handlePlay = () => onPlayRef.current?.();
+    const handlePause = () => onPauseRef.current?.();
+    const handleEnded = () => onEndedRef.current?.();
+    const handleVolumeChange = () => onMutedChangeRef.current?.(video.muted);
     const handleLoaded = () => {
       const target = startTimeRef.current;
       if (
@@ -259,7 +297,7 @@ export default function HlsPlayer({
         hasAppliedStartTimeRef.current = true;
       }
       emitDurationIfReady();
-      onLoaded?.();
+      onLoadedRef.current?.();
     };
     const handleError = () => {
       const err = video.error;
@@ -285,10 +323,10 @@ export default function HlsPlayer({
     video.addEventListener("error", handleError);
 
     if (Number.isFinite(video.duration) && video.duration > 0) {
-      onDurationChange?.(video.duration);
+      onDurationChangeRef.current?.(video.duration);
     }
     if (video.readyState >= 1) {
-      onTimeUpdate?.();
+      onTimeUpdateRef.current?.();
     }
 
     return () => {
@@ -303,7 +341,7 @@ export default function HlsPlayer({
       video.removeEventListener("volumechange", handleVolumeChange);
       video.removeEventListener("error", handleError);
     };
-  }, [onTimeUpdate, onDurationChange, onPlay, onPause, onEnded, onLoaded, onMutedChange, videoRef]);
+  }, [videoRef]);
 
   return (
     <Box
@@ -318,7 +356,7 @@ export default function HlsPlayer({
     >
       <video
         ref={videoRef as RefObject<HTMLVideoElement>}
-        src={useNativeHls ? actualSrc : undefined}
+        src={useNative ? actualSrc : undefined}
         style={{
           width: "100%",
           height: "100%",
@@ -333,7 +371,7 @@ export default function HlsPlayer({
         x-webkit-airplay="allow"
         webkit-playsinline="true"
         crossOrigin={
-          useNativeHls && actualSrc && isOurBackend(actualSrc) ? "use-credentials" : undefined
+          useNative && actualSrc && isOurBackend(actualSrc) ? "use-credentials" : undefined
         }
         onContextMenu={(e) => e.preventDefault()}
         controlsList="nodownload noremoteplayback"

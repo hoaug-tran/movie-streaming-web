@@ -271,6 +271,124 @@ export default function CinematicBrowsePage({
   if (isLoading) return <BrowseSkeleton />;
 
   if (!heroMovie) {
+    if (selectedCategory !== undefined) {
+      const activeCategory = (categories as CategoryItem[]).find(
+        (category) => category.id === selectedCategory
+      );
+      return (
+        <Box
+          sx={{
+            position: "relative",
+            overflow: "hidden",
+            pb: { xs: 6, md: 10 },
+            bgcolor: "background.default",
+          }}
+        >
+          <Container maxWidth="xl" sx={{ pt: { xs: 4, md: 5 } }}>
+            <Box sx={{ mb: 3 }}>
+              <Chip
+                label={eyebrow}
+                sx={{
+                  mb: 2,
+                  bgcolor: alpha(accent, 0.12),
+                  color: accent,
+                  border: "1px solid",
+                  borderColor: alpha(accent, 0.28),
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                }}
+              />
+              <Typography
+                component="h1"
+                variant="h1"
+                sx={{
+                  fontSize: { xs: "1.75rem", sm: "2.4rem", md: "3.1rem" },
+                  fontWeight: 950,
+                  letterSpacing: "-0.05em",
+                  lineHeight: 1.05,
+                }}
+              >
+                {title}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 1.5, maxWidth: 660 }}>
+                {subtitle}
+              </Typography>
+            </Box>
+
+            <Box
+              component="section"
+              sx={{
+                p: { xs: 2, md: 2.5 },
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 4,
+                bgcolor: "background.paper",
+              }}
+            >
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Button
+                  onClick={() => setSelectedCategory(undefined)}
+                  variant={!selectedCategory ? "contained" : "outlined"}
+                  sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800 }}
+                >
+                  Tất cả
+                </Button>
+                {(categories as CategoryItem[]).map((category) => (
+                  <Button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    variant={selectedCategory === category.id ? "contained" : "outlined"}
+                    sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800 }}
+                  >
+                    {category.name}
+                  </Button>
+                ))}
+              </Stack>
+            </Box>
+
+            <Box
+              sx={{
+                mt: 3,
+                p: { xs: 4, md: 6 },
+                borderRadius: 4,
+                border: "1px dashed",
+                borderColor: alpha(accent, 0.4),
+                bgcolor: alpha(accent, 0.04),
+                textAlign: "center",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: { xs: "1.2rem", md: "1.5rem" },
+                  fontWeight: 900,
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                Chưa có {label} trong danh mục
+                {activeCategory ? ` "${activeCategory.name}"` : ""}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 520, mx: "auto" }}>
+                Bạn có thể chọn danh mục khác hoặc bỏ lọc để xem toàn bộ {label} hiện có.
+              </Typography>
+              <Button
+                onClick={() => setSelectedCategory(undefined)}
+                variant="contained"
+                sx={{
+                  mt: 3,
+                  borderRadius: 999,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  px: 3,
+                }}
+              >
+                Bỏ lọc danh mục
+              </Button>
+            </Box>
+          </Container>
+        </Box>
+      );
+    }
+
     return (
       <Container
         maxWidth="xl"

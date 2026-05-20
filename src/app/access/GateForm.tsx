@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { alpha, useTheme } from "@mui/material/styles";
 import {
   Box,
@@ -21,7 +21,6 @@ import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import Image from "next/image";
 
 export default function GateForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const theme = useTheme();
 
@@ -54,8 +53,8 @@ export default function GateForm() {
         return;
       }
 
-      router.replace(next.startsWith("/") ? next : "/");
-      router.refresh();
+      const target = next.startsWith("/") ? next : "/";
+      window.location.assign(target);
     } catch {
       setError("Không thể kết nối máy chủ. Thử lại sau.");
       setLoading(false);
@@ -65,14 +64,15 @@ export default function GateForm() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         position: "relative",
         overflow: "hidden",
-        px: 2,
-        py: 4,
+        px: { xs: 1.25, sm: 2 },
+        pt: { xs: "calc(env(safe-area-inset-top, 0px) + 16px)", sm: 4 },
+        pb: { xs: "calc(env(safe-area-inset-bottom, 0px) + 16px)", sm: 4 },
         background: `
           radial-gradient(
             circle at 20% 20%,
@@ -107,29 +107,31 @@ export default function GateForm() {
       />
 
       <Container
-        maxWidth="sm"
+        maxWidth="xs"
         sx={{
           position: "relative",
           zIndex: 1,
+          px: { xs: 0.5, sm: 2 },
+          maxWidth: { xs: 360, sm: 420 },
         }}
       >
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 3, sm: 5 },
-            borderRadius: 4,
+            p: { xs: 1.75, sm: 4 },
+            borderRadius: { xs: 2.5, sm: 4 },
             backdropFilter: "blur(20px)",
             background: alpha(theme.palette.background.paper, 0.82),
             border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
             boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6)",
           }}
         >
-          <Stack spacing={3}>
-            <Stack alignItems="center" spacing={1.5}>
+          <Stack spacing={{ xs: 1.5, sm: 3 }}>
+            <Stack alignItems="center" spacing={{ xs: 0.75, sm: 1.25 }}>
               <Box
                 sx={{
-                  width: 64,
-                  height: 64,
+                  width: { xs: 44, sm: 64 },
+                  height: { xs: 44, sm: 64 },
                   borderRadius: "50%",
                   display: "flex",
                   alignItems: "center",
@@ -144,16 +146,23 @@ export default function GateForm() {
                   border: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
                 }}
               >
-                <Image src="/icons/logo.webp" alt="Gió Phim" width={40} height={40} priority />
+                <Image
+                  src="/icons/logo.webp"
+                  alt="Gió Phim"
+                  width={26}
+                  height={26}
+                  priority
+                  style={{ width: "auto", height: "auto", maxWidth: 28, maxHeight: 28 }}
+                />
               </Box>
 
               <Typography
-                variant="h4"
                 component="h1"
                 sx={{
-                  fontWeight: 700,
+                  fontWeight: 800,
                   letterSpacing: "-0.02em",
                   textAlign: "center",
+                  fontSize: { xs: "1.15rem", sm: "1.85rem" },
                   background: `
                     linear-gradient(
                       135deg,
@@ -174,21 +183,26 @@ export default function GateForm() {
                   color: theme.palette.text.secondary,
                   textAlign: "center",
                   maxWidth: 380,
+                  fontSize: { xs: "0.72rem", sm: "0.875rem" },
+                  lineHeight: 1.45,
                 }}
               >
-                Trước khi vào Gió Phim, vui lòng đọc và đồng ý các điều khoản bên dưới.
+                Vui lòng đọc và đồng ý các điều khoản bên dưới.
               </Typography>
             </Stack>
 
-            <Divider sx={{ borderColor: theme.palette.divider }} />
+            <Divider
+              sx={{ borderColor: theme.palette.divider, display: { xs: "none", sm: "block" } }}
+            />
 
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <Stack spacing={{ xs: 1, sm: 1.5 }}>
+              <Stack direction="row" spacing={{ xs: 1, sm: 1.25 }} alignItems="flex-start">
                 <SchoolOutlinedIcon
                   sx={{
                     color: theme.palette.primary.light,
-                    mt: 0.3,
-                    fontSize: 20,
+                    mt: 0.2,
+                    fontSize: { xs: 16, sm: 20 },
+                    flexShrink: 0,
                   }}
                 />
 
@@ -196,20 +210,22 @@ export default function GateForm() {
                   variant="body2"
                   sx={{
                     color: theme.palette.text.primary,
-                    lineHeight: 1.7,
+                    lineHeight: { xs: 1.4, sm: 1.55 },
+                    fontSize: { xs: "0.7rem", sm: "0.875rem" },
                   }}
                 >
                   Trang web này là <b>đồ án học tập phi thương mại</b> thuộc chương trình tốt nghiệp
-                  đại học. Không thu phí người dùng, không phát sinh doanh thu, không quảng cáo.
+                  đại học. Không thu phí, không quảng cáo.
                 </Typography>
               </Stack>
 
-              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <Stack direction="row" spacing={{ xs: 1, sm: 1.25 }} alignItems="flex-start">
                 <GavelOutlinedIcon
                   sx={{
                     color: theme.palette.primary.main,
-                    mt: 0.3,
-                    fontSize: 20,
+                    mt: 0.2,
+                    fontSize: { xs: 16, sm: 20 },
+                    flexShrink: 0,
                   }}
                 />
 
@@ -217,20 +233,23 @@ export default function GateForm() {
                   variant="body2"
                   sx={{
                     color: theme.palette.text.primary,
-                    lineHeight: 1.7,
+                    lineHeight: { xs: 1.4, sm: 1.55 },
+                    fontSize: { xs: "0.7rem", sm: "0.875rem" },
                   }}
                 >
-                  Một số nội dung phim có thể vi phạm quyền tác giả nếu sử dụng ngoài mục đích minh
-                  hoạ kỹ thuật. Bằng việc tiếp tục, bạn xác nhận chỉ truy cập với mục đích học tập,
-                  nghiên cứu cá nhân và không phân phối lại.
+                  Một số nội dung có thể vi phạm bản quyền nếu dùng ngoài mục đích minh hoạ kỹ
+                  thuật. Tiếp tục nghĩa là bạn cam kết chỉ truy cập để học tập và không phân phối
+                  lại.
                 </Typography>
               </Stack>
             </Stack>
 
-            <Divider sx={{ borderColor: theme.palette.divider }} />
+            <Divider
+              sx={{ borderColor: theme.palette.divider, display: { xs: "none", sm: "block" } }}
+            />
 
             <Box component="form" onSubmit={handleSubmit} noValidate>
-              <Stack spacing={2}>
+              <Stack spacing={{ xs: 1.25, sm: 2 }}>
                 <TextField
                   type="password"
                   label="Mật khẩu truy cập"
@@ -240,6 +259,7 @@ export default function GateForm() {
                   autoFocus
                   fullWidth
                   required
+                  size="small"
                   disabled={loading}
                   InputProps={{
                     startAdornment: (
@@ -247,6 +267,7 @@ export default function GateForm() {
                         <LockOutlinedIcon
                           sx={{
                             color: theme.palette.text.secondary,
+                            fontSize: { xs: 18, sm: 22 },
                           }}
                         />
                       </InputAdornment>
@@ -296,13 +317,13 @@ export default function GateForm() {
                 <Button
                   type="submit"
                   variant="contained"
-                  size="large"
+                  size="medium"
                   disabled={loading || !password}
                   fullWidth
                   sx={{
-                    py: 1.4,
-                    fontWeight: 600,
-                    fontSize: "1rem",
+                    py: { xs: 0.9, sm: 1.4 },
+                    fontWeight: 700,
+                    fontSize: { xs: "0.85rem", sm: "1rem" },
                     borderRadius: 2,
                     textTransform: "none",
                     backgroundColor: theme.palette.primary.main,
@@ -338,6 +359,7 @@ export default function GateForm() {
                 opacity: 0.6,
                 textAlign: "center",
                 display: "block",
+                fontSize: { xs: "0.65rem", sm: "0.75rem" },
               }}
             >
               Sau khi xác thực, thiết bị này sẽ được nhớ trong 1 năm.

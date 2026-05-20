@@ -1335,22 +1335,23 @@ export function ProfileClient() {
                 </Box>
                 <Grid container spacing={2}>
                   {[
-                    ["Loại thiết bị", d.selectedSession.deviceType],
-                    ["Địa chỉ IP", d.selectedSession.ipAddress],
+                    ["Loại thiết bị", d.selectedSession.deviceType, 6],
+                    ["Địa chỉ IP", d.selectedSession.ipAddress, 12],
                     [
                       "Vị trí",
                       d.selectedSession.ipAddress
                         ? (d.sessionLocations[d.selectedSession.ipAddress] ?? "Đang xác định")
                         : "Không rõ",
+                      12,
                     ],
-                    ["Tạo lúc", formatDate(d.selectedSession.createdAt)],
-                    ["Hoạt động cuối", formatDate(d.selectedSession.lastActiveAt)],
-                  ].map(([label, value]) => (
-                    <Grid item xs={6} key={String(label)}>
+                    ["Tạo lúc", formatDate(d.selectedSession.createdAt), 6],
+                    ["Hoạt động cuối", formatDate(d.selectedSession.lastActiveAt), 6],
+                  ].map(([label, value, span]) => (
+                    <Grid item xs={span as number} key={String(label)}>
                       <Typography variant="caption" color="text.secondary">
                         {label}
                       </Typography>
-                      <Typography variant="body2" fontWeight={600}>
+                      <Typography variant="body2" fontWeight={600} sx={{ wordBreak: "break-all" }}>
                         {value}
                       </Typography>
                     </Grid>

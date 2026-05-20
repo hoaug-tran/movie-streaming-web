@@ -221,7 +221,7 @@ export default function PlayerControls({
 
   const handleDownloadClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!download.isPWA) {
+    if (!download.isPWA || !download.canDownloadOffline) {
       setShowDownloadDialog(true);
       return;
     }
@@ -1012,10 +1012,18 @@ export default function PlayerControls({
               <Typography
                 sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#F0F0F0", lineHeight: 1.2 }}
               >
-                Cài Gió Phim để Tải phim
+                {download.isInstalled && !download.canDownloadOffline
+                  ? "Yêu cầu gói Premium Plus"
+                  : download.isInstalled
+                    ? "Mở trong ứng dụng"
+                    : "Cài Gió Phim để Tải phim"}
               </Typography>
               <Typography sx={{ fontSize: "0.78rem", color: "#8A8A8A", mt: 0.3 }}>
-                Tải phim và xem khi không có mạng
+                {download.isInstalled && !download.canDownloadOffline
+                  ? "Tính năng tải phim chỉ dành cho gói Premium Plus"
+                  : download.isInstalled
+                    ? "Bạn đã cài Gió Phim — mở app để tải phim"
+                    : "Tải phim và xem khi không có mạng"}
               </Typography>
             </Box>
           </Box>
@@ -1061,9 +1069,37 @@ export default function PlayerControls({
             ))}
           </Box>
 
-          {showIOSGuide && <IOSInstallInstructions />}
-
-          {isUnsupportedIOSBrowser && (
+          {download.isInstalled && download.canDownloadOffline && (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1.5,
+                bgcolor: "rgba(200,16,46,0.06)",
+                border: "1px solid rgba(200,16,46,0.15)",
+              }}
+            >
+              <Typography sx={{ fontSize: "0.82rem", color: "#C0C0C0", lineHeight: 1.6 }}>
+                Ứng dụng Gió Phim đã được cài. Mở ứng dụng và truy cập trang phim để tải về.
+              </Typography>
+            </Box>
+          )}
+          {download.isInstalled && !download.canDownloadOffline && (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1.5,
+                bgcolor: "rgba(244,180,0,0.08)",
+                border: "1px solid rgba(244,180,0,0.25)",
+              }}
+            >
+              <Typography sx={{ fontSize: "0.82rem", color: "#F4B400", lineHeight: 1.6 }}>
+                Tính năng tải phim chỉ dành cho gói <strong>Premium Plus</strong>. Hãy nâng cấp để
+                tải phim và xem khi không có mạng.
+              </Typography>
+            </Box>
+          )}
+          {!download.isInstalled && showIOSGuide && <IOSInstallInstructions />}
+          {!download.isInstalled && isUnsupportedIOSBrowser && (
             <Box
               sx={{
                 p: 1.5,
@@ -1077,23 +1113,25 @@ export default function PlayerControls({
               </Typography>
             </Box>
           )}
-
-          {!download.canInstall && !showIOSGuide && !isUnsupportedIOSBrowser && (
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: 1.5,
-                bgcolor: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <Typography sx={{ fontSize: "0.8rem", color: "#8A8A8A", lineHeight: 1.6 }}>
-                Để cài: nhấn biểu tượng <strong style={{ color: "#C0C0C0" }}>⋮</strong> hoặc{" "}
-                <strong style={{ color: "#C0C0C0" }}>Chia sẻ</strong> trên trình duyệt → chọn{" "}
-                <strong style={{ color: "#C0C0C0" }}>Thêm vào màn hình chính</strong>.
-              </Typography>
-            </Box>
-          )}
+          {!download.isInstalled &&
+            !download.canInstall &&
+            !showIOSGuide &&
+            !isUnsupportedIOSBrowser && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 1.5,
+                  bgcolor: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <Typography sx={{ fontSize: "0.8rem", color: "#8A8A8A", lineHeight: 1.6 }}>
+                  Để cài: nhấn biểu tượng <strong style={{ color: "#C0C0C0" }}>⋮</strong> hoặc{" "}
+                  <strong style={{ color: "#C0C0C0" }}>Chia sẻ</strong> trên trình duyệt → chọn{" "}
+                  <strong style={{ color: "#C0C0C0" }}>Thêm vào màn hình chính</strong>.
+                </Typography>
+              </Box>
+            )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, pt: 2, gap: 1 }}>
           <Button
@@ -1102,7 +1140,44 @@ export default function PlayerControls({
           >
             Để sau
           </Button>
-          {download.canInstall ? (
+          {download.isInstalled && !download.canDownloadOffline ? (
+            <Button
+              variant="contained"
+              onClick={() => {
+                router.push("/pricing");
+                setShowDownloadDialog(false);
+              }}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: 1.5,
+                bgcolor: "#F4B400",
+                color: "#111",
+                "&:hover": { bgcolor: "#d4a000" },
+                flex: 2,
+              }}
+            >
+              Nâng cấp Premium Plus
+            </Button>
+          ) : download.isInstalled ? (
+            <Button
+              variant="contained"
+              onClick={() => {
+                window.open(window.location.href, "_blank");
+                setShowDownloadDialog(false);
+              }}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: 1.5,
+                bgcolor: "#C8102E",
+                "&:hover": { bgcolor: "#a50d26" },
+                flex: 2,
+              }}
+            >
+              Mở ứng dụng
+            </Button>
+          ) : download.canInstall ? (
             <Button
               variant="contained"
               onClick={handleInstallFromDialog}

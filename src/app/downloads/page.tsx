@@ -21,6 +21,8 @@ import { offlineStorage, OfflineMovieRecord } from "@/lib/offline-storage";
 import { formatBytes } from "@/lib/offline-downloader";
 import { usePwa } from "@/hooks/use-pwa";
 import { useOfflinePoster } from "@/hooks/use-offline-poster";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { useSubscription } from "@/hooks/use-subscription";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -52,9 +54,70 @@ function OfflinePosterImage({ movie }: { movie: OfflineMovieRecord }) {
   );
 }
 
+function GateScreen({
+  icon,
+  title,
+  description,
+  accent,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  accent: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        pt: { xs: 10, md: 12 },
+        pb: 8,
+        px: { xs: 2, sm: 3, md: 4 },
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Box sx={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
+        <Box
+          sx={{
+            width: 80,
+            height: 80,
+            borderRadius: "50%",
+            bgcolor: `${accent}18`,
+            border: `1px solid ${accent}44`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mx: "auto",
+            mb: 3,
+          }}
+        >
+          {icon}
+        </Box>
+        <Typography
+          variant="h5"
+          sx={{ fontWeight: 800, color: "#F0F0F0", mb: 1.5, letterSpacing: "-0.02em" }}
+        >
+          {title}
+        </Typography>
+        <Typography sx={{ color: "#8A8A8A", fontSize: "0.9rem", lineHeight: 1.7, mb: 3.5 }}>
+          {description}
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1.5, flexDirection: "column" }}>{children}</Box>
+      </Box>
+    </Box>
+  );
+}
+
 export default function DownloadsPage() {
   const router = useRouter();
   const { isPWA, canInstall, promptInstall, mounted } = usePwa();
+  const { isAuthenticated } = useAuth();
+  const { hasActiveSubscription, currentPlan, isLoading: subLoading } = useSubscription();
+  const canDownload = hasActiveSubscription && currentPlan?.code === "PREMIUM_PLUS";
   const [movies, setMovies] = useState<OfflineMovieRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalSize, setTotalSize] = useState(0);
@@ -63,7 +126,7 @@ export default function DownloadsPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    if (!isPWA) {
+    if (!isPWA || !isAuthenticated || !canDownload) {
       setLoading(false);
       return;
     }
@@ -74,7 +137,7 @@ export default function DownloadsPage() {
       setLoading(false);
     });
     offlineStorage.getTotalSize().then(setTotalSize);
-  }, [mounted, isPWA]);
+  }, [mounted, isPWA, isAuthenticated, canDownload]);
 
   const handleDelete = async (episodeId: number) => {
     setDeleting(episodeId);
@@ -86,7 +149,7 @@ export default function DownloadsPage() {
   };
 
   const handlePlay = (movie: OfflineMovieRecord) => {
-    router.push(`/watch/${movie.movieSlug}?episode=${movie.episodeId}&offline=1&downloaded=1`);
+    router.push(`/watch/offline?episode=${movie.episodeId}&slug=${movie.movieSlug}`);
   };
 
   const isExpired = (expiresAt: string) => new Date(expiresAt) < new Date();
@@ -134,115 +197,128 @@ export default function DownloadsPage() {
 
   if (!isPWA) {
     return (
-      <>
-        <Box
+      <GateScreen
+        icon={<Download size={40} color="#C8102E" />}
+        title="Cần cài Gió Phim"
+        description="Tính năng xem phim offline chỉ khả dụng trong ứng dụng Gió Phim. Cài đặt để tải phim và xem khi không có mạng."
+        accent="#C8102E"
+      >
+        {canInstall && (
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleInstall}
+            disabled={installing}
+            startIcon={<Download size={18} />}
+            sx={{
+              bgcolor: "#C8102E",
+              "&:hover": { bgcolor: "#A00B24" },
+              fontWeight: 700,
+              py: 1.4,
+              borderRadius: 2,
+            }}
+          >
+            {installing ? "Đang cài đặt..." : "Cài đặt Gió Phim"}
+          </Button>
+        )}
+        <Button
+          variant="outlined"
+          fullWidth
+          onClick={() => router.push("/")}
           sx={{
-            minHeight: "100vh",
-            bgcolor: "background.default",
-            pt: { xs: 10, md: 12 },
-            pb: 8,
-            px: { xs: 2, sm: 3, md: 4 },
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            borderColor: "rgba(255,255,255,0.15)",
+            color: "#8A8A8A",
+            fontWeight: 600,
+            py: 1.2,
+            borderRadius: 2,
+            "&:hover": { borderColor: "rgba(255,255,255,0.3)", color: "#F0F0F0" },
           }}
         >
-          <Box sx={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
-            <Box
-              sx={{
-                width: 96,
-                height: 96,
-                borderRadius: 3,
-                overflow: "hidden",
-                mx: "auto",
-                mb: 3,
-                boxShadow: "0 8px 32px rgba(200,16,46,0.25)",
-              }}
-            >
-              <Box
-                component="img"
-                src="/icons/logo.webp"
-                alt="Gió Phim"
-                sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </Box>
+          Về trang chủ
+        </Button>
+      </GateScreen>
+    );
+  }
 
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 800, color: "#F0F0F0", mb: 1, letterSpacing: "-0.02em" }}
-            >
-              Cần cài Gió Phim
-            </Typography>
-            <Typography sx={{ color: "#8A8A8A", fontSize: "0.9rem", lineHeight: 1.7, mb: 3 }}>
-              Tính năng xem phim offline chỉ khả dụng trong ứng dụng Gió Phim. Cài đặt để tải phim
-              và xem khi không có mạng.
-            </Typography>
+  if (!isAuthenticated) {
+    return (
+      <GateScreen
+        icon={<Shield size={40} color="#8EA7E9" />}
+        title="Đăng nhập để tiếp tục"
+        description="Bạn cần đăng nhập vào tài khoản Gió Phim để sử dụng tính năng tải phim ngoại tuyến."
+        accent="#8EA7E9"
+      >
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={() => router.push("/auth/login?redirect=/downloads")}
+          sx={{
+            bgcolor: "#8EA7E9",
+            "&:hover": { bgcolor: "#6b8fd4" },
+            color: "#111",
+            fontWeight: 700,
+            py: 1.4,
+            borderRadius: 2,
+          }}
+        >
+          Đăng nhập
+        </Button>
+        <Button
+          variant="outlined"
+          fullWidth
+          onClick={() => router.push("/")}
+          sx={{
+            borderColor: "rgba(255,255,255,0.15)",
+            color: "#8A8A8A",
+            fontWeight: 600,
+            py: 1.2,
+            borderRadius: 2,
+          }}
+        >
+          Về trang chủ
+        </Button>
+      </GateScreen>
+    );
+  }
 
-            <Box
-              sx={{
-                p: 2.5,
-                borderRadius: 2,
-                bgcolor: "rgba(200,16,46,0.06)",
-                border: "1px solid rgba(200,16,46,0.15)",
-                mb: 3,
-                display: "flex",
-                flexDirection: "column",
-                gap: 1.5,
-                textAlign: "left",
-              }}
-            >
-              {[
-                { icon: <WifiOff size={16} />, text: "Xem phim không cần mạng" },
-                { icon: <Shield size={16} />, text: "Lưu trữ an toàn trên thiết bị" },
-                { icon: <Clock size={16} />, text: "Tự động xoá sau 48 giờ" },
-                { icon: <HardDrive size={16} />, text: "Quản lý dung lượng dễ dàng" },
-              ].map((f) => (
-                <Box key={f.text} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                  <Box sx={{ color: "#C8102E", flexShrink: 0, display: "flex" }}>{f.icon}</Box>
-                  <Typography sx={{ fontSize: "0.875rem", color: "#C0C0C0" }}>{f.text}</Typography>
-                </Box>
-              ))}
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 1.5, flexDirection: "column" }}>
-              {canInstall && (
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={handleInstall}
-                  disabled={installing}
-                  startIcon={<Download size={18} />}
-                  sx={{
-                    bgcolor: "#C8102E",
-                    "&:hover": { bgcolor: "#A00B24" },
-                    fontWeight: 700,
-                    py: 1.4,
-                    borderRadius: 2,
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  {installing ? "Đang cài đặt..." : "Cài đặt Gió Phim"}
-                </Button>
-              )}
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => router.push("/")}
-                sx={{
-                  borderColor: "rgba(255,255,255,0.15)",
-                  color: "#8A8A8A",
-                  fontWeight: 600,
-                  py: 1.2,
-                  borderRadius: 2,
-                  "&:hover": { borderColor: "rgba(255,255,255,0.3)", color: "#F0F0F0" },
-                }}
-              >
-                Về trang chủ
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      </>
+  if (!subLoading && !canDownload) {
+    return (
+      <GateScreen
+        icon={<Shield size={40} color="#F4B400" />}
+        title="Yêu cầu gói Premium Plus"
+        description="Tính năng tải phim và xem ngoại tuyến chỉ dành riêng cho gói Premium Plus. Nâng cấp để tải phim và xem khi không có mạng."
+        accent="#F4B400"
+      >
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={() => router.push("/pricing")}
+          sx={{
+            bgcolor: "#F4B400",
+            "&:hover": { bgcolor: "#d4a000" },
+            color: "#111",
+            fontWeight: 700,
+            py: 1.4,
+            borderRadius: 2,
+          }}
+        >
+          Xem gói Premium Plus
+        </Button>
+        <Button
+          variant="outlined"
+          fullWidth
+          onClick={() => router.push("/")}
+          sx={{
+            borderColor: "rgba(255,255,255,0.15)",
+            color: "#8A8A8A",
+            fontWeight: 600,
+            py: 1.2,
+            borderRadius: 2,
+          }}
+        >
+          Về trang chủ
+        </Button>
+      </GateScreen>
     );
   }
 

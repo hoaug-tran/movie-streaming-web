@@ -125,6 +125,9 @@ const clearAuthSession = () => {
   removeFromLocalStorage("user");
   removeFromLocalStorage("accessToken");
   removeFromLocalStorage("refreshToken");
+  // Xoá cache subscription để user kế tiếp không thừa hưởng gói cũ
+  removeFromLocalStorage("cached-subscription-plans");
+  removeFromLocalStorage("cached-my-subscription");
 
   if (typeof window !== "undefined") {
     window.sessionStorage.removeItem("google_oauth_state");

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Typography,
@@ -17,6 +18,7 @@ import { Close, PlayArrow } from "@mui/icons-material";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import FileDownloadDoneIcon from "@mui/icons-material/FileDownloadDone";
 import DownloadingOutlinedIcon from "@mui/icons-material/DownloadingOutlined";
+import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import { Episode } from "@/modules/movie/types/movie";
 import { useOfflineDownload } from "@/hooks/use-offline-download";
 import { useOfflinePoster } from "@/hooks/use-offline-poster";
@@ -80,6 +82,8 @@ function EpisodeDownloadButton({
     status,
     progress,
     isPWA,
+    isInstalled,
+    canDownloadOffline,
     mounted,
     canInstall,
     isIOS,
@@ -91,8 +95,10 @@ function EpisodeDownloadButton({
     promptInstall,
   } = useOfflineDownload(episodeId);
 
+  const router = useRouter();
   const [installDialogOpen, setInstallDialogOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const needsUpgrade = isInstalled && !canDownloadOffline;
 
   if (!mounted) return null;
 
@@ -101,7 +107,7 @@ function EpisodeDownloadButton({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isPWA) {
+    if (!isPWA || !canDownloadOffline) {
       setInstallDialogOpen(true);
       return;
     }
@@ -131,7 +137,9 @@ function EpisodeDownloadButton({
           ? "Lỗi — Thử lại"
           : !isPWA
             ? "Tải phim — Cần cài ứng dụng"
-            : "Tải phim";
+            : !canDownloadOffline
+              ? "Tải phim — Yêu cầu Premium Plus"
+              : "Tải phim";
 
   return (
     <>
@@ -215,10 +223,12 @@ function EpisodeDownloadButton({
               <Typography
                 sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#F0F0F0", lineHeight: 1.2 }}
               >
-                Cài Gió Phim để Tải phim
+                {needsUpgrade ? "Yêu cầu gói Premium Plus" : "Cài Gió Phim để Tải phim"}
               </Typography>
               <Typography sx={{ fontSize: "0.78rem", color: "#8A8A8A", mt: 0.3 }}>
-                Tải phim và xem khi không có mạng
+                {needsUpgrade
+                  ? "Tính năng tải phim chỉ dành cho gói Premium Plus"
+                  : "Tải phim và xem khi không có mạng"}
               </Typography>
             </Box>
           </Box>
@@ -264,9 +274,25 @@ function EpisodeDownloadButton({
             ))}
           </Box>
 
-          {showIOSGuide && <IOSInstallInstructions />}
+          {needsUpgrade && (
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 1.5,
+                bgcolor: "rgba(244,180,0,0.08)",
+                border: "1px solid rgba(244,180,0,0.25)",
+              }}
+            >
+              <Typography sx={{ fontSize: "0.82rem", color: "#F4B400", lineHeight: 1.6 }}>
+                Tính năng tải phim chỉ dành cho gói <strong>Premium Plus</strong>. Hãy nâng cấp để
+                tải phim và xem khi không có mạng.
+              </Typography>
+            </Box>
+          )}
 
-          {isUnsupportedBrowser && (
+          {!needsUpgrade && showIOSGuide && <IOSInstallInstructions />}
+
+          {!needsUpgrade && isUnsupportedBrowser && (
             <Box
               sx={{
                 p: 1.5,
@@ -281,7 +307,7 @@ function EpisodeDownloadButton({
             </Box>
           )}
 
-          {!canInstall && !showIOSGuide && !isUnsupportedBrowser && (
+          {!needsUpgrade && !canInstall && !showIOSGuide && !isUnsupportedBrowser && (
             <Box
               sx={{
                 p: 1.5,
@@ -308,7 +334,28 @@ function EpisodeDownloadButton({
           >
             Để sau
           </Button>
-          {canInstall ? (
+          {needsUpgrade ? (
+            <Button
+              variant="contained"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push("/pricing");
+                setInstallDialogOpen(false);
+              }}
+              startIcon={<WorkspacePremiumIcon />}
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: 1.5,
+                bgcolor: "#F4B400",
+                color: "#111",
+                "&:hover": { bgcolor: "#d4a000" },
+                flex: 2,
+              }}
+            >
+              Nâng cấp Premium Plus
+            </Button>
+          ) : canInstall ? (
             <Button
               variant="contained"
               onClick={handleInstall}
@@ -379,6 +426,10 @@ export default function EpisodeList({
         flexDirection: "column",
         zIndex: 30,
         overflow: "hidden",
+        // Né notch/status bar khi PWA iPhone standalone landscape & portrait
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingRight: "env(safe-area-inset-right, 0px)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
       <Box

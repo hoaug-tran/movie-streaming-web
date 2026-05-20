@@ -83,6 +83,10 @@ const hasExclusiveMovies = (plan?: SubscriptionPlan | null) => {
   return plan?.code === "PREMIUM" || plan?.code === "PREMIUM_PLUS";
 };
 
+const hasOfflineDownload = (plan?: SubscriptionPlan | null): boolean => {
+  return plan?.code === "PREMIUM_PLUS";
+};
+
 const getPlanEntitlements = (plan?: SubscriptionPlan | null): Entitlement[] => {
   const isPremiumPlus = plan?.code === "PREMIUM_PLUS";
 
@@ -94,6 +98,7 @@ const getPlanEntitlements = (plan?: SubscriptionPlan | null): Entitlement[] => {
     },
     { label: "Nhiều thiết bị", available: Number(plan?.maxDevices ?? 1) > 1 },
     { label: "Phim mới - độc quyền", available: hasExclusiveMovies(plan) },
+    { label: "Tải phim & Xem Offline", available: hasOfflineDownload(plan) },
   ];
 };
 

@@ -45,9 +45,9 @@ export default function TermsOfServicePage() {
               Hợp đồng giữa bạn và Gió Phim
             </Typography>
             <Typography sx={{ fontSize: "0.9rem", color: "text.secondary", lineHeight: 1.7 }}>
-              Văn bản này thiết lập quan hệ pháp lý giữa người dùng và Công ty Gió Phim. Việc tiếp
-              tục sử dụng dịch vụ sau khi điều khoản có hiệu lực được xem là chấp thuận toàn bộ các
-              điều khoản dưới đây.
+              Văn bản này thiết lập quan hệ pháp lý giữa người dùng và Gió Phim. Việc tiếp tục sử
+              dụng dịch vụ sau khi điều khoản có hiệu lực được xem là chấp thuận toàn bộ các điều
+              khoản dưới đây.
             </Typography>
           </Box>
         </Stack>

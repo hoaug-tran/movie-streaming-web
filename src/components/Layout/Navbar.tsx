@@ -54,8 +54,9 @@ const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { searchOpen, setSearchOpen, searchQuery, setSearchQuery } = useSearch();
-  const { isPWA, canInstall, promptInstall, mounted } = usePwa();
+  const { isPWA, canInstall, promptInstall, mounted, isInstalled, isIOS } = usePwa();
   const [installDialogOpen, setInstallDialogOpen] = useState(false);
+  const [openAppDialogOpen, setOpenAppDialogOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
@@ -85,10 +86,13 @@ const Navbar: React.FC = () => {
 
   const handleOfflineClick = (e: React.MouseEvent) => {
     if (!mounted) return;
-    if (!isPWA) {
-      e.preventDefault();
+    if (isPWA) return;
+    e.preventDefault();
+    setMobileOpen(false);
+    if (isInstalled) {
+      setOpenAppDialogOpen(true);
+    } else {
       setInstallDialogOpen(true);
-      setMobileOpen(false);
     }
   };
 
@@ -240,6 +244,114 @@ const Navbar: React.FC = () => {
     </Dialog>
   );
 
+  const openAppDialog = (
+    <Dialog
+      open={openAppDialogOpen}
+      onClose={() => setOpenAppDialogOpen(false)}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: "#161616",
+          border: "1px solid rgba(74, 222, 128, 0.25)",
+          borderRadius: 3,
+          backgroundImage: "none",
+          mx: 2,
+        },
+      }}
+    >
+      <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
+          <Box
+            component="img"
+            src="/icons/logo.webp"
+            alt="Gió Phim"
+            sx={{ width: 48, height: 48, borderRadius: 2, flexShrink: 0 }}
+          />
+          <Box>
+            <Typography
+              sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#F0F0F0", lineHeight: 1.2 }}
+            >
+              Mở Gió Phim để xem offline
+            </Typography>
+            <Typography sx={{ fontSize: "0.78rem", color: "#8A8A8A", mt: 0.3 }}>
+              Bạn đã cài app rồi. Hãy mở từ màn hình chính.
+            </Typography>
+          </Box>
+        </Box>
+      </DialogTitle>
+      <DialogContent sx={{ px: 3, pt: "8px !important", pb: 1 }}>
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 2,
+            bgcolor: "rgba(74, 222, 128, 0.06)",
+            border: "1px solid rgba(74, 222, 128, 0.15)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.25,
+          }}
+        >
+          <Typography sx={{ fontSize: "0.85rem", color: "#C0C0C0", lineHeight: 1.6 }}>
+            Trang Ngoại tuyến chỉ hoạt động trong app Gió Phim đã cài đặt. Vui lòng:
+          </Typography>
+          {(isIOS
+            ? [
+                "Đóng tab này",
+                "Mở app Gió Phim từ màn hình chính iPhone",
+                "Bấm lại mục Ngoại tuyến trong app",
+              ]
+            : [
+                "Đóng tab này",
+                "Mở app Gió Phim từ màn hình chính / launcher",
+                "Bấm lại mục Ngoại tuyến trong app",
+              ]
+          ).map((step, idx) => (
+            <Box key={step} sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  bgcolor: "#4ade80",
+                  color: "#0b1f12",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "0.7rem",
+                  fontWeight: 900,
+                  flexShrink: 0,
+                  mt: "1px",
+                }}
+              >
+                {idx + 1}
+              </Box>
+              <Typography sx={{ fontSize: "0.85rem", color: "#C0C0C0", lineHeight: 1.5 }}>
+                {step}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={() => setOpenAppDialogOpen(false)}
+          sx={{
+            textTransform: "none",
+            fontWeight: 700,
+            borderRadius: 1.5,
+            bgcolor: "#4ade80",
+            color: "#0b1f12",
+            "&:hover": { bgcolor: "#22c55e" },
+          }}
+        >
+          Đã hiểu
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
   return (
     <>
       <AppBar
@@ -287,13 +399,14 @@ const Navbar: React.FC = () => {
             <Link href="/" style={{ textDecoration: "none" }}>
               <Typography
                 sx={{
+                  display: searchOpen ? { xs: "none", sm: "block" } : "block",
                   fontFamily: "'Inter', sans-serif",
                   fontWeight: 900,
                   fontSize: { xs: "1.2rem", md: "1.5rem" },
                   letterSpacing: "-0.05em",
                   color: isScrolled ? "text.primary" : "#ffffff",
                   cursor: "pointer",
-                  transition: "opacity 0.2s ease",
+                  transition: "opacity 0.2s ease, font-size 0.2s ease",
                   "&:hover": { opacity: 0.8 },
                 }}
               >
@@ -484,6 +597,7 @@ const Navbar: React.FC = () => {
       </Drawer>
 
       {installDialog}
+      {openAppDialog}
     </>
   );
 };

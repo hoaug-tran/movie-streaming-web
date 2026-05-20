@@ -116,6 +116,33 @@ export function useDeleteNotification() {
   });
 }
 
+export function useDeleteAllMyNotifications() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: notificationService.deleteAllMyNotifications,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: NOTIFICATION_KEYS.myList() });
+      const previous = queryClient.getQueryData(NOTIFICATION_KEYS.myList());
+      const prevCount = queryClient.getQueryData(NOTIFICATION_KEYS.unreadCount());
+      queryClient.setQueryData(NOTIFICATION_KEYS.myList(), [] as any[]);
+      queryClient.setQueryData(NOTIFICATION_KEYS.unreadCount(), 0);
+      return { previous, prevCount };
+    },
+    onError: (_err, _vars, context: any) => {
+      if (context?.previous) {
+        queryClient.setQueryData(NOTIFICATION_KEYS.myList(), context.previous);
+      }
+      if (context?.prevCount !== undefined) {
+        queryClient.setQueryData(NOTIFICATION_KEYS.unreadCount(), context.prevCount);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.myList() });
+      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.unreadCount() });
+    },
+  });
+}
+
 export function useAdminNotifications() {
   return useQuery({
     queryKey: NOTIFICATION_KEYS.adminList(),

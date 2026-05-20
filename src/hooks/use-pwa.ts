@@ -16,6 +16,7 @@ interface UsePwaReturn {
   isIOS: boolean;
   isSafari: boolean;
   needsManualInstall: boolean;
+  isInstalled: boolean;
   promptInstall: () => Promise<boolean>;
 }
 
@@ -32,6 +33,11 @@ if (typeof window !== "undefined") {
   window.addEventListener("appinstalled", () => {
     globalDeferredPrompt = null;
     globalCanInstall = false;
+    try {
+      localStorage.setItem("pwa-installed", "1");
+    } catch {
+      // ignore
+    }
     window.dispatchEvent(new Event("pwa-installable"));
   });
 }
@@ -43,11 +49,17 @@ export function usePwa(): UsePwaReturn {
   const [isOnline, setIsOnline] = useState(true);
   const [isIOS, setIsIOS] = useState(false);
   const [isSafari, setIsSafari] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     setIsIOS(isIOSDevice());
     setIsSafari(isSafariBrowser());
+    try {
+      setIsInstalled(localStorage.getItem("pwa-installed") === "1" || isStandaloneDisplay());
+    } catch {
+      setIsInstalled(isStandaloneDisplay());
+    }
 
     const checkPWA = () => {
       setIsPWA(isStandaloneDisplay());
@@ -95,6 +107,7 @@ export function usePwa(): UsePwaReturn {
     isIOS,
     isSafari,
     needsManualInstall,
+    isInstalled,
     promptInstall,
   };
 }

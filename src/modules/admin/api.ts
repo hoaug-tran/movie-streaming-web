@@ -187,6 +187,11 @@ export interface AdminMoviePayload {
 }
 
 export interface AdminEpisodePayload {
+  /**
+   * Optional. Khi update, có thể đặt movieId mới để gán tập phim sang phim cha khác.
+   * Khi create, server sẽ lấy movieId từ path nên field này không cần.
+   */
+  movieId?: number | null;
   title: string;
   episodeNumber: number;
   durationSeconds: number;
@@ -203,6 +208,17 @@ export interface AdminEpisode extends Omit<AdminEpisodePayload, "videoUrl" | "th
   thumbnailUrl?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+export interface AdminEpisodeListItem extends AdminEpisode {
+  availableQualities?: string[] | null;
+  movieTitle?: string | null;
+  movieSlug?: string | null;
+  movieType?: AdminMovieType | null;
+  movieReleaseYear?: number | null;
+  movieCountry?: string | null;
+  movieStatus?: string | null;
+  moviePosterUrl?: string | null;
 }
 
 export interface TranscodeProgress {
@@ -485,6 +501,10 @@ export const adminService = {
 
   updateMovie(movieId: number, payload: AdminMoviePayload): Promise<AdminMovie> {
     return apiClient.put<AdminMovie>(`/admin/movies/${movieId}`, payload);
+  },
+
+  getEpisodes(): Promise<AdminEpisodeListItem[]> {
+    return apiClient.get<AdminEpisodeListItem[]>(`/admin/episodes`);
   },
 
   createEpisode(movieId: number, payload: AdminEpisodePayload): Promise<AdminEpisode> {

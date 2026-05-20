@@ -202,8 +202,7 @@ export default function AdminMoviesPage() {
         },
         {
           id: "toggleStatus",
-          label: (movie: AdminMovie) =>
-            movie.movieStatus === "PUBLISHED" ? "Ẩn (Draft)" : "Publish",
+          label: (movie: AdminMovie) => (movie.movieStatus === "PUBLISHED" ? "Ẩn" : "Xuất bản"),
           tone: (movie: AdminMovie) => (movie.movieStatus === "PUBLISHED" ? "amber" : "emerald"),
           run: (movie) =>
             adminService.updateMovieStatus(

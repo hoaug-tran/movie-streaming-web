@@ -317,7 +317,8 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                   ) : firstEpisode ? (
                     <OfflineDownloadButton
                       episodeId={firstEpisode.id}
-                      quality="720p"
+                      availableQualities={firstEpisode.availableQualities}
+                      durationSeconds={firstEpisode.durationSeconds}
                       variant="pill"
                       size="small"
                     />
@@ -926,7 +927,8 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
                   <Box onClick={(e) => e.stopPropagation()}>
                     <OfflineDownloadButton
                       episodeId={episode.id}
-                      quality="720p"
+                      availableQualities={episode.availableQualities}
+                      durationSeconds={episode.durationSeconds}
                       variant="pill"
                       size="small"
                     />

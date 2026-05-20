@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Typography,
@@ -63,6 +64,7 @@ const DEFAULT_FILTERS: SearchMovieRequest = {
 
 export default function VibeExplorer() {
   const { navigateToWatch } = usePlayNavigation();
+  const router = useRouter();
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const [filters, setFilters] = useState<SearchMovieRequest>(DEFAULT_FILTERS);
@@ -636,7 +638,13 @@ export default function VibeExplorer() {
           }}
         >
           {allMovies.map((movie, i) => (
-            <Box key={`${movie.id}-${i}`} sx={{ cursor: "pointer" }}>
+            <Box
+              key={`${movie.id}-${i}`}
+              onClick={() =>
+                router.push(`/${movie.movieType === "SERIES" ? "tv" : "movies"}/${movie.slug}`)
+              }
+              sx={{ cursor: "pointer" }}
+            >
               <MovieCard
                 {...getMovieCardProps(movie)}
                 onPlay={() =>

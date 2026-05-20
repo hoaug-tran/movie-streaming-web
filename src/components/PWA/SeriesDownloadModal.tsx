@@ -54,7 +54,7 @@ export default function SeriesDownloadModal({ open, onClose, episodes }: SeriesD
               <Typography
                 sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#F0F0F0", lineHeight: 1.2 }}
               >
-                Tải ngoại tuyến (Phim bộ)
+                Tải ngoại tuyến
               </Typography>
               <Typography sx={{ fontSize: "0.78rem", color: "#8A8A8A", mt: 0.3 }}>
                 Chọn tập phim để tải xuống thiết bị
@@ -169,7 +169,8 @@ export default function SeriesDownloadModal({ open, onClose, episodes }: SeriesD
               <Box sx={{ flexShrink: 0 }}>
                 <OfflineDownloadButton
                   episodeId={ep.id}
-                  quality="720p"
+                  availableQualities={ep.availableQualities}
+                  durationSeconds={ep.durationSeconds}
                   variant="pill"
                   size="small"
                 />

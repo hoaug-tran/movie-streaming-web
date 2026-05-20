@@ -31,10 +31,6 @@ export default function ChatComposer({ isStreaming, onSend, onStop }: ChatCompos
     }
   };
 
-  const lineCount = Math.min(3, Math.max(1, value.split("\n").length));
-  const isMultiline = lineCount > 1 || value.length > 60;
-  const inputHeight = isMultiline ? Math.min(96, 24 + lineCount * 22) : 40;
-
   return (
     <Box
       sx={{
@@ -44,23 +40,26 @@ export default function ChatComposer({ isStreaming, onSend, onStop }: ChatCompos
         p: 1,
         borderTop: `1px solid ${theme.palette.divider}`,
         backgroundColor: theme.palette.background.paper,
+        flexShrink: 0,
       }}
     >
       <Box
         sx={{
           flexGrow: 1,
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           backgroundColor: isDark
             ? alpha(theme.palette.text.primary, 0.04)
             : alpha(theme.palette.text.primary, 0.03),
           borderRadius: 1.25,
           px: 1.25,
-          height: inputHeight,
+          py: 0.75,
           minHeight: 40,
           maxHeight: 96,
           border: `1px solid ${theme.palette.divider}`,
-          transition: "border-color 160ms ease, background-color 160ms ease, height 120ms ease",
+          overflow: "hidden",
+          boxSizing: "border-box",
+          transition: "border-color 160ms ease, background-color 160ms ease",
           "&:focus-within": {
             borderColor: alpha(accent, 0.5),
             backgroundColor: theme.palette.background.paper,
@@ -80,10 +79,15 @@ export default function ChatComposer({ isStreaming, onSend, onStop }: ChatCompos
           sx={{
             fontSize: "0.88rem",
             color: theme.palette.text.primary,
+            width: "100%",
+            alignItems: "flex-start",
+            p: 0,
             "& textarea": {
-              lineHeight: 1.45,
-              maxHeight: 80,
+              lineHeight: "1.45 !important",
+              maxHeight: "76px !important",
               overflowY: "auto !important",
+              boxSizing: "border-box",
+              resize: "none",
               "&::-webkit-scrollbar": { width: 4 },
               "&::-webkit-scrollbar-thumb": {
                 backgroundColor: alpha(theme.palette.text.primary, 0.2),

@@ -10,7 +10,13 @@ import {
   Button,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
+  IconButton,
   InputAdornment,
   LinearProgress,
   Link as MuiLink,
@@ -18,8 +24,10 @@ import {
   Paper,
   Select,
   Skeleton,
+  Snackbar,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   alpha,
   useTheme,
@@ -27,8 +35,12 @@ import {
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DeleteSweepRoundedIcon from "@mui/icons-material/DeleteSweepRounded";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useMyWatchHistories } from "@/modules/watch-history/hooks/useWatchHistory";
+import watchHistoryService from "@/modules/watch-history/api/watch-history-service";
 import { WatchHistory } from "@/modules/watch-history/types/watch-history";
 
 type HistoryFilter = "all" | "watching" | "completed";
@@ -97,9 +109,12 @@ function HistorySkeleton() {
   );
 }
 
+type ConfirmState = { type: "single"; entry: WatchHistory } | { type: "all" } | null;
+
 export default function HistoryClient() {
   const theme = useTheme();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const {
     data: histories = [],
@@ -110,6 +125,12 @@ export default function HistoryClient() {
   } = useMyWatchHistories(isAuthenticated);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<HistoryFilter>("all");
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({ open: false, message: "", severity: "success" });
 
   const sortedHistories = useMemo(
     () =>
@@ -129,6 +150,51 @@ export default function HistoryClient() {
     });
   }, [filter, query, sortedHistories]);
 
+  const deleteOneMutation = useMutation({
+    mutationFn: (historyId: number) => watchHistoryService.deleteEntry(historyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watch-history", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["watch-history", "continue-watching"] });
+      setSnackbar({ open: true, message: "Đã xóa khỏi lịch sử", severity: "success" });
+    },
+    onError: () => {
+      setSnackbar({
+        open: true,
+        message: "Không thể xóa lịch sử. Vui lòng thử lại.",
+        severity: "error",
+      });
+    },
+    onSettled: () => setConfirm(null),
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: () => watchHistoryService.clearAll(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watch-history", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["watch-history", "continue-watching"] });
+      setSnackbar({ open: true, message: "Đã xóa toàn bộ lịch sử xem", severity: "success" });
+    },
+    onError: () => {
+      setSnackbar({
+        open: true,
+        message: "Không thể xóa lịch sử. Vui lòng thử lại.",
+        severity: "error",
+      });
+    },
+    onSettled: () => setConfirm(null),
+  });
+
+  const isMutating = deleteOneMutation.isPending || clearAllMutation.isPending;
+
+  const handleConfirm = () => {
+    if (!confirm) return;
+    if (confirm.type === "single") {
+      deleteOneMutation.mutate(confirm.entry.id);
+    } else {
+      clearAllMutation.mutate();
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.replace("/auth/login?redirect=/history");
@@ -145,7 +211,7 @@ export default function HistoryClient() {
 
   return (
     <Box component="main" sx={{ minHeight: "100vh", background: theme.palette.background.default }}>
-      <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 0.75, md: 1 } }}>
+      <Box sx={{ pt: { xs: 12, md: 16 }, pb: { xs: 0.75, md: 1 } }}>
         <Container maxWidth="xl">
           <Breadcrumbs
             aria-label="breadcrumb"
@@ -202,7 +268,7 @@ export default function HistoryClient() {
             <Paper
               elevation={0}
               sx={{
-                width: { xs: "100%", md: 620 },
+                width: { xs: "100%", md: 760 },
                 p: 0.75,
                 borderRadius: 1,
                 border: `1px solid ${theme.palette.divider}`,
@@ -252,7 +318,7 @@ export default function HistoryClient() {
                   variant="outlined"
                   startIcon={<ReplayRoundedIcon />}
                   onClick={() => refetch()}
-                  disabled={isFetching}
+                  disabled={isFetching || isMutating}
                   sx={{
                     height: 36,
                     minWidth: { xs: "100%", sm: 104 },
@@ -261,6 +327,22 @@ export default function HistoryClient() {
                   }}
                 >
                   Làm mới
+                </Button>
+                <Button
+                  id="history-clear-all-button"
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteSweepRoundedIcon />}
+                  onClick={() => setConfirm({ type: "all" })}
+                  disabled={isMutating || histories.length === 0}
+                  sx={{
+                    height: 36,
+                    minWidth: { xs: "100%", sm: 132 },
+                    borderRadius: 1,
+                    px: 1.5,
+                  }}
+                >
+                  Xóa tất cả
                 </Button>
               </Stack>
             </Paper>
@@ -312,6 +394,8 @@ export default function HistoryClient() {
                 const progress = getProgress(item);
                 const watchUrl = buildWatchUrl(item);
                 const posterUrl = item.movie?.posterUrl || item.movie?.bannerUrl;
+                const isDeletingThis =
+                  deleteOneMutation.isPending && deleteOneMutation.variables === item.id;
 
                 return (
                   <Paper
@@ -445,6 +529,29 @@ export default function HistoryClient() {
                             alignItems={{ xs: "stretch", sm: "center" }}
                             spacing={1}
                           >
+                            <Tooltip title="Xóa khỏi lịch sử">
+                              <span>
+                                <IconButton
+                                  id={`history-delete-${item.id}`}
+                                  size="small"
+                                  color="error"
+                                  disabled={isMutating}
+                                  onClick={() => setConfirm({ type: "single", entry: item })}
+                                  sx={{
+                                    border: `1px solid ${alpha(theme.palette.error.main, 0.4)}`,
+                                    borderRadius: 1,
+                                    height: 36,
+                                    width: { xs: "100%", sm: 36 },
+                                  }}
+                                >
+                                  {isDeletingThis ? (
+                                    <CircularProgress size={16} color="inherit" />
+                                  ) : (
+                                    <DeleteOutlineRoundedIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                             <Button
                               id={`history-continue-${item.id}`}
                               variant="contained"
@@ -467,6 +574,55 @@ export default function HistoryClient() {
           )}
         </Stack>
       </Container>
+
+      <Dialog
+        open={confirm !== null}
+        onClose={() => !isMutating && setConfirm(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          {confirm?.type === "all" ? "Xóa toàn bộ lịch sử xem?" : "Xóa khỏi lịch sử?"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {confirm?.type === "all"
+              ? "Hành động này sẽ xóa vĩnh viễn toàn bộ lịch sử xem của bạn. Bạn không thể khôi phục lại sau khi xóa."
+              : confirm?.type === "single"
+                ? `Bạn chắc chắn muốn xóa "${getTitle(confirm.entry)} - ${getEpisodeText(confirm.entry)}" khỏi lịch sử xem?`
+                : ""}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setConfirm(null)} disabled={isMutating}>
+            Hủy
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            color="error"
+            variant="contained"
+            disabled={isMutating}
+            startIcon={isMutating ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            Xóa
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

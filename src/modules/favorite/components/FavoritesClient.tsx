@@ -139,7 +139,7 @@ export default function FavoritesClient() {
 
   return (
     <Box component="main" sx={{ minHeight: "100vh", background: theme.palette.background.default }}>
-      <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 0.75, md: 1 } }}>
+      <Box sx={{ pt: { xs: 12, md: 16 }, pb: { xs: 0.75, md: 1 } }}>
         <Container maxWidth="xl">
           <Breadcrumbs
             aria-label="breadcrumb"
@@ -395,7 +395,7 @@ export default function FavoritesClient() {
                             <Typography variant="body2" color="text.secondary">
                               Đánh giá:{" "}
                               {typeof item.movie?.averageRating === "number"
-                                ? `${item.movie.averageRating.toFixed(1)}/10`
+                                ? `${item.movie.averageRating.toFixed(1)}/5`
                                 : "Chưa có"}
                             </Typography>
                           </Stack>

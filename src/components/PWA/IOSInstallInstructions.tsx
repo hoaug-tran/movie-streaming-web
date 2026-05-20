@@ -1,7 +1,6 @@
 "use client";
 
 import { Box, Typography } from "@mui/material";
-import { Share, PlusSquare, Smartphone } from "lucide-react";
 
 export default function IOSInstallInstructions() {
   return (
@@ -94,7 +93,7 @@ export default function IOSInstallInstructions() {
                 verticalAlign: "middle",
               }}
             >
-              <Share size={13} /> Chia sẻ
+              ↗ Chia sẻ
             </Box>{" "}
             ở thanh công cụ.
           </Typography>
@@ -137,7 +136,7 @@ export default function IOSInstallInstructions() {
                 verticalAlign: "middle",
               }}
             >
-              <PlusSquare size={13} /> Thêm vào màn hình chính
+              ⊕ Thêm vào màn hình chính
             </Box>
             .
           </Typography>
@@ -153,7 +152,9 @@ export default function IOSInstallInstructions() {
           color: "#8A8A8A",
         }}
       >
-        <Smartphone size={13} />
+        <Typography component="span" sx={{ fontSize: "1.2rem", lineHeight: 1 }}>
+          📱
+        </Typography>
         <Typography sx={{ fontSize: "0.75rem", color: "#8A8A8A", lineHeight: 1.5 }}>
           Sau khi cài, mở Gió Phim từ màn hình chính để xem offline.
         </Typography>

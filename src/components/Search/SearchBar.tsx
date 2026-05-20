@@ -123,10 +123,20 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, v
           display: "flex",
           alignItems: "center",
           gap: 0.5,
-          width: isOpen ? { xs: "200px", sm: "200px", md: "280px" } : "40px",
+          width: isOpen
+            ? {
+                xs: "calc(100vw - 180px)",
+                sm: "240px",
+                md: "280px",
+              }
+            : "40px",
           transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease",
           opacity: isOpen ? 1 : 0.8,
-          position: "relative",
+          position: { xs: isOpen ? "absolute" : "relative", sm: "relative" },
+          right: { xs: isOpen ? 56 : "auto", sm: "auto" },
+          top: { xs: isOpen ? "50%" : "auto", sm: "auto" },
+          transform: { xs: isOpen ? "translateY(-50%)" : "none", sm: "none" },
+          zIndex: isOpen ? 5 : 1,
         }}
       >
         {isOpen && (

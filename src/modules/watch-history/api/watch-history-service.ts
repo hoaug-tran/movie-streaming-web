@@ -34,6 +34,14 @@ class WatchHistoryService {
       return null;
     }
   }
+
+  async deleteEntry(historyId: number): Promise<void> {
+    await apiClient.delete<void>(`/watch-histories/${historyId}`);
+  }
+
+  async clearAll(): Promise<void> {
+    await apiClient.delete<void>(`/watch-histories/me`);
+  }
 }
 
 const watchHistoryService = new WatchHistoryService();

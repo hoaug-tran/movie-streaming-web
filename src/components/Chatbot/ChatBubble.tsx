@@ -1,6 +1,7 @@
 "use client";
 
 import { Box, Stack, Typography, alpha, useTheme } from "@mui/material";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import Link from "next/link";
 import { Fragment, ReactNode } from "react";
 import { ChatMessage } from "@/services/chatbot-service";
@@ -9,80 +10,221 @@ interface ChatBubbleProps {
   message: ChatMessage;
 }
 
-const PATH_REGEX = /(\/[a-z0-9][a-z0-9/_-]*)/gi;
+const MOVIE_TOKEN_REGEX = /\[MOVIE:([a-z0-9_-]+):([^\]]+)\]/g;
 const BOLD_REGEX = /\*\*([^*]+)\*\*/g;
+const PATH_REGEX = /(\/[a-z0-9][a-z0-9/_-]*)/gi;
+
+function MovieCard({ slug, title, accent }: { slug: string; title: string; accent: string }) {
+  return (
+    <Box
+      component={Link}
+      href={`/movies/${slug}`}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        mt: 0.5,
+        px: 1.25,
+        py: 0.75,
+        borderRadius: 1.5,
+        border: `1px solid ${alpha(accent, 0.3)}`,
+        bgcolor: alpha(accent, 0.06),
+        textDecoration: "none",
+        transition: "all 0.18s ease",
+        "&:hover": {
+          bgcolor: alpha(accent, 0.14),
+          borderColor: alpha(accent, 0.6),
+          transform: "translateX(2px)",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          width: 28,
+          height: 28,
+          borderRadius: "50%",
+          bgcolor: alpha(accent, 0.15),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <PlayArrowIcon sx={{ fontSize: 16, color: accent }} />
+      </Box>
+      <Typography
+        sx={{
+          fontSize: "0.84rem",
+          fontWeight: 600,
+          color: accent,
+          lineHeight: 1.3,
+          flex: 1,
+        }}
+      >
+        {title}
+      </Typography>
+    </Box>
+  );
+}
+
+function renderLine(line: string, accent: string, isUser: boolean, lineIdx: number): ReactNode {
+  const working = line;
+  const matches: { start: number; end: number; node: ReactNode }[] = [];
+
+  let m: RegExpExecArray | null;
+
+  const movieRe = new RegExp(MOVIE_TOKEN_REGEX);
+  while ((m = movieRe.exec(working)) !== null) {
+    const slug = m[1];
+    const title = m[2];
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      node: (
+        <MovieCard key={`mv-${lineIdx}-${m.index}`} slug={slug} title={title} accent={accent} />
+      ),
+    });
+  }
+
+  const boldRe = new RegExp(BOLD_REGEX);
+  while ((m = boldRe.exec(working)) !== null) {
+    const overlap = matches.some((mm) => m!.index < mm.end && m!.index + m![0].length > mm.start);
+    if (overlap) continue;
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      node: (
+        <strong key={`b-${lineIdx}-${m.index}`} style={{ fontWeight: 700 }}>
+          {m[1]}
+        </strong>
+      ),
+    });
+  }
+
+  const pathRe = new RegExp(PATH_REGEX);
+  while ((m = pathRe.exec(working)) !== null) {
+    const start = m.index;
+    const end = m.index + m[0].length;
+    const overlap = matches.some((mm) => start < mm.end && end > mm.start);
+    if (overlap) continue;
+    const href = m[0];
+    matches.push({
+      start,
+      end,
+      node: (
+        <Link
+          key={`l-${lineIdx}-${start}`}
+          href={href}
+          style={{
+            color: isUser ? "#fff" : accent,
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            fontWeight: 500,
+            wordBreak: "break-all",
+          }}
+        >
+          {href}
+        </Link>
+      ),
+    });
+  }
+
+  matches.sort((a, b) => a.start - b.start);
+
+  const tokens: ReactNode[] = [];
+  let cursor = 0;
+  matches.forEach((mt) => {
+    if (mt.start > cursor) tokens.push(working.slice(cursor, mt.start));
+    tokens.push(mt.node);
+    cursor = mt.end;
+  });
+  if (cursor < working.length) tokens.push(working.slice(cursor));
+  if (tokens.length === 0) tokens.push(line);
+
+  return tokens;
+}
 
 function renderRichText(text: string, accent: string, isUser: boolean): ReactNode[] {
-  if (!text) return [text];
+  if (!text) return [];
   const parts: ReactNode[] = [];
   const lines = text.split("\n");
 
   lines.forEach((line, lineIdx) => {
-    let working = line;
-    const tokens: ReactNode[] = [];
-    let cursor = 0;
+    const trimmed = line.trimStart();
 
-    const matches: { start: number; end: number; node: ReactNode }[] = [];
-
-    let m: RegExpExecArray | null;
-    const boldRe = new RegExp(BOLD_REGEX);
-    while ((m = boldRe.exec(working)) !== null) {
-      matches.push({
-        start: m.index,
-        end: m.index + m[0].length,
-        node: (
-          <strong key={`b-${lineIdx}-${m.index}`} style={{ fontWeight: 700 }}>
-            {m[1]}
-          </strong>
-        ),
-      });
+    if (trimmed.startsWith("## ")) {
+      const heading = trimmed.slice(3);
+      parts.push(
+        <Typography
+          key={`h-${lineIdx}`}
+          sx={{
+            fontWeight: 700,
+            fontSize: "0.82rem",
+            color: isUser ? "rgba(255,255,255,0.65)" : accent,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            mt: lineIdx > 0 ? 1 : 0,
+            mb: 0.25,
+          }}
+        >
+          {heading}
+        </Typography>
+      );
+      return;
     }
 
-    const pathRe = new RegExp(PATH_REGEX);
-    while ((m = pathRe.exec(working)) !== null) {
-      const start = m.index;
-      const end = m.index + m[0].length;
-      const overlap = matches.some((mm) => start < mm.end && end > mm.start);
-      if (overlap) continue;
-      const href = m[0];
-      matches.push({
-        start,
-        end,
-        node: (
-          <Link
-            key={`l-${lineIdx}-${start}`}
-            href={href}
-            style={{
-              color: isUser ? "#fff" : accent,
-              textDecoration: "underline",
-              textUnderlineOffset: 2,
-              fontWeight: 500,
-              wordBreak: "break-all",
-            }}
-          >
-            {href}
-          </Link>
-        ),
-      });
+    if (trimmed.startsWith("# ")) {
+      const heading = trimmed.slice(2);
+      parts.push(
+        <Typography
+          key={`h1-${lineIdx}`}
+          sx={{ fontWeight: 800, fontSize: "0.95rem", mt: lineIdx > 0 ? 1 : 0, mb: 0.5 }}
+        >
+          {heading}
+        </Typography>
+      );
+      return;
     }
 
-    matches.sort((a, b) => a.start - b.start);
-
-    matches.forEach((mt, idx) => {
-      if (mt.start > cursor) {
-        tokens.push(working.slice(cursor, mt.start));
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      const itemText = trimmed.slice(2);
+      const hasMovieToken = MOVIE_TOKEN_REGEX.test(itemText);
+      MOVIE_TOKEN_REGEX.lastIndex = 0;
+      const rendered = renderLine(itemText, accent, isUser, lineIdx);
+      if (hasMovieToken) {
+        parts.push(<Fragment key={`li-${lineIdx}`}>{rendered}</Fragment>);
+      } else {
+        parts.push(
+          <Box key={`li-${lineIdx}`} sx={{ display: "flex", gap: 0.75, alignItems: "flex-start" }}>
+            <Box
+              component="span"
+              sx={{
+                mt: "6px",
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                bgcolor: isUser ? "rgba(255,255,255,0.5)" : accent,
+                flexShrink: 0,
+              }}
+            />
+            <Box component="span" sx={{ flex: 1 }}>
+              {rendered}
+            </Box>
+          </Box>
+        );
       }
-      tokens.push(mt.node);
-      cursor = mt.end;
-      void idx;
-    });
-
-    if (cursor < working.length) {
-      tokens.push(working.slice(cursor));
+      return;
     }
 
-    if (tokens.length === 0) tokens.push(line);
-    parts.push(<Fragment key={`ln-${lineIdx}`}>{tokens}</Fragment>);
+    if (trimmed === "") {
+      if (lineIdx > 0 && lineIdx < lines.length - 1) {
+        parts.push(<Box key={`gap-${lineIdx}`} sx={{ height: 4 }} />);
+      }
+      return;
+    }
+
+    const rendered = renderLine(line, accent, isUser, lineIdx);
+    parts.push(<Fragment key={`ln-${lineIdx}`}>{rendered}</Fragment>);
     if (lineIdx < lines.length - 1) parts.push(<br key={`br-${lineIdx}`} />);
   });
 
@@ -120,13 +262,13 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
     <Stack direction="row" justifyContent={align} sx={{ width: "100%" }}>
       <Box
         sx={{
-          maxWidth: "85%",
+          maxWidth: "88%",
           ...bubbleStyles,
           px: 1.5,
           py: 1,
           borderRadius: 1.5,
           fontSize: "0.88rem",
-          lineHeight: 1.6,
+          lineHeight: 1.65,
           letterSpacing: "0.005em",
           wordBreak: "break-word",
         }}
@@ -134,14 +276,10 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
         {message.pending && !message.content ? (
           <TypingDots accent={accent} />
         ) : (
-          <Typography
-            variant="body2"
-            component="div"
-            sx={{ fontSize: "inherit", lineHeight: "inherit", color: "inherit" }}
-          >
+          <Box sx={{ fontSize: "inherit", lineHeight: "inherit", color: "inherit" }}>
             {renderRichText(message.content, accent, isUser)}
             {message.pending && <BlinkCursor />}
-          </Typography>
+          </Box>
         )}
       </Box>
     </Stack>

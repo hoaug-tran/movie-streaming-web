@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { downloadEpisode, DownloadProgress, DownloadStatus } from "@/lib/offline-downloader";
 import { offlineStorage, OfflineMovieRecord } from "@/lib/offline-storage";
 import { usePwa } from "./use-pwa";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { useSubscription } from "./use-subscription";
 
 interface UseOfflineDownloadReturn {
   status: DownloadStatus;
@@ -15,6 +17,8 @@ interface UseOfflineDownloadReturn {
   isIOS: boolean;
   isSafari: boolean;
   needsManualInstall: boolean;
+  isInstalled: boolean;
+  canDownloadOffline: boolean;
   startDownload: (quality?: string) => Promise<void>;
   cancelDownload: () => void;
   deleteDownload: () => Promise<void>;
@@ -22,8 +26,20 @@ interface UseOfflineDownloadReturn {
 }
 
 export function useOfflineDownload(episodeId: number): UseOfflineDownloadReturn {
-  const { isPWA, canInstall, promptInstall, mounted, isIOS, isSafari, needsManualInstall } =
-    usePwa();
+  const {
+    isPWA,
+    canInstall,
+    promptInstall,
+    mounted,
+    isIOS,
+    isSafari,
+    needsManualInstall,
+    isInstalled,
+  } = usePwa();
+  const { isAuthenticated } = useAuth();
+  const { hasActiveSubscription, currentPlan } = useSubscription();
+  const canDownloadOffline =
+    isAuthenticated && hasActiveSubscription && currentPlan?.code === "PREMIUM_PLUS";
   const [status, setStatus] = useState<DownloadStatus>("idle");
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [record, setRecord] = useState<OfflineMovieRecord | null>(null);
@@ -46,7 +62,7 @@ export function useOfflineDownload(episodeId: number): UseOfflineDownloadReturn 
 
   const startDownload = useCallback(
     async (quality = "720p") => {
-      if (!isPWA) return;
+      if (!isPWA || !canDownloadOffline) return;
       if (status === "downloading") return;
 
       const controller = new AbortController();
@@ -70,7 +86,7 @@ export function useOfflineDownload(episodeId: number): UseOfflineDownloadReturn 
         setProgress(null);
       }
     },
-    [episodeId, isPWA, status]
+    [episodeId, isPWA, canDownloadOffline, status]
   );
 
   const cancelDownload = useCallback(() => {
@@ -96,6 +112,8 @@ export function useOfflineDownload(episodeId: number): UseOfflineDownloadReturn 
     isIOS,
     isSafari,
     needsManualInstall,
+    isInstalled: mounted ? isInstalled : false,
+    canDownloadOffline: mounted ? canDownloadOffline : false,
     startDownload,
     cancelDownload,
     deleteDownload,

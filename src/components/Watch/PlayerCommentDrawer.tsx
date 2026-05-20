@@ -148,7 +148,7 @@ export default function PlayerCommentDrawer({
     if (createComment.isPending) return;
     setReplyError(null);
     createComment.mutate(
-      { content: trimmed, parentCommentId },
+      { content: trimmed, parentCommentId, episodeId: episodeId ?? undefined },
       {
         onSuccess: () => {
           setReplyContent("");

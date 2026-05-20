@@ -27,6 +27,10 @@ export const notificationService = {
     return apiClient.delete<void>(`/notifications/${notificationId}`);
   },
 
+  deleteAllMyNotifications(): Promise<void> {
+    return apiClient.delete<void>("/notifications/me");
+  },
+
   adminGetAll(): Promise<Notification[]> {
     return apiClient.get<Notification[]>("/notifications/admin");
   },

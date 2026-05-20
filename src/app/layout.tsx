@@ -59,13 +59,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   console.log('[SW] Registering /sw.js...');
-                  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                  navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
                     .then(function(reg) {
-                      console.log('[SW] Registered OK — scope:', reg.scope, '| state:', reg.active ? reg.active.state : 'installing/waiting');
+                      console.log('[SW] Registered OK — scope:', reg.scope);
+                      if (reg.waiting && navigator.serviceWorker.controller) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                      }
+                      reg.addEventListener('updatefound', function() {
+                        var nw = reg.installing;
+                        if (!nw) return;
+                        nw.addEventListener('statechange', function() {
+                          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                            nw.postMessage({ type: 'SKIP_WAITING' });
+                          }
+                        });
+                      });
+                      setInterval(function(){ reg.update().catch(function(){}); }, 60 * 60 * 1000);
                     })
                     .catch(function(err) {
                       console.error('[SW] Registration FAILED:', err);
                     });
+                  var refreshing = false;
+                  navigator.serviceWorker.addEventListener('controllerchange', function() {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                  });
                 });
               } else {
                 console.warn('[SW] serviceWorker not supported in this browser');

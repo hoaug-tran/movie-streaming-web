@@ -10,11 +10,13 @@ import {
   Card,
   CardContent,
   Chip,
+  IconButton,
   LinearProgress,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -26,6 +28,7 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import AdminPermissionGate from "./AdminPermissionGate";
 import { AdminPermission } from "../permissions";
@@ -443,56 +446,101 @@ export default function AdminManagementPage<T extends { id: number }>({
                           {column.render(item)}
                         </Box>
                       ))}
-                      <Box component="td" sx={{ p: 2, textAlign: "right", verticalAlign: "top" }}>
+                      <Box
+                        component="td"
+                        sx={{
+                          p: 2,
+                          textAlign: "right",
+                          verticalAlign: "middle",
+                          whiteSpace: "nowrap",
+                          minWidth: 200,
+                        }}
+                      >
                         <Stack
                           direction="row"
-                          spacing={1}
+                          spacing={0.5}
                           justifyContent="flex-end"
-                          alignItems="flex-start"
-                          flexWrap="wrap"
+                          alignItems="center"
+                          flexWrap="nowrap"
                         >
                           {renderForm && onEdit && (
-                            <Button
-                              id={`${queryKey.join("-")}-edit-${item.id}`}
-                              size="small"
-                              variant="outlined"
-                              disabled={actionMutation.isPending || formMutation.isPending}
-                              onClick={() => setFormState({ mode: "edit", item })}
-                              startIcon={<EditRoundedIcon />}
-                              sx={{ borderRadius: 1.25, fontWeight: 800 }}
-                            >
-                              Sửa
-                            </Button>
+                            <Tooltip title="Sửa" arrow placement="top">
+                              <span>
+                                <IconButton
+                                  id={`${queryKey.join("-")}-edit-${item.id}`}
+                                  size="small"
+                                  color="primary"
+                                  disabled={actionMutation.isPending || formMutation.isPending}
+                                  onClick={() => setFormState({ mode: "edit", item })}
+                                  aria-label="Sửa"
+                                  sx={{
+                                    borderRadius: 1.25,
+                                    border: `1px solid ${theme.palette.divider}`,
+                                    bgcolor: alpha(theme.palette.background.default, 0.4),
+                                    flexShrink: 0,
+                                    "&:hover": {
+                                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                                      borderColor: alpha(theme.palette.primary.main, 0.4),
+                                    },
+                                  }}
+                                >
+                                  <EditRoundedIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                           )}
                           {onDelete && (
-                            <Button
-                              id={`${queryKey.join("-")}-delete-${item.id}`}
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              disabled={actionMutation.isPending || formMutation.isPending}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    "Bạn có chắc muốn xóa mục này không? Hành động này không thể hoàn tác."
-                                  )
-                                ) {
-                                  actionMutation.mutate({
-                                    item,
-                                    action: {
-                                      id: "delete",
-                                      label: "Xóa",
-                                      tone: "rose",
-                                      run: onDelete,
+                            <Tooltip title="Xóa" arrow placement="top">
+                              <span>
+                                <IconButton
+                                  id={`${queryKey.join("-")}-delete-${item.id}`}
+                                  size="small"
+                                  color="error"
+                                  disabled={actionMutation.isPending || formMutation.isPending}
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        "Bạn có chắc muốn xóa mục này không? Hành động này không thể hoàn tác."
+                                      )
+                                    ) {
+                                      actionMutation.mutate({
+                                        item,
+                                        action: {
+                                          id: "delete",
+                                          label: "Xóa",
+                                          tone: "rose",
+                                          run: onDelete,
+                                        },
+                                      });
+                                    }
+                                  }}
+                                  aria-label="Xóa"
+                                  sx={{
+                                    borderRadius: 1.25,
+                                    border: `1px solid ${theme.palette.divider}`,
+                                    bgcolor: alpha(theme.palette.background.default, 0.4),
+                                    flexShrink: 0,
+                                    "&:hover": {
+                                      bgcolor: alpha(theme.palette.error.main, 0.12),
+                                      borderColor: alpha(theme.palette.error.main, 0.4),
                                     },
-                                  });
-                                }
+                                  }}
+                                >
+                                  <DeleteRoundedIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          )}
+                          {quickActions.length > 0 && (renderForm || onDelete) && (
+                            <Box
+                              sx={{
+                                width: "1px",
+                                height: 22,
+                                bgcolor: theme.palette.divider,
+                                mx: 0.5,
+                                flexShrink: 0,
                               }}
-                              startIcon={<DeleteRoundedIcon />}
-                              sx={{ borderRadius: 1.25, fontWeight: 800 }}
-                            >
-                              Xóa
-                            </Button>
+                            />
                           )}
                           {quickActions.map((action) => {
                             const href = action.href?.(item);
@@ -502,41 +550,67 @@ export default function AdminManagementPage<T extends { id: number }>({
                                 : action.label;
                             const resolvedTone =
                               typeof action.tone === "function" ? action.tone(item) : action.tone;
-                            return (
-                              <Button
+                            const muiColor =
+                              resolvedTone === "rose"
+                                ? "error"
+                                : resolvedTone === "emerald"
+                                  ? "success"
+                                  : resolvedTone === "amber"
+                                    ? "warning"
+                                    : resolvedTone === "violet"
+                                      ? "secondary"
+                                      : "primary";
+                            const iconNode =
+                              resolvedTone === "rose" ? (
+                                <DeleteRoundedIcon fontSize="small" />
+                              ) : action.id === "view" || action.id === "detail" ? (
+                                <VisibilityRoundedIcon fontSize="small" />
+                              ) : action.id === "upload" ? (
+                                <CloudUploadRoundedIcon fontSize="small" />
+                              ) : action.id === "lock" || action.id === "unlock" ? (
+                                <LockRoundedIcon fontSize="small" />
+                              ) : action.id === "retranscode" || action.id === "refresh" ? (
+                                <RefreshRoundedIcon fontSize="small" />
+                              ) : (
+                                <OpenInNewRoundedIcon fontSize="small" />
+                              );
+                            const isDisabled = action.disabled?.(item) || actionMutation.isPending;
+                            const button = (
+                              <IconButton
                                 key={action.id}
                                 id={`${queryKey.join("-")}-${action.id}-${item.id}`}
                                 size="small"
-                                variant="outlined"
-                                color={
-                                  resolvedTone === "rose"
-                                    ? "error"
-                                    : resolvedTone === "emerald"
-                                      ? "success"
-                                      : "primary"
-                                }
-                                disabled={action.disabled?.(item) || actionMutation.isPending}
+                                color={muiColor}
+                                disabled={isDisabled}
                                 onClick={() => {
                                   if (!href && action.run) actionMutation.mutate({ item, action });
                                 }}
-                                href={href}
-                                startIcon={
-                                  resolvedTone === "rose" ? (
-                                    <DeleteRoundedIcon />
-                                  ) : action.id === "view" || action.id === "detail" ? (
-                                    <VisibilityRoundedIcon />
-                                  ) : action.id === "upload" ? (
-                                    <CloudUploadRoundedIcon />
-                                  ) : action.id === "lock" || action.id === "unlock" ? (
-                                    <LockRoundedIcon />
-                                  ) : (
-                                    <OpenInNewRoundedIcon />
-                                  )
-                                }
-                                sx={{ borderRadius: 1.25, fontWeight: 800 }}
+                                {...(href ? { component: "a", href } : {})}
+                                sx={{
+                                  borderRadius: 1.25,
+                                  border: `1px solid ${theme.palette.divider}`,
+                                  bgcolor: alpha(theme.palette.background.default, 0.4),
+                                  flexShrink: 0,
+                                  "&:hover": {
+                                    bgcolor: alpha(
+                                      getToneColor(resolvedTone || "cyan", theme),
+                                      0.12
+                                    ),
+                                    borderColor: alpha(
+                                      getToneColor(resolvedTone || "cyan", theme),
+                                      0.4
+                                    ),
+                                  },
+                                }}
+                                aria-label={resolvedLabel}
                               >
-                                {resolvedLabel}
-                              </Button>
+                                {iconNode}
+                              </IconButton>
+                            );
+                            return (
+                              <Tooltip key={action.id} title={resolvedLabel} arrow placement="top">
+                                <span>{button}</span>
+                              </Tooltip>
                             );
                           })}
                         </Stack>

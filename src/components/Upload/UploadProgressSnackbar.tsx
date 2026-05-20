@@ -1,6 +1,16 @@
 "use client";
 
-import { Box, IconButton, LinearProgress, Typography, Collapse, Tooltip } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  LinearProgress,
+  Typography,
+  Collapse,
+  Tooltip,
+  Paper,
+  alpha,
+  useTheme,
+} from "@mui/material";
 import {
   Close,
   CloudUpload,
@@ -34,13 +44,17 @@ function formatSpeed(kbps: number) {
 }
 
 function PhaseIcon({ phase }: { phase: UploadTask["phase"] }) {
-  if (phase === "done") return <CheckCircle sx={{ fontSize: 20, color: "#22c55e" }} />;
-  if (phase === "error") return <ErrorOutline sx={{ fontSize: 20, color: "#ef4444" }} />;
-  if (phase === "finalizing") return <HourglassTop sx={{ fontSize: 20, color: "#f59e0b" }} />;
-  return <CloudUpload sx={{ fontSize: 20, color: "#6366f1" }} />;
+  const theme = useTheme();
+  const sx = { fontSize: 20 } as const;
+  if (phase === "done") return <CheckCircle sx={{ ...sx, color: theme.palette.success.main }} />;
+  if (phase === "error") return <ErrorOutline sx={{ ...sx, color: theme.palette.error.main }} />;
+  if (phase === "finalizing")
+    return <HourglassTop sx={{ ...sx, color: theme.palette.warning.main }} />;
+  return <CloudUpload sx={{ ...sx, color: theme.palette.primary.main }} />;
 }
 
 function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
+  const theme = useTheme();
   const isDone = task.phase === "done";
   const isError = task.phase === "error";
   const isFinalizing = task.phase === "finalizing";
@@ -56,18 +70,35 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
           ? "Đang chuẩn bị"
           : `Upload ${task.percent}%`;
 
+  const accentColor = isDone
+    ? theme.palette.success.main
+    : isError
+      ? theme.palette.error.main
+      : isFinalizing
+        ? theme.palette.warning.main
+        : theme.palette.primary.main;
+
+  const accentDark = isDone
+    ? theme.palette.success.dark
+    : isError
+      ? theme.palette.error.dark
+      : isFinalizing
+        ? theme.palette.warning.dark
+        : theme.palette.primary.dark;
+
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
-        bgcolor: "rgba(20,20,20,0.96)",
+        bgcolor: alpha(theme.palette.background.paper, 0.96),
         backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 2,
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: 1,
         p: 1.75,
         minWidth: 320,
         maxWidth: 400,
-        color: "#fff",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+        color: theme.palette.text.primary,
+        boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.4)}`,
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.75 }}>
@@ -75,10 +106,9 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             sx={{
-              fontFamily: "Inter, sans-serif",
               fontSize: "0.82rem",
               fontWeight: 700,
-              color: "#fff",
+              color: "text.primary",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -88,9 +118,8 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
           </Typography>
           <Typography
             sx={{
-              fontFamily: "Inter, sans-serif",
               fontSize: "0.7rem",
-              color: "rgba(255,255,255,0.55)",
+              color: "text.secondary",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -99,22 +128,26 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
             {task.fileName}
           </Typography>
         </Box>
-        <IconButton
-          size="small"
-          onClick={onClose}
-          sx={{ color: "rgba(255,255,255,0.6)", "&:hover": { color: "#fff" } }}
-        >
-          <Close sx={{ fontSize: 16 }} />
-        </IconButton>
+        <Tooltip title="Đóng" placement="top" arrow>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            sx={{
+              color: "text.secondary",
+              "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+            }}
+          >
+            <Close sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
         <Typography
           sx={{
-            fontFamily: "Inter, sans-serif",
             fontSize: "0.75rem",
-            fontWeight: 600,
-            color: isDone ? "#22c55e" : isError ? "#ef4444" : isFinalizing ? "#f59e0b" : "#6366f1",
+            fontWeight: 700,
+            color: accentColor,
           }}
         >
           {phaseLabel}
@@ -122,9 +155,8 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
         <Box sx={{ flex: 1 }} />
         <Typography
           sx={{
-            fontFamily: "Inter, sans-serif",
             fontSize: "0.7rem",
-            color: "rgba(255,255,255,0.5)",
+            color: "text.secondary",
           }}
         >
           {formatBytes(task.bytesUploaded)} / {formatBytes(task.totalBytes)}
@@ -137,16 +169,10 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
         sx={{
           height: 6,
           borderRadius: 1,
-          bgcolor: "rgba(255,255,255,0.1)",
+          bgcolor: alpha(theme.palette.divider, 0.4),
           "& .MuiLinearProgress-bar": {
             borderRadius: 1,
-            background: isDone
-              ? "linear-gradient(90deg, #10b981, #34d399)"
-              : isError
-                ? "linear-gradient(90deg, #ef4444, #f87171)"
-                : isFinalizing
-                  ? "linear-gradient(90deg, #f59e0b, #fbbf24)"
-                  : "linear-gradient(90deg, #6366f1, #8b5cf6)",
+            background: `linear-gradient(90deg, ${accentColor}, ${accentDark})`,
           },
         }}
       />
@@ -156,9 +182,8 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
           {task.speedKBps > 0 && (
             <Typography
               sx={{
-                fontFamily: "Inter, sans-serif",
                 fontSize: "0.68rem",
-                color: "rgba(255,255,255,0.5)",
+                color: "text.secondary",
               }}
             >
               {formatSpeed(task.speedKBps)}
@@ -167,9 +192,8 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
           {task.etaSeconds !== null && task.phase === "uploading" && (
             <Typography
               sx={{
-                fontFamily: "Inter, sans-serif",
                 fontSize: "0.68rem",
-                color: "rgba(255,255,255,0.5)",
+                color: "text.secondary",
               }}
             >
               ETA: {formatEta(task.etaSeconds)}
@@ -181,9 +205,8 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
       {task.message && (
         <Typography
           sx={{
-            fontFamily: "Inter, sans-serif",
             fontSize: "0.7rem",
-            color: isError ? "#fca5a5" : "rgba(255,255,255,0.55)",
+            color: isError ? "error.light" : "text.secondary",
             mt: 0.75,
             lineHeight: 1.4,
           }}
@@ -191,11 +214,12 @@ function TaskRow({ task, onClose }: { task: UploadTask; onClose: () => void }) {
           {task.message}
         </Typography>
       )}
-    </Box>
+    </Paper>
   );
 }
 
 export default function UploadProgressSnackbar() {
+  const theme = useTheme();
   const { tasks, removeTask, clearDone } = useUploadProgress();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -223,47 +247,54 @@ export default function UploadProgressSnackbar() {
         pointerEvents: "auto",
       }}
     >
-      <Box
+      <Paper
+        elevation={0}
         sx={{
-          bgcolor: "rgba(20,20,20,0.96)",
+          bgcolor: alpha(theme.palette.background.paper, 0.96),
           backdropFilter: "blur(12px)",
-          border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 2,
+          border: `1px solid ${theme.palette.divider}`,
+          borderRadius: 1,
           px: 1.5,
           py: 0.75,
           display: "flex",
           alignItems: "center",
           gap: 1,
-          color: "#fff",
+          color: "text.primary",
         }}
       >
-        <CloudUpload sx={{ fontSize: 18, color: "#6366f1" }} />
+        <CloudUpload sx={{ fontSize: 18, color: "primary.main" }} />
         <Typography
           sx={{
-            fontFamily: "Inter, sans-serif",
             fontSize: "0.78rem",
             fontWeight: 700,
             flex: 1,
+            color: "text.primary",
           }}
         >
           {headerLabel}
         </Typography>
         {doneCount > 0 && (
-          <Tooltip title="Xóa các mục đã xong">
+          <Tooltip title="Xóa các mục đã xong" placement="top" arrow>
             <IconButton
               size="small"
               onClick={clearDone}
-              sx={{ color: "rgba(255,255,255,0.6)", "&:hover": { color: "#fff" } }}
+              sx={{
+                color: "text.secondary",
+                "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+              }}
             >
               <Close sx={{ fontSize: 16 }} />
             </IconButton>
           </Tooltip>
         )}
-        <Tooltip title={collapsed ? "Mở rộng" : "Thu gọn"}>
+        <Tooltip title={collapsed ? "Mở rộng" : "Thu gọn"} placement="top" arrow>
           <IconButton
             size="small"
             onClick={() => setCollapsed((p) => !p)}
-            sx={{ color: "rgba(255,255,255,0.6)", "&:hover": { color: "#fff" } }}
+            sx={{
+              color: "text.secondary",
+              "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+            }}
           >
             {collapsed ? (
               <ExpandLess sx={{ fontSize: 18 }} />
@@ -272,7 +303,7 @@ export default function UploadProgressSnackbar() {
             )}
           </IconButton>
         </Tooltip>
-      </Box>
+      </Paper>
 
       <Collapse in={!collapsed} unmountOnExit>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>

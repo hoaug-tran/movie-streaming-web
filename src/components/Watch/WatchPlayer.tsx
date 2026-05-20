@@ -33,6 +33,7 @@ import { isIPhoneDevice } from "@/lib/platform";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import HdIcon from "@mui/icons-material/Hd";
+import LockIcon from "@mui/icons-material/Lock";
 import SkipPreviousIcon from "@mui/icons-material/SkipPrevious";
 import SkipNextIcon from "@mui/icons-material/SkipNext";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -40,6 +41,9 @@ import PauseIcon from "@mui/icons-material/Pause";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import ForumIcon from "@mui/icons-material/Forum";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import SlowMotionVideoIcon from "@mui/icons-material/SlowMotionVideo";
 import EpisodeList from "./EpisodeList";
 
 interface WatchPlayerProps {
@@ -109,6 +113,9 @@ export default function WatchPlayer({
 
   const [iPhoneShowEpisodes, setIPhoneShowEpisodes] = useState(false);
   const [iPhoneShowQuality, setIPhoneShowQuality] = useState(false);
+  const [iPhoneShowSpeed, setIPhoneShowSpeed] = useState(false);
+  const [iPhoneShowVolume, setIPhoneShowVolume] = useState(false);
+  const [iPhonePlaybackSpeed, setIPhonePlaybackSpeed] = useState(1);
   const [iPhoneOverlayVisible, setIPhoneOverlayVisible] = useState(true);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -161,6 +168,11 @@ export default function WatchPlayer({
   const lastSavedItemRef = useRef<ContinueWatchingItem | null>(null);
   const lastPlaybackSecondRef = useRef(0);
   const lastDurationRef = useRef(0);
+  const isPlayingRef = useRef(false);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   const COMPLETION_PERCENT = 0.95;
   const COMPLETION_GRACE_SECONDS = 10;
@@ -310,7 +322,8 @@ export default function WatchPlayer({
   }, [currentAd]);
 
   useEffect(() => {
-    if (hasAdsFree) {
+    // Phim offline (đã tải về) → không phát ads, kể cả khi user là Free.
+    if (hasAdsFree || offlineSrc) {
       setAdsForEpisode({ preRoll: [], midRoll: [], postRoll: [] });
       setPreRollPending(false);
       return;
@@ -345,7 +358,7 @@ export default function WatchPlayer({
     return () => {
       cancelled = true;
     };
-  }, [selectedEpisode.id, hasAdsFree, showAd]);
+  }, [selectedEpisode.id, hasAdsFree, offlineSrc, showAd]);
 
   useEffect(() => {
     const available = selectedEpisode.availableQualities ?? [];
@@ -390,7 +403,7 @@ export default function WatchPlayer({
         return;
       }
 
-      const segmentBlobUrls: string[] = [];
+      // Sắp xếp segment theo số thứ tự để build playlist đúng order
       const sortedUrls = [...record.segmentUrls].sort((a, b) => {
         const matchA = a.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
         const matchB = b.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
@@ -400,32 +413,41 @@ export default function WatchPlayer({
         return 0;
       });
 
-      for (const url of sortedUrls) {
-        const data = await offlineStorage.getSegment(url);
-        if (data) {
-          const blobUrl = URL.createObjectURL(new Blob([data], { type: "video/mp2t" }));
-          segmentBlobUrls.push(blobUrl);
-          blobUrls.push(blobUrl);
-        }
-      }
-
-      if (segmentBlobUrls.length === 0) {
+      // Verify ít nhất segment đầu tiên tồn tại trong IDB,
+      // tránh trường hợp record movie còn nhưng segments bị mất
+      const firstSegmentData = await offlineStorage.getSegment(sortedUrls[0]);
+      if (!firstSegmentData) {
         setOfflineSrc(undefined);
         return;
       }
 
+      // Cập nhật lại record.segmentUrls đã sort để service worker mapping
+      // theo cùng index. CHỈ ghi đè trong IDB nếu thứ tự khác trước đó.
+      const isReordered = sortedUrls.some((u, i) => u !== record.segmentUrls[i]);
+      if (isReordered) {
+        await offlineStorage.saveMovie({
+          ...record,
+          segmentUrls: sortedUrls,
+        });
+      }
+
+      // QUAN TRỌNG: Dùng same-origin URL để service worker intercept và
+      // đọc segment từ IDB. Blob URL trong playlist KHÔNG hoạt động trên
+      // iOS Safari native HLS, và bị quirk khi đi qua HLS.js worker.
+      // Dùng absolute URL với origin vì playlist là blob: URL — một số HLS engine
+      // resolve relative URI từ blob URL không nhất quán.
+      const eid = selectedEpisode.id;
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const segPaths = sortedUrls.map((_, idx) => `${origin}/__offline__/seg/${eid}/${idx}.ts`);
+
       let keyLine = "";
-      const keyRecord = await offlineStorage.getKey(selectedEpisode.id);
+      const keyRecord = await offlineStorage.getKey(eid);
       if (keyRecord?.keyData) {
-        const keyBlobUrl = URL.createObjectURL(
-          new Blob([keyRecord.keyData], { type: "application/octet-stream" })
-        );
-        blobUrls.push(keyBlobUrl);
-        keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="${keyBlobUrl}"\n`;
+        keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="${origin}/__offline__/key/${eid}"\n`;
       }
 
       const duration = record.durationSeconds
-        ? (record.durationSeconds / segmentBlobUrls.length).toFixed(3)
+        ? (record.durationSeconds / segPaths.length).toFixed(3)
         : "6.000";
 
       const m3u8Lines = [
@@ -434,7 +456,7 @@ export default function WatchPlayer({
         `#EXT-X-TARGETDURATION:${Math.ceil(Number(duration))}`,
         "#EXT-X-MEDIA-SEQUENCE:0",
         keyLine.trim(),
-        ...segmentBlobUrls.flatMap((url) => [`#EXTINF:${duration},`, url]),
+        ...segPaths.flatMap((p) => [`#EXTINF:${duration},`, p]),
         "#EXT-X-ENDLIST",
       ].filter(Boolean);
 
@@ -668,7 +690,7 @@ export default function WatchPlayer({
       return;
     }
 
-    if (hasAdsFree) return;
+    if (hasAdsFree || offlineSrc) return;
 
     if (!midRollFired && d > 60 && t >= d * 0.5) {
       const midAd = pickHighestPriority(adsForEpisode.midRoll);
@@ -695,6 +717,7 @@ export default function WatchPlayer({
     }
   }, [
     hasAdsFree,
+    offlineSrc,
     canWatchPremium,
     movie.isPremiumOnly,
     PREVIEW_LIMIT_SECONDS,
@@ -740,9 +763,9 @@ export default function WatchPlayer({
     setShowControls(true);
     if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
     controlsTimerRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
+      if (isPlayingRef.current) setShowControls(false);
     }, 3000);
-  }, [isPlaying]);
+  }, []);
 
   const handleMouseMove = useCallback(() => {
     showControlsTemporarily();
@@ -756,7 +779,7 @@ export default function WatchPlayer({
     }
     const t = setTimeout(() => setIPhoneOverlayVisible(false), 3000);
     return () => clearTimeout(t);
-  }, [isIPhone, isPlaying, iPhoneOverlayVisible]);
+  }, [isIPhone, isPlaying]);
 
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
@@ -781,16 +804,32 @@ export default function WatchPlayer({
   );
 
   const handleVolumeChange = useCallback((value: number) => {
-    if (!videoRef.current) return;
-    videoRef.current.volume = value;
-    setVolume(value);
-    setIsMuted(value === 0);
+    const clamped = Math.max(0, Math.min(1, value));
+    if (videoRef.current) {
+      try {
+        videoRef.current.volume = clamped;
+        if (clamped > 0 && videoRef.current.muted) {
+          videoRef.current.muted = false;
+        } else if (clamped === 0 && !videoRef.current.muted) {
+          videoRef.current.muted = true;
+        }
+      } catch {
+        // iOS Safari throws when setting volume on detached element
+      }
+    }
+    setVolume(clamped);
+    setIsMuted(clamped === 0);
   }, []);
 
   const handleMuteToggle = useCallback(() => {
-    if (!videoRef.current) return;
     const newMuted = !isMuted;
-    videoRef.current.muted = newMuted;
+    if (videoRef.current) {
+      try {
+        videoRef.current.muted = newMuted;
+      } catch {
+        // iOS quirk: ignore failures, UI state still flips
+      }
+    }
     setIsMuted(newMuted);
   }, [isMuted]);
 
@@ -989,7 +1028,7 @@ export default function WatchPlayer({
           }
           return;
         }
-        if (e.target === e.currentTarget) togglePlay();
+        togglePlay();
       }}
       sx={{
         position: "fixed",
@@ -1074,6 +1113,9 @@ export default function WatchPlayer({
         <>
           <Box
             data-iphone-player-control="true"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             sx={{
               position: "absolute",
               top: 0,
@@ -1082,14 +1124,14 @@ export default function WatchPlayer({
               display: "flex",
               alignItems: "center",
               gap: 1,
-              px: 1.5,
-              py: 1.25,
               background:
                 "linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.42) 64%, rgba(0,0,0,0) 100%)",
-              paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)",
-              paddingLeft: "calc(env(safe-area-inset-left, 0px) + 12px)",
-              paddingRight: "calc(env(safe-area-inset-right, 0px) + 12px)",
-              zIndex: 5,
+              // Cộng thêm 14px base để vẫn có khoảng cách an toàn khi env() = 0
+              paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
+              paddingBottom: "14px",
+              paddingLeft: "calc(env(safe-area-inset-left, 0px) + 16px)",
+              paddingRight: "calc(env(safe-area-inset-right, 0px) + 16px)",
+              zIndex: 20,
               pointerEvents: "auto",
             }}
           >
@@ -1138,15 +1180,20 @@ export default function WatchPlayer({
 
           <Box
             data-iphone-player-control="true"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             sx={{
               position: "absolute",
               left: 0,
               right: 0,
               bottom: 0,
-              zIndex: 5,
+              zIndex: 20,
               pointerEvents: "auto",
-              px: "calc(env(safe-area-inset-left, 0px) + 12px)",
-              pb: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
+              // Tách paddingLeft/Right để landscape iPhone (notch trái) né đúng
+              paddingLeft: "calc(env(safe-area-inset-left, 0px) + 16px)",
+              paddingRight: "calc(env(safe-area-inset-right, 0px) + 16px)",
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
               pt: 5,
               background:
                 "linear-gradient(to top, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.48) 58%, rgba(0,0,0,0) 100%)",
@@ -1233,15 +1280,45 @@ export default function WatchPlayer({
                       </>
                     );
                   })()}
+                <IconButton
+                  onClick={() => {
+                    setIPhoneShowVolume((v) => !v);
+                    setIPhoneShowQuality(false);
+                    setIPhoneShowSpeed(false);
+                  }}
+                  sx={{ color: iPhoneShowVolume ? "#ff4963" : "#fff" }}
+                  aria-label={isMuted ? "Bật âm" : "Tắt âm"}
+                >
+                  {isMuted ? (
+                    <VolumeOffIcon sx={{ fontSize: 22 }} />
+                  ) : (
+                    <VolumeUpIcon sx={{ fontSize: 22 }} />
+                  )}
+                </IconButton>
               </Box>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                 <IconButton
-                  onClick={() => setIPhoneShowQuality(true)}
+                  onClick={() => {
+                    setIPhoneShowSpeed((v) => !v);
+                    setIPhoneShowQuality(false);
+                    setIPhoneShowVolume(false);
+                  }}
+                  sx={{ color: iPhonePlaybackSpeed !== 1 ? "#ff4963" : "#fff" }}
+                  aria-label="Tốc độ phát"
+                >
+                  <SlowMotionVideoIcon sx={{ fontSize: 22 }} />
+                </IconButton>
+                <IconButton
+                  onClick={() => {
+                    setIPhoneShowQuality((v) => !v);
+                    setIPhoneShowSpeed(false);
+                    setIPhoneShowVolume(false);
+                  }}
                   sx={{ color: selectedQuality !== "720p" ? "#ff4963" : "#fff" }}
                   aria-label="Chất lượng"
                 >
-                  <HdIcon />
+                  <HdIcon sx={{ fontSize: 22 }} />
                 </IconButton>
                 {movie.movieType === "SERIES" && episodes.length > 1 && (
                   <IconButton
@@ -1249,7 +1326,7 @@ export default function WatchPlayer({
                     sx={{ color: "#fff" }}
                     aria-label="Danh sách tập"
                   >
-                    <ListAltIcon />
+                    <ListAltIcon sx={{ fontSize: 22 }} />
                   </IconButton>
                 )}
                 <IconButton
@@ -1257,18 +1334,221 @@ export default function WatchPlayer({
                   sx={{ color: showComments ? "#ff4963" : "#fff" }}
                   aria-label="Bình luận"
                 >
-                  <ForumIcon />
+                  <ForumIcon sx={{ fontSize: 22 }} />
                 </IconButton>
                 <IconButton
                   onClick={handleFullscreen}
                   sx={{ color: "#fff" }}
                   aria-label={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
                 >
-                  {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                  {isFullscreen ? (
+                    <FullscreenExitIcon sx={{ fontSize: 22 }} />
+                  ) : (
+                    <FullscreenIcon sx={{ fontSize: 22 }} />
+                  )}
                 </IconButton>
               </Box>
             </Box>
           </Box>
+
+          {iPhoneShowVolume && (
+            <Box
+              data-iphone-player-control="true"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              sx={{
+                position: "absolute",
+                left: "calc(env(safe-area-inset-left, 0px) + 16px)",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 124px)",
+                bgcolor: "rgba(20,20,20,0.95)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 2,
+                px: 1,
+                py: 1.5,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1,
+                zIndex: 30,
+                width: 48,
+              }}
+            >
+              <Typography sx={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>
+                {Math.round((isMuted ? 0 : volume) * 100)}
+              </Typography>
+              <Slider
+                orientation="vertical"
+                value={isMuted ? 0 : volume}
+                min={0}
+                max={1}
+                step={0.05}
+                onChange={(_, val) => handleVolumeChange(val as number)}
+                sx={{
+                  color: "#C8102E",
+                  height: 110,
+                  py: "4px !important",
+                  "& .MuiSlider-rail": { bgcolor: "rgba(255,255,255,0.3)" },
+                  "& .MuiSlider-thumb": { width: 18, height: 18 },
+                  "& .MuiSlider-track": { border: "none" },
+                }}
+                aria-label="Âm lượng"
+              />
+              <IconButton
+                onClick={handleMuteToggle}
+                size="small"
+                sx={{ color: "#fff", p: 0.5 }}
+                aria-label={isMuted ? "Bật âm" : "Tắt âm"}
+              >
+                {isMuted ? (
+                  <VolumeOffIcon sx={{ fontSize: 18 }} />
+                ) : (
+                  <VolumeUpIcon sx={{ fontSize: 18 }} />
+                )}
+              </IconButton>
+            </Box>
+          )}
+
+          {iPhoneShowQuality && (
+            <Box
+              data-iphone-player-control="true"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              sx={{
+                position: "absolute",
+                right: "calc(env(safe-area-inset-right, 0px) + 16px)",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 124px)",
+                bgcolor: "rgba(20,20,20,0.95)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 2,
+                color: "#fff",
+                minWidth: 200,
+                overflow: "hidden",
+                zIndex: 30,
+              }}
+            >
+              <Typography
+                sx={{
+                  px: 2,
+                  py: 1,
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.7)",
+                }}
+              >
+                Chất lượng video
+              </Typography>
+              {QUALITY_ORDER.slice()
+                .reverse()
+                .map((q) => {
+                  const qIdx = QUALITY_ORDER.indexOf(q);
+                  const maxIdx = QUALITY_ORDER.indexOf(maxQuality);
+                  const isLocked = qIdx > maxIdx;
+                  const available = selectedEpisode.availableQualities ?? [];
+                  const isAvailable = available.length === 0 || available.includes(q);
+                  const isActive = q === selectedQuality;
+                  return (
+                    <Box
+                      key={q}
+                      onClick={() => {
+                        if (isLocked) {
+                          router.push("/pricing");
+                          return;
+                        }
+                        if (!isAvailable) return;
+                        setSelectedQuality(q);
+                        setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
+                        setIPhoneShowQuality(false);
+                      }}
+                      sx={{
+                        px: 2,
+                        py: 1.25,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        color: isLocked
+                          ? "rgba(255,255,255,0.35)"
+                          : isActive
+                            ? "#ff4963"
+                            : isAvailable
+                              ? "#fff"
+                              : "rgba(255,255,255,0.35)",
+                        fontSize: "0.88rem",
+                        fontWeight: isActive ? 700 : 400,
+                        cursor: isAvailable || isLocked ? "pointer" : "default",
+                        "&:active": { bgcolor: "rgba(255,255,255,0.08)" },
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        {q === "4K" ? "4K Ultra HD" : q === "1080p" ? "Full HD 1080p" : "HD 720p"}
+                      </Box>
+                      {isLocked && <LockIcon sx={{ fontSize: 16, opacity: 0.6 }} />}
+                    </Box>
+                  );
+                })}
+            </Box>
+          )}
+
+          {iPhoneShowSpeed && (
+            <Box
+              data-iphone-player-control="true"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              sx={{
+                position: "absolute",
+                right: "calc(env(safe-area-inset-right, 0px) + 16px)",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 124px)",
+                bgcolor: "rgba(20,20,20,0.95)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 2,
+                color: "#fff",
+                minWidth: 160,
+                overflow: "hidden",
+                zIndex: 30,
+              }}
+            >
+              <Typography
+                sx={{
+                  px: 2,
+                  py: 1,
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.7)",
+                }}
+              >
+                Tốc độ phát
+              </Typography>
+              {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => {
+                const isActive = speed === iPhonePlaybackSpeed;
+                return (
+                  <Box
+                    key={speed}
+                    onClick={() => {
+                      setIPhonePlaybackSpeed(speed);
+                      if (videoRef.current) videoRef.current.playbackRate = speed;
+                      setIPhoneShowSpeed(false);
+                    }}
+                    sx={{
+                      px: 2,
+                      py: 1.25,
+                      color: isActive ? "#ff4963" : "#fff",
+                      fontSize: "0.88rem",
+                      fontWeight: isActive ? 700 : 400,
+                      cursor: "pointer",
+                      "&:active": { bgcolor: "rgba(255,255,255,0.08)" },
+                    }}
+                  >
+                    {speed}x
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
         </>
       )}
 
@@ -1282,72 +1562,6 @@ export default function WatchPlayer({
           }}
           onClose={() => setIPhoneShowEpisodes(false)}
         />
-      )}
-
-      {isIPhone && iPhoneShowQuality && (
-        <Dialog
-          data-iphone-player-control="true"
-          open
-          onClose={() => setIPhoneShowQuality(false)}
-          PaperProps={{
-            sx: {
-              bgcolor: "rgba(20,20,20,0.97)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 2,
-              color: "#fff",
-              minWidth: 240,
-            },
-          }}
-        >
-          <DialogTitle sx={{ fontSize: "0.95rem", fontWeight: 700, pb: 1 }}>
-            Chất lượng video
-          </DialogTitle>
-          <DialogContent sx={{ p: 0, "&:first-of-type": { pt: 0 } }}>
-            {QUALITY_ORDER.slice()
-              .reverse()
-              .map((q) => {
-                const qIdx = QUALITY_ORDER.indexOf(q);
-                const maxIdx = QUALITY_ORDER.indexOf(maxQuality);
-                const isLocked = qIdx > maxIdx;
-                const available = selectedEpisode.availableQualities ?? [];
-                const isAvailable = available.length === 0 || available.includes(q);
-                const isActive = q === selectedQuality;
-                return (
-                  <Box
-                    key={q}
-                    onClick={() => {
-                      if (isLocked) {
-                        router.push("/pricing");
-                        return;
-                      }
-                      if (!isAvailable) return;
-                      setSelectedQuality(q);
-                      setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
-                      setIPhoneShowQuality(false);
-                    }}
-                    sx={{
-                      px: 3,
-                      py: 1.25,
-                      color: isLocked
-                        ? "rgba(255,255,255,0.35)"
-                        : isActive
-                          ? "#C8102E"
-                          : isAvailable
-                            ? "#fff"
-                            : "rgba(255,255,255,0.35)",
-                      fontSize: "0.9rem",
-                      cursor: isAvailable || isLocked ? "pointer" : "default",
-                      fontWeight: isActive ? 700 : 400,
-                      "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
-                    }}
-                  >
-                    {q === "4K" ? "4K Ultra HD" : q === "1080p" ? "Full HD 1080p" : "HD 720p"}
-                  </Box>
-                );
-              })}
-          </DialogContent>
-        </Dialog>
       )}
 
       <PlayerCommentDrawer

@@ -59,16 +59,19 @@ export default function ChatPanel({ open, onClose }: ChatPanelProps) {
       sx={{
         position: "fixed",
         zIndex: 1402,
-        right: isMobile ? 0 : 22,
+        right: isMobile ? 10 : 22,
+        left: isMobile ? 10 : "auto",
         bottom: isMobile
-          ? "var(--giophim-install-banner-h, 0px)"
+          ? "calc(env(safe-area-inset-bottom, 0px) + 16px + var(--giophim-install-banner-h, 0px))"
           : "calc(88px + var(--giophim-install-banner-h, 0px))",
-        left: isMobile ? 0 : "auto",
-        width: isMobile ? "100%" : 380,
-        height: isMobile ? "82vh" : 560,
-        maxHeight: isMobile ? "82vh" : "calc(100vh - 110px - var(--giophim-install-banner-h, 0px))",
+        top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 84px)" : "auto",
+        width: isMobile ? "auto" : 380,
+        height: isMobile ? "auto" : 560,
+        maxHeight: isMobile
+          ? "min(560px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 110px))"
+          : "calc(100vh - 110px - var(--giophim-install-banner-h, 0px))",
         backgroundColor: theme.palette.background.paper,
-        borderRadius: isMobile ? "16px 16px 0 0" : 2,
+        borderRadius: isMobile ? 3 : 2,
         boxShadow: `0 24px 48px ${alpha(theme.palette.common.black, isDark ? 0.55 : 0.2)}`,
         border: `1px solid ${theme.palette.divider}`,
         display: "flex",

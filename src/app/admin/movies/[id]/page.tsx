@@ -59,7 +59,7 @@ import {
   TranscodeProgress,
 } from "@/modules/admin/api";
 import AvatarCropUpload from "@/components/Common/AvatarCropUpload";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { convertToWebPObjectUrl } from "@/utils/convert-to-webp";
 import { useUploadProgress } from "@/context/upload-progress-context";
 import LinearProgress from "@mui/material/LinearProgress";
@@ -518,10 +518,70 @@ export default function AdminMovieDetailPage() {
   const [editInfoOpen, setEditInfoOpen] = useState(false);
   const [infoForm, setInfoForm] = useState<AdminMoviePayload | null>(null);
   const [imageUploading, setImageUploading] = useState<"poster" | "banner" | null>(null);
-  const [movieVideoFile, setMovieVideoFile] = useState<File | null>(null);
   const [movieUploading, setMovieUploading] = useState(false);
   const [movieUploadProgress, setMovieUploadProgress] = useState(0);
   const movieVideoInputRef = useRef<HTMLInputElement>(null);
+
+  const startMovieSourceUpload = useCallback(
+    (file: File, onSuccess?: (videoUrl: string) => void) => {
+      setMovieUploading(true);
+      setMovieUploadProgress(0);
+      const taskId = uploadProgress.startTask({
+        label: `Trailer / video phim`,
+        fileName: file.name,
+        totalBytes: file.size,
+      });
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${API_BASE}/admin/media/movies/${movieId}/source`);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      let lastTs = Date.now();
+      let lastBytes = 0;
+      xhr.upload.onprogress = (ev) => {
+        if (!ev.lengthComputable) return;
+        const percent = Math.round((ev.loaded / ev.total) * 100);
+        setMovieUploadProgress(percent);
+        const now = Date.now();
+        const dt = (now - lastTs) / 1000;
+        const speedKBps = dt > 0 ? (ev.loaded - lastBytes) / 1024 / dt : 0;
+        const eta = speedKBps > 0 ? (ev.total - ev.loaded) / 1024 / speedKBps : null;
+        lastTs = now;
+        lastBytes = ev.loaded;
+        uploadProgress.updateTask(taskId, {
+          percent,
+          phase: "uploading",
+          bytesUploaded: ev.loaded,
+          totalBytes: ev.total,
+          speedKBps,
+          etaSeconds: eta != null ? Math.round(eta) : null,
+          message: `Đang upload ${percent}%`,
+        });
+      };
+      xhr.onload = () => {
+        setMovieUploading(false);
+        setMovieUploadProgress(0);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const res = JSON.parse(xhr.responseText);
+            if (res?.videoUrl) onSuccess?.(res.videoUrl);
+          } catch {}
+          uploadProgress.finishTask(taskId, true, "Upload trailer thành công");
+          invalidate();
+        } else {
+          uploadProgress.finishTask(taskId, false, `Upload thất bại (HTTP ${xhr.status})`);
+        }
+      };
+      xhr.onerror = () => {
+        setMovieUploading(false);
+        uploadProgress.finishTask(taskId, false, "Lỗi kết nối upload");
+      };
+      xhr.send(fd);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [movieId]
+  );
   const updateMovie = useMutation({
     mutationFn: (p: AdminMoviePayload) => adminService.updateMovie(movieId, p),
     onSuccess: () => {
@@ -716,15 +776,22 @@ export default function AdminMovieDetailPage() {
               </Typography>
             )}
             {(movie.categories ?? []).map((c) => (
-              <Chip
-                key={c.id}
-                label={c.name}
-                size="small"
-                onDelete={() => removeCat.mutate(c.id)}
-                deleteIcon={
-                  <Delete sx={{ fontSize: "0.85rem !important", color: "error.main !important" }} />
-                }
-              />
+              <Tooltip key={c.id} title="Xóa thể loại" arrow placement="top">
+                <Chip
+                  label={c.name}
+                  size="small"
+                  onDelete={() => removeCat.mutate(c.id)}
+                  deleteIcon={
+                    <Delete
+                      sx={{
+                        fontSize: "0.95rem !important",
+                        color: "error.main !important",
+                        "&:hover": { color: "error.dark !important" },
+                      }}
+                    />
+                  }
+                />
+              </Tooltip>
             ))}
           </Box>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -811,16 +878,23 @@ export default function AdminMovieDetailPage() {
               </Typography>
             )}
             {(movie.tags ?? []).map((t) => (
-              <Chip
-                key={t.id}
-                label={t.name}
-                size="small"
-                variant="outlined"
-                onDelete={() => removeTag.mutate(t.id)}
-                deleteIcon={
-                  <Delete sx={{ fontSize: "0.85rem !important", color: "error.main !important" }} />
-                }
-              />
+              <Tooltip key={t.id} title="Xóa tag" arrow placement="top">
+                <Chip
+                  label={t.name}
+                  size="small"
+                  variant="outlined"
+                  onDelete={() => removeTag.mutate(t.id)}
+                  deleteIcon={
+                    <Delete
+                      sx={{
+                        fontSize: "0.95rem !important",
+                        color: "error.main !important",
+                        "&:hover": { color: "error.dark !important" },
+                      }}
+                    />
+                  }
+                />
+              </Tooltip>
             ))}
           </Box>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -964,7 +1038,7 @@ export default function AdminMovieDetailPage() {
                           />
                           {mp.characterName && (
                             <Typography variant="caption" color="text.secondary">
-                              as {mp.characterName}
+                              vai {mp.characterName}
                             </Typography>
                           )}
                           <Tooltip title="Sửa role">
@@ -1123,7 +1197,7 @@ export default function AdminMovieDetailPage() {
                 onClick={() => !movieUploading && movieVideoInputRef.current?.click()}
                 sx={{
                   border: "2px dashed",
-                  borderColor: movieVideoFile ? "primary.main" : "divider",
+                  borderColor: movieUploading ? "primary.main" : "divider",
                   borderRadius: 1.5,
                   p: 2,
                   textAlign: "center",
@@ -1134,13 +1208,13 @@ export default function AdminMovieDetailPage() {
               >
                 <Typography
                   variant="body2"
-                  color={movieVideoFile ? "text.primary" : "text.disabled"}
+                  color={movieUploading ? "primary.main" : "text.disabled"}
                 >
-                  {movieVideoFile
-                    ? movieVideoFile.name
+                  {movieUploading
+                    ? `Đang upload... ${movieUploadProgress}% (xem chi tiết ở góc phải)`
                     : movie.trailerUrl
-                      ? `Đã có video: ${movie.trailerUrl.split("/").pop()}`
-                      : "Nhấn để chọn file video (MP4, MKV, ...)"}
+                      ? `Đã có video: ${movie.trailerUrl.split("/").pop()}  —  Nhấn để thay file mới`
+                      : "Nhấn để chọn file video (MP4, MKV, ...) — tự động upload"}
                 </Typography>
               </Box>
               <input
@@ -1148,84 +1222,13 @@ export default function AdminMovieDetailPage() {
                 type="file"
                 accept="video/mp4,video/x-matroska,video/avi,video/quicktime,video/webm,.mp4,.mkv,.avi,.mov,.webm"
                 hidden
-                onChange={(e) => setMovieVideoFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  startMovieSourceUpload(file);
+                }}
               />
-              {movieUploading && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Đang upload... {movieUploadProgress}%
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={movieUploadProgress}
-                    sx={{ mt: 0.5, borderRadius: 1 }}
-                  />
-                </Box>
-              )}
-              {movieVideoFile && !movieUploading && (
-                <Button
-                  size="small"
-                  variant="contained"
-                  sx={{ mt: 1 }}
-                  onClick={() => {
-                    if (!movieVideoFile) return;
-                    setMovieUploading(true);
-                    setMovieUploadProgress(0);
-                    const taskId = uploadProgress.startTask({
-                      label: `Phim: ${movie?.title ?? ""}`,
-                      fileName: movieVideoFile.name,
-                      totalBytes: movieVideoFile.size,
-                    });
-                    const fd = new FormData();
-                    fd.append("file", movieVideoFile);
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("POST", `${API_BASE}/admin/media/movies/${movieId}/source`);
-                    const token =
-                      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-                    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-                    let lastTs = Date.now();
-                    let lastBytes = 0;
-                    xhr.upload.onprogress = (ev) => {
-                      if (!ev.lengthComputable) return;
-                      const percent = Math.round((ev.loaded / ev.total) * 100);
-                      setMovieUploadProgress(percent);
-                      const now = Date.now();
-                      const dt = (now - lastTs) / 1000;
-                      const speedKBps = dt > 0 ? (ev.loaded - lastBytes) / 1024 / dt : 0;
-                      const eta = speedKBps > 0 ? (ev.total - ev.loaded) / 1024 / speedKBps : null;
-                      lastTs = now;
-                      lastBytes = ev.loaded;
-                      uploadProgress.updateTask(taskId, {
-                        percent,
-                        phase: "uploading",
-                        bytesUploaded: ev.loaded,
-                        totalBytes: ev.total,
-                        speedKBps,
-                        etaSeconds: eta != null ? Math.round(eta) : null,
-                        message: `Đang upload ${percent}%`,
-                      });
-                    };
-                    xhr.onload = () => {
-                      setMovieUploading(false);
-                      setMovieVideoFile(null);
-                      setMovieUploadProgress(0);
-                      uploadProgress.finishTask(
-                        taskId,
-                        true,
-                        "Upload xong, server đang transcode 720p/1080p/4K..."
-                      );
-                      invalidate();
-                    };
-                    xhr.onerror = () => {
-                      setMovieUploading(false);
-                      uploadProgress.finishTask(taskId, false, "Lỗi kết nối upload");
-                    };
-                    xhr.send(fd);
-                  }}
-                >
-                  Upload video
-                </Button>
-              )}
             </Box>
           )}
           {(movie.episodes ?? []).length === 0 && (
@@ -2747,7 +2750,7 @@ export default function AdminMovieDetailPage() {
                 onClick={() => !movieUploading && movieVideoInputRef.current?.click()}
                 sx={{
                   border: "2px dashed",
-                  borderColor: movieVideoFile ? "primary.main" : "divider",
+                  borderColor: movieUploading ? "primary.main" : "divider",
                   borderRadius: 1.5,
                   p: 2,
                   textAlign: "center",
@@ -2758,11 +2761,11 @@ export default function AdminMovieDetailPage() {
               >
                 <Typography
                   variant="body2"
-                  color={movieVideoFile ? "text.primary" : "text.disabled"}
+                  color={movieUploading ? "primary.main" : "text.disabled"}
                 >
-                  {movieVideoFile
-                    ? movieVideoFile.name
-                    : "Nhấn để chọn file video mới (MP4, MKV, ...)"}
+                  {movieUploading
+                    ? `Đang upload... ${movieUploadProgress}% (xem chi tiết ở góc phải)`
+                    : "Nhấn để chọn file video mới (MP4, MKV, ...) — tự động upload"}
                 </Typography>
               </Box>
               <input
@@ -2770,88 +2773,15 @@ export default function AdminMovieDetailPage() {
                 type="file"
                 accept="video/mp4,video/x-matroska,video/avi,video/quicktime,video/webm,.mp4,.mkv,.avi,.mov,.webm"
                 hidden
-                onChange={(e) => setMovieVideoFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  startMovieSourceUpload(file, (videoUrl) => {
+                    setInfoForm((f) => f && { ...f, trailerUrl: videoUrl });
+                  });
+                }}
               />
-              {movieUploading && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Đang upload... {movieUploadProgress}%
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={movieUploadProgress}
-                    sx={{ mt: 0.5, borderRadius: 1 }}
-                  />
-                </Box>
-              )}
-              {movieVideoFile && !movieUploading && (
-                <Button
-                  size="small"
-                  variant="contained"
-                  sx={{ mt: 1 }}
-                  onClick={() => {
-                    if (!movieVideoFile) return;
-                    setMovieUploading(true);
-                    setMovieUploadProgress(0);
-                    const taskId = uploadProgress.startTask({
-                      label: `Phim: ${movie?.title ?? ""}`,
-                      fileName: movieVideoFile.name,
-                      totalBytes: movieVideoFile.size,
-                    });
-                    const fd = new FormData();
-                    fd.append("file", movieVideoFile);
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("POST", `${API_BASE}/admin/media/movies/${movieId}/source`);
-                    const token =
-                      typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-                    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-                    let lastTs = Date.now();
-                    let lastBytes = 0;
-                    xhr.upload.onprogress = (ev) => {
-                      if (!ev.lengthComputable) return;
-                      const percent = Math.round((ev.loaded / ev.total) * 100);
-                      setMovieUploadProgress(percent);
-                      const now = Date.now();
-                      const dt = (now - lastTs) / 1000;
-                      const speedKBps = dt > 0 ? (ev.loaded - lastBytes) / 1024 / dt : 0;
-                      const eta = speedKBps > 0 ? (ev.total - ev.loaded) / 1024 / speedKBps : null;
-                      lastTs = now;
-                      lastBytes = ev.loaded;
-                      uploadProgress.updateTask(taskId, {
-                        percent,
-                        phase: "uploading",
-                        bytesUploaded: ev.loaded,
-                        totalBytes: ev.total,
-                        speedKBps,
-                        etaSeconds: eta != null ? Math.round(eta) : null,
-                        message: `Đang upload ${percent}%`,
-                      });
-                    };
-                    xhr.onload = () => {
-                      setMovieUploading(false);
-                      setMovieVideoFile(null);
-                      setMovieUploadProgress(0);
-                      try {
-                        const res = JSON.parse(xhr.responseText);
-                        setInfoForm((f) => f && { ...f, trailerUrl: res.videoUrl });
-                      } catch {}
-                      uploadProgress.finishTask(
-                        taskId,
-                        true,
-                        "Upload xong, server đang transcode 720p/1080p/4K..."
-                      );
-                      invalidate();
-                    };
-                    xhr.onerror = () => {
-                      setMovieUploading(false);
-                      uploadProgress.finishTask(taskId, false, "Lỗi kết nối upload");
-                    };
-                    xhr.send(fd);
-                  }}
-                >
-                  Upload video
-                </Button>
-              )}
             </Box>
           </DialogContent>
           <DialogActions>
