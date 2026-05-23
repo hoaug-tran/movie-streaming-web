@@ -16,6 +16,36 @@ const AD_TYPE_LABELS: Record<string, string> = {
   BANNER_POPUP: "Banner Popup",
 };
 
+const DELIVERY_STATUS_LABELS: Record<string, string> = {
+  RUNNING: "Đang chạy",
+  PAUSED: "Tạm dừng",
+  SCHEDULED: "Sắp chạy",
+  EXPIRED: "Hết hạn",
+};
+
+const DELIVERY_STATUS_TONES: Record<string, "emerald" | "amber" | "violet" | "rose"> = {
+  RUNNING: "emerald",
+  PAUSED: "amber",
+  SCHEDULED: "violet",
+  EXPIRED: "rose",
+};
+
+function getAdDeliveryStatus(ad: AdminAd): string {
+  if (ad.deliveryStatus) return ad.deliveryStatus;
+  const now = Date.now();
+  const start = ad.startAt || ad.startDate;
+  const end = ad.endAt || ad.endDate;
+  if (!ad.isActive) return "PAUSED";
+  if (start && new Date(start).getTime() > now) return "SCHEDULED";
+  if (end && new Date(end).getTime() < now) return "EXPIRED";
+  return "RUNNING";
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return "Không giới hạn";
+  return new Date(value).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+}
+
 const adFields: AdminFormField<AdFormValues>[] = [
   { name: "title", label: "Tên campaign", required: true, maxLength: 255 },
   { name: "videoUrl", label: "Video quảng cáo", type: "video" as const, required: true },
@@ -85,7 +115,7 @@ export default function AdminAdsPage() {
       getSearchText={(ad) =>
         `${ad.title ?? ad.name ?? ""} ${ad.adType ?? ""} ${ad.targetUrl ?? ""}`
       }
-      getStatus={(ad) => (ad.isActive ? "ACTIVE" : "INACTIVE")}
+      getStatus={(ad) => getAdDeliveryStatus(ad)}
       extraFilters={[
         {
           key: "adType",
@@ -99,26 +129,36 @@ export default function AdminAdsPage() {
           getValue: (ad) => ad.adType ?? "",
         },
         {
-          key: "skippable",
-          label: "Bỏ qua",
+          key: "deliveryStatus",
+          label: "Trạng thái",
           options: [
-            { label: "Có thể bỏ", value: "true" },
-            { label: "Không bỏ", value: "false" },
+            { label: "Đang chạy", value: "RUNNING" },
+            { label: "Tạm dừng", value: "PAUSED" },
+            { label: "Sắp chạy", value: "SCHEDULED" },
+            { label: "Hết hạn", value: "EXPIRED" },
           ],
-          getValue: (ad) => String(Boolean(ad.isSkippable)),
+          getValue: (ad) => getAdDeliveryStatus(ad),
         },
       ]}
       stats={[
         { label: "Campaign", getValue: (items) => items.length, tone: "cyan" },
         {
           label: "Đang chạy",
-          getValue: (items) => items.filter((item) => item.isActive).length,
+          getValue: (items) =>
+            items.filter((item) => getAdDeliveryStatus(item) === "RUNNING").length,
           tone: "emerald",
         },
         {
-          label: "Tạm dừng",
-          getValue: (items) => items.filter((item) => !item.isActive).length,
-          tone: "amber",
+          label: "Hết hạn",
+          getValue: (items) =>
+            items.filter((item) => getAdDeliveryStatus(item) === "EXPIRED").length,
+          tone: "rose",
+        },
+        {
+          label: "Sắp chạy",
+          getValue: (items) =>
+            items.filter((item) => getAdDeliveryStatus(item) === "SCHEDULED").length,
+          tone: "violet",
         },
       ]}
       columns={[
@@ -163,11 +203,28 @@ export default function AdminAdsPage() {
         {
           key: "status",
           label: "Trạng thái",
+          render: (ad) => {
+            const status = getAdDeliveryStatus(ad);
+            return (
+              <AdminStatusChip
+                label={ad.deliveryStatusLabel ?? DELIVERY_STATUS_LABELS[status] ?? status}
+                tone={DELIVERY_STATUS_TONES[status] ?? "amber"}
+              />
+            );
+          },
+        },
+        {
+          key: "schedule",
+          label: "Lịch chạy",
           render: (ad) => (
-            <AdminStatusChip
-              label={ad.isActive ? "ACTIVE" : "INACTIVE"}
-              tone={ad.isActive ? "emerald" : "amber"}
-            />
+            <Stack>
+              <Typography variant="caption" color="text.secondary">
+                Bắt đầu: {formatDateTime(ad.startAt ?? ad.startDate)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Kết thúc: {formatDateTime(ad.endAt ?? ad.endDate)}
+              </Typography>
+            </Stack>
           ),
         },
       ]}

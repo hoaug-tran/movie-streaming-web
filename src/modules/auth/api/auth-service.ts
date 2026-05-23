@@ -13,14 +13,26 @@ import { ApiResponse } from "@/types/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
 
+export const clearClientAuthCache = (): void => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.removeItem("accessToken");
+  window.localStorage.removeItem("refreshToken");
+};
+
+const persistAuthTokens = (_authResponse: LoginResponse): void => {
+  clearClientAuthCache();
+};
+
+export const clearAuthTokens = clearClientAuthCache;
+
 declare global {
   var __oauthExchangePromises: Map<string, Promise<LoginResponse>> | undefined;
 }
 
-const mapRole = (role: string): "ROLE_USER" | "ROLE_ADMIN" => {
-  if (role === "ADMIN" || role === "ROLE_ADMIN") {
-    return "ROLE_ADMIN";
-  }
+const mapRole = (role: string): "ROLE_USER" | "ROLE_ADMIN" | "ROLE_MODERATOR" => {
+  if (role === "ADMIN" || role === "ROLE_ADMIN") return "ROLE_ADMIN";
+  if (role === "MODERATOR" || role === "ROLE_MODERATOR") return "ROLE_MODERATOR";
   return "ROLE_USER";
 };
 
@@ -48,25 +60,14 @@ const mapAuthResponse = (authData: any): LoginResponse => {
 
 const ensureDeviceSession = async (authResponse?: LoginResponse): Promise<void> => {
   if (typeof window === "undefined") return;
-  const previousAccessToken = window.localStorage.getItem("accessToken");
-  const previousRefreshToken = window.localStorage.getItem("refreshToken");
 
-  if (authResponse?.accessToken) {
-    window.localStorage.setItem("accessToken", authResponse.accessToken);
-  }
-  if (authResponse?.refreshToken) {
-    window.localStorage.setItem("refreshToken", authResponse.refreshToken);
+  if (authResponse) {
+    persistAuthTokens(authResponse);
   }
 
   try {
     await deviceSessionService.createCurrentSession();
   } catch (error) {
-    if (previousAccessToken) window.localStorage.setItem("accessToken", previousAccessToken);
-    else window.localStorage.removeItem("accessToken");
-
-    if (previousRefreshToken) window.localStorage.setItem("refreshToken", previousRefreshToken);
-    else window.localStorage.removeItem("refreshToken");
-
     if (process.env.NODE_ENV !== "production") {
       console.warn("Device session creation failed", error);
     }
@@ -101,7 +102,7 @@ const fetchAPI = async <T>(
   };
 
   if (options.headers && typeof options.headers === "object" && !Array.isArray(options.headers)) {
-    Object.assign(headers, options.headers);
+    Object.assign(headers, options.headers as Record<string, string>);
   }
 
   const { requireAuth, headers: _, ...fetchOptions } = options;
@@ -189,13 +190,20 @@ const verifyRegisterOtp = async (request: VerifyOtpRequest): Promise<LoginRespon
   }
 };
 
-const refreshToken = async (token: string): Promise<LoginResponse> => {
+const refreshToken = async (): Promise<{ accessToken: string; refreshToken?: string }> => {
   try {
     const response = await fetchAPI<any>("/auth/refresh", {
       method: "POST",
-      body: JSON.stringify({ refreshToken: token }),
     });
-    return mapAuthResponse(response.data || response);
+
+    const payload = response.data || response;
+
+    clearClientAuthCache();
+
+    return {
+      accessToken: payload.accessToken,
+      refreshToken: payload.refreshToken,
+    };
   } catch (error) {
     throw handleError(error);
   }

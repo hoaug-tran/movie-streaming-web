@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import Providers from "./providers";
 import "../styles/globals.css";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://giophim.libsys.me";
+const APP_LOGO = `${APP_URL}/icons/logo.webp`;
+
 export const metadata: Metadata = {
   title: "Gió phim - Gió đưa, phim tới",
   description: "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
@@ -12,6 +15,35 @@ export const metadata: Metadata = {
     title: "Gió Phim",
   },
   formatDetection: { telephone: false },
+  metadataBase: new URL(APP_URL),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "vi_VN",
+    url: APP_URL,
+    title: "Gió phim - Gió đưa, phim tới",
+    description:
+      "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
+    siteName: "Gió Phim",
+    images: [
+      {
+        url: APP_LOGO,
+        width: 512,
+        height: 512,
+        alt: "Gió Phim Logo",
+        type: "image/webp",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Gió phim - Gió đưa, phim tới",
+    description:
+      "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
+    images: [APP_LOGO],
+  },
   icons: {
     icon: [
       { url: "/icons/icon-192.webp", sizes: "192x192", type: "image/webp" },
@@ -43,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Gió Phim" />
         <meta name="format-detection" content="telephone=no" />
+        <meta name="color-scheme" content="dark" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
         <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167.png" />

@@ -24,6 +24,7 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import { convertToWebPObjectUrl } from "@/utils/convert-to-webp";
 import { adminService } from "@/modules/admin/api";
+import { getAdminErrorMessage } from "@/modules/admin/utils/admin-errors";
 
 export type AdminFieldType =
   | "text"
@@ -92,6 +93,7 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
   const [localStrings, setLocalStrings] = useState<Record<string, string>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
@@ -103,6 +105,7 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
         if (f.type === "number") strings[f.name] = String(initialValues[f.name] ?? "");
       });
       setLocalStrings(strings);
+      setUploadError(null);
     }
   }, [initialValues, open, fields]);
 
@@ -184,6 +187,7 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
         <DialogContent sx={{ p: 3 }}>
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
+            {uploadError && <Alert severity="error">{uploadError}</Alert>}
             {meta.length > 0 && (
               <Box
                 sx={{
@@ -339,8 +343,8 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                                   ...current,
                                   [field.name]: res.videoUrl,
                                 }));
-                              } catch {
-                                // keep existing value on error
+                              } catch (err) {
+                                setUploadError(getAdminErrorMessage(err, "Upload ảnh thất bại."));
                               } finally {
                                 setUploadingField(null);
                               }
@@ -420,7 +424,11 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                           disabled={uploadingField === field.name}
                           sx={{ alignSelf: "flex-start", borderRadius: 1, fontWeight: 800 }}
                         >
-                          {uploadingField === field.name ? "Đang upload..." : "Upload video"}
+                          {uploadingField === field.name
+                            ? "Đang upload..."
+                            : field.name.toLowerCase().includes("trailer")
+                              ? "Upload trailer"
+                              : "Upload video"}
                           <input
                             hidden
                             accept="video/*"
@@ -439,8 +447,8 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                                   ...current,
                                   [field.name]: res.videoUrl,
                                 }));
-                              } catch {
-                                // keep existing value on error
+                              } catch (err) {
+                                setUploadError(getAdminErrorMessage(err, "Upload video thất bại."));
                               } finally {
                                 setUploadingField(null);
                               }
@@ -519,7 +527,14 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
         </DialogContent>
 
         <Divider />
-        <DialogActions sx={{ p: 3 }}>
+        <DialogActions
+          sx={{
+            p: 3,
+            flexDirection: { xs: "column-reverse", sm: "row" },
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: 1,
+          }}
+        >
           <Button
             id="admin-form-cancel"
             variant="outlined"

@@ -62,6 +62,7 @@ import AvatarCropUpload from "@/components/Common/AvatarCropUpload";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { convertToWebPObjectUrl } from "@/utils/convert-to-webp";
 import { useUploadProgress } from "@/context/upload-progress-context";
+import { getAdminErrorMessage } from "@/modules/admin/utils/admin-errors";
 import LinearProgress from "@mui/material/LinearProgress";
 import CloudUpload from "@mui/icons-material/CloudUpload";
 import CheckCircle from "@mui/icons-material/CheckCircle";
@@ -203,6 +204,32 @@ const PERSON_ROLES = [
 ];
 const STUDIO_ROLES = ["PRODUCTION", "DISTRIBUTION", "NETWORK", "ANIMATION_STUDIO"];
 
+const PERSON_ROLE_LABELS: Record<string, string> = {
+  ACTOR: "Diễn viên nam",
+  ACTRESS: "Diễn viên nữ",
+  DIRECTOR: "Đạo diễn",
+  WRITER: "Biên kịch",
+  PRODUCER: "Nhà sản xuất",
+  VOICE_ACTOR: "Lồng tiếng",
+  CAMEO: "Khách mời",
+  COMPOSER: "Nhạc sĩ",
+  CINEMATOGRAPHER: "Quay phim",
+  EDITOR: "Dựng phim",
+};
+
+const STUDIO_ROLE_LABELS: Record<string, string> = {
+  PRODUCTION: "Sản xuất",
+  DISTRIBUTION: "Phân phối",
+  NETWORK: "Kênh phát hành",
+  ANIMATION_STUDIO: "Xưởng hoạt hình",
+};
+
+const EPISODE_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Bản nháp",
+  HIDDEN: "Đã ẩn",
+  PUBLISHED: "Đã xuất bản",
+};
+
 export default function AdminMovieDetailPage() {
   const { id } = useParams<{ id: string }>();
   const movieId = Number(id);
@@ -241,26 +268,48 @@ export default function AdminMovieDetailPage() {
   const addCat = useMutation({
     mutationFn: (cid: number) => adminService.addMovieCategory(movieId, cid),
     onSuccess: invalidate,
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể gắn thể loại."),
+      }),
   });
   const removeCat = useMutation({
     mutationFn: (cid: number) => adminService.removeMovieCategory(movieId, cid),
     onSuccess: invalidate,
+    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể gỡ thể loại.")),
   });
   const addTag = useMutation({
     mutationFn: (tid: number) => adminService.addMovieTag(movieId, tid),
     onSuccess: invalidate,
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể gắn tag."),
+      }),
   });
   const removeTag = useMutation({
     mutationFn: (tid: number) => adminService.removeMovieTag(movieId, tid),
     onSuccess: invalidate,
+    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể gỡ tag.")),
   });
   const addPerson = useMutation({
     mutationFn: (p: AdminMoviePersonPayload) => adminService.addMoviePerson(movieId, p),
     onSuccess: invalidate,
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể gắn diễn viên / đạo diễn."),
+      }),
   });
   const removePerson = useMutation({
     mutationFn: (mpid: number) => adminService.removeMoviePerson(movieId, mpid),
     onSuccess: invalidate,
+    onError: (err: unknown) =>
+      setDialogError(getAdminErrorMessage(err, "Không thể xóa gắn kết diễn viên / đạo diễn.")),
   });
   const updatePerson = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Partial<AdminMoviePersonPayload> }) =>
@@ -269,14 +318,24 @@ export default function AdminMovieDetailPage() {
       invalidate();
       setEditPersonDialog(false);
     },
+    onError: (err: unknown) =>
+      setDialogError(getAdminErrorMessage(err, "Không thể cập nhật vai trò.")),
   });
   const addStudio = useMutation({
     mutationFn: (p: AdminMovieStudioPayload) => adminService.addMovieStudio(movieId, p),
     onSuccess: invalidate,
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể gắn studio / nhà sản xuất."),
+      }),
   });
   const removeStudio = useMutation({
     mutationFn: (msid: number) => adminService.removeMovieStudio(movieId, msid),
     onSuccess: invalidate,
+    onError: (err: unknown) =>
+      setDialogError(getAdminErrorMessage(err, "Không thể xóa studio / nhà sản xuất.")),
   });
   const updateStudio = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Partial<AdminMovieStudioPayload> }) =>
@@ -285,6 +344,8 @@ export default function AdminMovieDetailPage() {
       invalidate();
       setEditStudioDialog(false);
     },
+    onError: (err: unknown) =>
+      setDialogError(getAdminErrorMessage(err, "Không thể cập nhật studio.")),
   });
   const createCategory = useMutation({
     mutationFn: (p: { name: string; slug: string }) => adminService.createCategory(p),
@@ -292,10 +353,17 @@ export default function AdminMovieDetailPage() {
       addCat.mutate(cat.id);
       setNewCatName("");
     },
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể tạo thể loại mới."),
+      }),
   });
   const addEpisode = useMutation({
     mutationFn: (p: AdminEpisodePayload) => adminService.createEpisode(movieId, p),
     onSuccess: invalidate,
+    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể tạo tập phim.")),
   });
   const updateEpisodeMutation = useMutation({
     mutationFn: ({ episodeId, p }: { episodeId: number; p: AdminEpisodePayload }) =>
@@ -304,10 +372,13 @@ export default function AdminMovieDetailPage() {
       invalidate();
       setEditEpisodeDialog(false);
     },
+    onError: (err: unknown) =>
+      setDialogError(getAdminErrorMessage(err, "Không thể cập nhật tập phim.")),
   });
   const deleteEpisode = useMutation({
     mutationFn: (episodeId: number) => adminService.deleteEpisode(movieId, episodeId),
     onSuccess: invalidate,
+    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể xóa tập phim.")),
   });
   const retranscodeEpisode = useMutation({
     mutationFn: (episodeId: number) => adminService.retranscodeEpisode(episodeId),
@@ -391,6 +462,12 @@ export default function AdminMovieDetailPage() {
       addTag.mutate(tag.id);
       setNewTagName("");
     },
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể tạo tag mới."),
+      }),
   });
   const createPerson = useMutation({
     mutationFn: (p: AdminPersonPayload) => adminService.createPerson(p),
@@ -398,6 +475,12 @@ export default function AdminMovieDetailPage() {
       setPersonForm((prev) => ({ ...prev, personId: person.id }));
       qc.invalidateQueries({ queryKey: ["admin", "persons"] });
     },
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể tạo người mới."),
+      }),
   });
   const createStudio = useMutation({
     mutationFn: (p: AdminStudioPayload) => adminService.createStudio(p),
@@ -405,6 +488,12 @@ export default function AdminMovieDetailPage() {
       setStudioForm((prev) => ({ ...prev, studioId: studio.id }));
       qc.invalidateQueries({ queryKey: ["admin", "studios"] });
     },
+    onError: (err: unknown) =>
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể tạo studio mới."),
+      }),
   });
 
   const [addCatId, setAddCatId] = useState<number | "">("");
@@ -418,6 +507,7 @@ export default function AdminMovieDetailPage() {
     severity: AlertColor;
     message: string;
   }>({ open: false, severity: "info", message: "" });
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   useEffect(() => {
     const ids = Object.keys(transcodeJobs).map(Number);
@@ -527,57 +617,66 @@ export default function AdminMovieDetailPage() {
       setMovieUploading(true);
       setMovieUploadProgress(0);
       const taskId = uploadProgress.startTask({
-        label: `Trailer / video phim`,
+        label: `Video phim single`,
         fileName: file.name,
         totalBytes: file.size,
       });
-      const fd = new FormData();
-      fd.append("file", file);
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${API_BASE}/admin/media/movies/${movieId}/source`);
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-      let lastTs = Date.now();
-      let lastBytes = 0;
-      xhr.upload.onprogress = (ev) => {
-        if (!ev.lengthComputable) return;
-        const percent = Math.round((ev.loaded / ev.total) * 100);
-        setMovieUploadProgress(percent);
-        const now = Date.now();
-        const dt = (now - lastTs) / 1000;
-        const speedKBps = dt > 0 ? (ev.loaded - lastBytes) / 1024 / dt : 0;
-        const eta = speedKBps > 0 ? (ev.total - ev.loaded) / 1024 / speedKBps : null;
-        lastTs = now;
-        lastBytes = ev.loaded;
-        uploadProgress.updateTask(taskId, {
-          percent,
-          phase: "uploading",
-          bytesUploaded: ev.loaded,
-          totalBytes: ev.total,
-          speedKBps,
-          etaSeconds: eta != null ? Math.round(eta) : null,
-          message: `Đang upload ${percent}%`,
-        });
-      };
-      xhr.onload = () => {
-        setMovieUploading(false);
-        setMovieUploadProgress(0);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const res = JSON.parse(xhr.responseText);
-            if (res?.videoUrl) onSuccess?.(res.videoUrl);
-          } catch {}
-          uploadProgress.finishTask(taskId, true, "Upload trailer thành công");
+
+      adminService
+        .uploadMovieSourceSmart(
+          movieId,
+          file,
+          (s) => {
+            setMovieUploadProgress(s.percent);
+            uploadProgress.updateTask(taskId, {
+              percent: s.percent,
+              phase: s.phase,
+              bytesUploaded: s.bytesUploaded,
+              totalBytes: s.totalBytes,
+              speedKBps: s.speedKBps,
+              etaSeconds: s.etaSeconds,
+              message: s.message,
+            });
+          },
+          API_BASE
+        )
+        .then((res) => {
+          setMovieUploading(false);
+          setMovieUploadProgress(0);
+          if (res?.videoUrl) onSuccess?.(res.videoUrl);
+          if (res?.id) {
+            setTranscodeJobs((prev) => ({
+              ...prev,
+              [res.id]: {
+                episodeId: res.id,
+                status: "PENDING",
+                targetQualities: ["720p", "1080p", "4K"],
+                completedQualities: [],
+                failedQualities: [],
+                skippedQualities: [],
+                currentQuality: null,
+                percent: 0,
+                message: "Upload xong, server đang chuẩn bị transcode...",
+              },
+            }));
+          }
+          uploadProgress.finishTask(
+            taskId,
+            true,
+            "Upload xong, server đang transcode 720p/1080p/4K (chạy ngầm vài phút)..."
+          );
           invalidate();
-        } else {
-          uploadProgress.finishTask(taskId, false, `Upload thất bại (HTTP ${xhr.status})`);
-        }
-      };
-      xhr.onerror = () => {
-        setMovieUploading(false);
-        uploadProgress.finishTask(taskId, false, "Lỗi kết nối upload");
-      };
-      xhr.send(fd);
+        })
+        .catch((err) => {
+          console.error("[Upload movie source]", err);
+          setMovieUploading(false);
+          setMovieUploadProgress(0);
+          uploadProgress.finishTask(
+            taskId,
+            false,
+            err instanceof Error ? err.message : String(err)
+          );
+        });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [movieId]
@@ -590,11 +689,11 @@ export default function AdminMovieDetailPage() {
     },
   });
 
-  const updateLocks = useMutation({
-    mutationFn: (payload: { commentsLocked: boolean; reviewsLocked: boolean }) =>
-      adminService.updateMovieInteractionLocks(movieId, payload),
-    onSuccess: invalidate,
-  });
+  // const updateLocks = useMutation({
+  //   mutationFn: (payload: { commentsLocked: boolean; reviewsLocked: boolean }) =>
+  //     adminService.updateMovieInteractionLocks(movieId, payload),
+  //   onSuccess: invalidate,
+  // });
 
   const [episodeForm, setEpisodeForm] = useState<AdminEpisodePayload>({
     title: "",
@@ -633,6 +732,7 @@ export default function AdminMovieDetailPage() {
 
   const existingCatIds = new Set((movie.categories ?? []).map((c) => c.id));
   const existingTagIds = new Set((movie.tags ?? []).map((t) => t.id));
+  const singleMovieEpisode = movie.movieType === "SINGLE" ? (movie.episodes ?? [])[0] : null;
 
   const resetEpisodeForm = () => {
     setEpisodeForm({
@@ -691,6 +791,8 @@ export default function AdminMovieDetailPage() {
               movieType: (movie.movieType as AdminMovieType) ?? "SINGLE",
               movieStatus: (movie.movieStatus as AdminMovieStatus) ?? "DRAFT",
               isPremiumOnly: Boolean(movie.isPremiumOnly),
+              commentsLocked: Boolean(movie.commentsLocked),
+              reviewsLocked: Boolean(movie.reviewsLocked),
             });
             setEditInfoOpen(true);
           }}
@@ -698,70 +800,6 @@ export default function AdminMovieDetailPage() {
           Sửa thông tin
         </Button>
       </Box>
-
-      {/* Interaction Locks */}
-      <Paper sx={{ ...sectionSx, mb: 2.5 }} elevation={0}>
-        <Typography fontWeight={700} sx={{ mb: 1.5 }}>
-          Khóa tương tác
-        </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(movie.commentsLocked)}
-                disabled={updateLocks.isPending}
-                onChange={(e) =>
-                  updateLocks.mutate({
-                    commentsLocked: e.target.checked,
-                    reviewsLocked: Boolean(movie.reviewsLocked),
-                  })
-                }
-                color="warning"
-              />
-            }
-            label={
-              <Box>
-                <Typography variant="body2" fontWeight={700}>
-                  Khóa bình luận
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {movie.commentsLocked ? "Người dùng không thể bình luận" : "Bình luận đang mở"}
-                </Typography>
-              </Box>
-            }
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(movie.reviewsLocked)}
-                disabled={updateLocks.isPending}
-                onChange={(e) =>
-                  updateLocks.mutate({
-                    commentsLocked: Boolean(movie.commentsLocked),
-                    reviewsLocked: e.target.checked,
-                  })
-                }
-                color="warning"
-              />
-            }
-            label={
-              <Box>
-                <Typography variant="body2" fontWeight={700}>
-                  Khóa đánh giá
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {movie.reviewsLocked ? "Người dùng không thể đánh giá" : "Đánh giá đang mở"}
-                </Typography>
-              </Box>
-            }
-          />
-        </Stack>
-        {updateLocks.isError && (
-          <Alert severity="error" sx={{ mt: 1.5 }}>
-            Không thể cập nhật khóa tương tác.
-          </Alert>
-        )}
-      </Paper>
 
       <Stack spacing={2.5}>
         <Paper sx={sectionSx} elevation={0}>
@@ -1030,7 +1068,7 @@ export default function AdminMovieDetailPage() {
                       {(entries ?? []).map((mp) => (
                         <Box key={mp.id} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                           <Chip
-                            label={mp.role}
+                            label={PERSON_ROLE_LABELS[mp.role ?? ""] ?? mp.role}
                             size="small"
                             color="primary"
                             variant="outlined"
@@ -1041,7 +1079,7 @@ export default function AdminMovieDetailPage() {
                               vai {mp.characterName}
                             </Typography>
                           )}
-                          <Tooltip title="Sửa role">
+                          <Tooltip title="Sửa vai trò">
                             <IconButton
                               size="small"
                               color="primary"
@@ -1058,7 +1096,7 @@ export default function AdminMovieDetailPage() {
                               <Edit sx={{ fontSize: 13 }} />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Xóa role">
+                          <Tooltip title="Xóa vai trò">
                             <IconButton
                               size="small"
                               color="error"
@@ -1098,7 +1136,7 @@ export default function AdminMovieDetailPage() {
             {(movie.studios ?? []).map((ms) => (
               <Box key={ms.id} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
                 <Chip
-                  label={ms.role}
+                  label={STUDIO_ROLE_LABELS[ms.role ?? ""] ?? ms.role}
                   size="small"
                   color="secondary"
                   variant="outlined"
@@ -1139,6 +1177,33 @@ export default function AdminMovieDetailPage() {
                 ? "Video phim"
                 : `Tập phim (${(movie.episodes ?? []).length})`}
             </Typography>
+            {movie.movieType === "SINGLE" && singleMovieEpisode && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                startIcon={
+                  (retranscodeEpisode.isPending &&
+                    retranscodeEpisode.variables === singleMovieEpisode.id) ||
+                  transcodeJobs[singleMovieEpisode.id]?.status === "PENDING" ||
+                  transcodeJobs[singleMovieEpisode.id]?.status === "RUNNING" ? (
+                    <CircularProgress size={14} color="inherit" />
+                  ) : (
+                    <Refresh />
+                  )
+                }
+                onClick={() => setConfirmRetranscodeEpisodeId(singleMovieEpisode.id)}
+                disabled={
+                  (retranscodeEpisode.isPending &&
+                    retranscodeEpisode.variables === singleMovieEpisode.id) ||
+                  transcodeJobs[singleMovieEpisode.id]?.status === "PENDING" ||
+                  transcodeJobs[singleMovieEpisode.id]?.status === "RUNNING"
+                }
+                sx={{ mr: 1 }}
+              >
+                Render lại HLS
+              </Button>
+            )}
             {movie.movieType !== "SINGLE" && (movie.episodes ?? []).length > 0 && (
               <Button
                 size="small"
@@ -1214,7 +1279,7 @@ export default function AdminMovieDetailPage() {
                     ? `Đang upload... ${movieUploadProgress}% (xem chi tiết ở góc phải)`
                     : movie.trailerUrl
                       ? `Đã có video: ${movie.trailerUrl.split("/").pop()}  —  Nhấn để thay file mới`
-                      : "Nhấn để chọn file video (MP4, MKV, ...) — tự động upload"}
+                      : "Nhấn để chọn file video (MP4, MKV, ...) — upload xong sẽ tự transcode"}
                 </Typography>
               </Box>
               <input
@@ -1230,6 +1295,12 @@ export default function AdminMovieDetailPage() {
                 }}
               />
             </Box>
+          )}
+          {movie.movieType === "SINGLE" && !singleMovieEpisode && !movieUploading && (
+            <Alert severity="info" sx={{ mb: 1.5 }}>
+              Sau lần upload đầu tiên, hệ thống sẽ tạo video ẩn cho phim single và tự transcode HLS.
+              Nút render lại sẽ xuất hiện sau khi upload thành công.
+            </Alert>
           )}
           {(movie.episodes ?? []).length === 0 && (
             <Typography variant="caption" color="text.secondary">
@@ -1254,7 +1325,14 @@ export default function AdminMovieDetailPage() {
                     "&:hover": { bgcolor: "action.hover" },
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: { xs: "flex-start", sm: "center" },
+                      gap: 1.25,
+                      flexWrap: { xs: "wrap", sm: "nowrap" },
+                    }}
+                  >
                     <Chip
                       label={`Tập ${ep.episodeNumber}`}
                       size="small"
@@ -1271,7 +1349,7 @@ export default function AdminMovieDetailPage() {
                       sx={{ fontSize: "0.68rem" }}
                     />
                     <Chip
-                      label={ep.status}
+                      label={EPISODE_STATUS_LABELS[ep.status ?? ""] ?? ep.status}
                       size="small"
                       variant="outlined"
                       color={
@@ -1351,43 +1429,85 @@ export default function AdminMovieDetailPage() {
                   {(isActive || isFinished) && (
                     <Box
                       sx={{
-                        mx: 1,
-                        px: 1.25,
-                        py: 1,
-                        borderRadius: 1,
+                        mt: 0.5,
+                        p: { xs: 1.25, sm: 1.5 },
+                        borderRadius: 1.5,
                         bgcolor: "action.hover",
                         border: "1px solid",
-                        borderColor: "divider",
+                        borderColor:
+                          isFinished && job.status === "FAILED"
+                            ? "error.light"
+                            : isFinished
+                              ? "success.light"
+                              : "warning.light",
                       }}
                     >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                        <Typography variant="caption" fontWeight={700}>
-                          {isActive
-                            ? job.status === "PENDING"
-                              ? "Đang chờ khởi chạy…"
-                              : `Đang transcode ${job.currentQuality ?? ""}…`
-                            : job.status === "DONE"
-                              ? "Render lại hoàn tất"
-                              : "Render lại thất bại"}
-                        </Typography>
-                        <Box sx={{ flex: 1 }} />
-                        <Typography variant="caption" color="text.secondary">
-                          {job.percent}%
-                        </Typography>
-                        {isFinished && (
-                          <IconButton
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: { xs: "flex-start", sm: "center" },
+                          justifyContent: "space-between",
+                          gap: 1.25,
+                          mb: 1,
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="caption" fontWeight={800} sx={{ display: "block" }}>
+                            {isActive
+                              ? job.status === "PENDING"
+                                ? "Đang chờ khởi chạy…"
+                                : `Đang transcode ${job.currentQuality ?? ""}…`
+                              : job.status === "DONE"
+                                ? "Render lại hoàn tất"
+                                : "Render lại thất bại"}
+                          </Typography>
+                          {job.message && (
+                            <Typography
+                              variant="caption"
+                              color={
+                                isFinished && job.status === "FAILED" ? "error" : "text.secondary"
+                              }
+                              sx={{ display: "block", mt: 0.25 }}
+                            >
+                              {job.message}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          spacing={0.75}
+                          sx={{ flexShrink: 0 }}
+                        >
+                          <Chip
                             size="small"
-                            onClick={() =>
-                              setTranscodeJobs((prev) => {
-                                const next = { ...prev };
-                                delete next[ep.id];
-                                return next;
-                              })
+                            label={`${job.percent}%`}
+                            color={
+                              isFinished && job.status === "FAILED"
+                                ? "error"
+                                : isFinished
+                                  ? "success"
+                                  : "warning"
                             }
-                          >
-                            <Delete sx={{ fontSize: 14 }} />
-                          </IconButton>
-                        )}
+                            variant={isActive ? "filled" : "outlined"}
+                            sx={{ height: 22, fontSize: "0.68rem", fontWeight: 800 }}
+                          />
+                          {isFinished && (
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                setTranscodeJobs((prev) => {
+                                  const next = { ...prev };
+                                  delete next[ep.id];
+                                  return next;
+                                })
+                              }
+                              sx={{ width: 24, height: 24 }}
+                            >
+                              <Delete sx={{ fontSize: 14 }} />
+                            </IconButton>
+                          )}
+                        </Stack>
                       </Box>
                       <LinearProgress
                         variant={
@@ -1401,9 +1521,9 @@ export default function AdminMovieDetailPage() {
                               ? "success"
                               : "warning"
                         }
-                        sx={{ borderRadius: 1, height: 6 }}
+                        sx={{ borderRadius: 1, height: 7 }}
                       />
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.75 }}>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 1 }}>
                         {job.targetQualities.map((q) => {
                           const done = job.completedQualities.includes(q);
                           const failed = job.failedQualities.includes(q);
@@ -1426,20 +1546,11 @@ export default function AdminMovieDetailPage() {
                                         : "default"
                               }
                               variant={done || failed || current ? "filled" : "outlined"}
-                              sx={{ height: 20, fontSize: "0.65rem" }}
+                              sx={{ height: 22, fontSize: "0.65rem", fontWeight: 700 }}
                             />
                           );
                         })}
                       </Box>
-                      {job.message && (
-                        <Typography
-                          variant="caption"
-                          color={isFinished && job.status === "FAILED" ? "error" : "text.secondary"}
-                          sx={{ display: "block", mt: 0.5 }}
-                        >
-                          {job.message}
-                        </Typography>
-                      )}
                     </Box>
                   )}
                 </Box>
@@ -1451,7 +1562,12 @@ export default function AdminMovieDetailPage() {
 
       <Dialog
         open={episodeDialog}
-        onClose={() => !addEpisode.isPending && !episodeUploading && setEpisodeDialog(false)}
+        onClose={() => {
+          if (!addEpisode.isPending && !episodeUploading) {
+            setDialogError(null);
+            setEpisodeDialog(false);
+          }
+        }}
         maxWidth="sm"
         fullWidth
       >
@@ -1658,6 +1774,11 @@ export default function AdminMovieDetailPage() {
 
           {episodeUploading && <UploadStatusBar status={episodeUploadStatus} />}
         </DialogContent>
+        {dialogError && (
+          <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
+            {dialogError}
+          </Alert>
+        )}
         <DialogActions>
           <Button
             onClick={() => setEpisodeDialog(false)}
@@ -1745,9 +1866,12 @@ export default function AdminMovieDetailPage() {
 
       <Dialog
         open={editEpisodeDialog}
-        onClose={() =>
-          !updateEpisodeMutation.isPending && !editEpisodeUploading && setEditEpisodeDialog(false)
-        }
+        onClose={() => {
+          if (!updateEpisodeMutation.isPending && !editEpisodeUploading) {
+            setDialogError(null);
+            setEditEpisodeDialog(false);
+          }
+        }}
         maxWidth="sm"
         fullWidth
       >
@@ -1970,6 +2094,11 @@ export default function AdminMovieDetailPage() {
             </FormControl>
           </Box>
         </DialogContent>
+        {dialogError && (
+          <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
+            {dialogError}
+          </Alert>
+        )}
         <DialogActions>
           <Button
             onClick={() => setEditEpisodeDialog(false)}
@@ -2052,7 +2181,15 @@ export default function AdminMovieDetailPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={personDialog} onClose={() => setPersonDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={personDialog}
+        onClose={() => {
+          setDialogError(null);
+          setPersonDialog(false);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle fontWeight={700}>Gắn diễn viên / đạo diễn</DialogTitle>
         <DialogContent
           sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px", overflow: "visible" }}
@@ -2185,6 +2322,11 @@ export default function AdminMovieDetailPage() {
             />
           </Box>
         </DialogContent>
+        {dialogError && (
+          <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
+            {dialogError}
+          </Alert>
+        )}
         <DialogActions>
           <Button onClick={() => setPersonDialog(false)}>Hủy</Button>
           <Button
@@ -2225,7 +2367,15 @@ export default function AdminMovieDetailPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={studioDialog} onClose={() => setStudioDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={studioDialog}
+        onClose={() => {
+          setDialogError(null);
+          setStudioDialog(false);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle fontWeight={700}>Thêm studio / nhà sản xuất</DialogTitle>
         <DialogContent
           sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px", overflow: "visible" }}
@@ -2332,6 +2482,11 @@ export default function AdminMovieDetailPage() {
             </Select>
           </FormControl>
         </DialogContent>
+        {dialogError && (
+          <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
+            {dialogError}
+          </Alert>
+        )}
         <DialogActions>
           <Button onClick={() => setStudioDialog(false)}>Hủy</Button>
           <Button
@@ -2362,7 +2517,10 @@ export default function AdminMovieDetailPage() {
       {/* Edit Person Dialog */}
       <Dialog
         open={editPersonDialog}
-        onClose={() => setEditPersonDialog(false)}
+        onClose={() => {
+          setDialogError(null);
+          setEditPersonDialog(false);
+        }}
         maxWidth="xs"
         fullWidth
       >
@@ -2406,6 +2564,11 @@ export default function AdminMovieDetailPage() {
             fullWidth
           />
         </DialogContent>
+        {dialogError && (
+          <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
+            {dialogError}
+          </Alert>
+        )}
         <DialogActions>
           <Button onClick={() => setEditPersonDialog(false)}>Hủy</Button>
           <Button
@@ -2424,7 +2587,10 @@ export default function AdminMovieDetailPage() {
       {/* Edit Studio Dialog */}
       <Dialog
         open={editStudioDialog}
-        onClose={() => setEditStudioDialog(false)}
+        onClose={() => {
+          setDialogError(null);
+          setEditStudioDialog(false);
+        }}
         maxWidth="xs"
         fullWidth
       >
@@ -2449,6 +2615,11 @@ export default function AdminMovieDetailPage() {
             </Select>
           </FormControl>
         </DialogContent>
+        {dialogError && (
+          <Alert severity="error" sx={{ mx: 3, mt: 2 }}>
+            {dialogError}
+          </Alert>
+        )}
         <DialogActions>
           <Button onClick={() => setEditStudioDialog(false)}>Hủy</Button>
           <Button
@@ -2473,7 +2644,11 @@ export default function AdminMovieDetailPage() {
         >
           <DialogTitle fontWeight={700}>Sửa thông tin phim</DialogTitle>
           <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px" }}>
-            {updateMovie.isError && <Alert severity="error">Lưu thất bại. Vui lòng thử lại.</Alert>}
+            {updateMovie.isError && (
+              <Alert severity="error">
+                {getAdminErrorMessage(updateMovie.error, "Lưu thất bại. Vui lòng thử lại.")}
+              </Alert>
+            )}
             <Box
               sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}
             >
@@ -2576,11 +2751,46 @@ export default function AdminMovieDetailPage() {
                   }
                 >
                   <option value="DRAFT">Draft</option>
-                  <option value="REVIEWING">Reviewing</option>
+                  <option value="UPCOMING">Upcoming</option>
                   <option value="PUBLISHED">Published</option>
                   <option value="ARCHIVED">Archived</option>
                 </Select>
               </FormControl>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(infoForm.isPremiumOnly)}
+                    onChange={(e) =>
+                      setInfoForm((f) => f && { ...f, isPremiumOnly: e.target.checked })
+                    }
+                  />
+                }
+                label="Chỉ Premium"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(infoForm.commentsLocked)}
+                    onChange={(e) =>
+                      setInfoForm((f) => f && { ...f, commentsLocked: e.target.checked })
+                    }
+                    color="warning"
+                  />
+                }
+                label="Khóa bình luận"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(infoForm.reviewsLocked)}
+                    onChange={(e) =>
+                      setInfoForm((f) => f && { ...f, reviewsLocked: e.target.checked })
+                    }
+                    color="warning"
+                  />
+                }
+                label="Khóa đánh giá"
+              />
             </Box>
             <TextField
               size="small"
@@ -2805,7 +3015,11 @@ export default function AdminMovieDetailPage() {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle fontWeight={700}>Render lại HLS cho tập này?</DialogTitle>
+        <DialogTitle fontWeight={700}>
+          {movie.movieType === "SINGLE"
+            ? "Render lại HLS cho phim single?"
+            : "Render lại HLS cho tập này?"}
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
             Hệ thống sẽ transcode lại video gốc thành 3 chất lượng (720p, 1080p, 4K) và ghi đè các

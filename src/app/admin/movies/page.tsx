@@ -10,6 +10,18 @@ import { AdminMovie, AdminMoviePayload, adminService } from "@/modules/admin/api
 
 type MovieFormValues = AdminMoviePayload & Record<string, unknown>;
 
+const MOVIE_TYPE_LABELS: Record<string, string> = {
+  SINGLE: "Phim lẻ",
+  SERIES: "Phim bộ",
+};
+
+const MOVIE_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Bản nháp",
+  UPCOMING: "Sắp chiếu",
+  PUBLISHED: "Đã xuất bản",
+  ARCHIVED: "Đã lưu trữ",
+};
+
 const movieFields: AdminFormField<MovieFormValues>[] = [
   { name: "title", label: "Tiêu đề", required: true, maxLength: 255 },
   { name: "originalTitle", label: "Tên gốc", maxLength: 255 },
@@ -49,8 +61,8 @@ const movieFields: AdminFormField<MovieFormValues>[] = [
     type: "select",
     required: true,
     options: [
-      { label: "Movie (Single)", value: "SINGLE" },
-      { label: "Series", value: "SERIES" },
+      { label: "Phim lẻ", value: "SINGLE" },
+      { label: "Phim bộ", value: "SERIES" },
     ],
   },
   {
@@ -59,13 +71,15 @@ const movieFields: AdminFormField<MovieFormValues>[] = [
     type: "select",
     required: true,
     options: [
-      { label: "Draft", value: "DRAFT" },
-      { label: "Reviewing", value: "REVIEWING" },
-      { label: "Published", value: "PUBLISHED" },
-      { label: "Archived", value: "ARCHIVED" },
+      { label: "Bản nháp", value: "DRAFT" },
+      { label: "Sắp chiếu", value: "UPCOMING" },
+      { label: "Đã xuất bản", value: "PUBLISHED" },
+      { label: "Đã lưu trữ", value: "ARCHIVED" },
     ],
   },
   { name: "isPremiumOnly", label: "Chỉ Premium", type: "switch" },
+  { name: "commentsLocked", label: "Khóa bình luận", type: "switch" },
+  { name: "reviewsLocked", label: "Khóa đánh giá", type: "switch" },
 ];
 
 function toMovieForm(movie?: AdminMovie | null): MovieFormValues {
@@ -84,6 +98,8 @@ function toMovieForm(movie?: AdminMovie | null): MovieFormValues {
     movieType: movie?.movieType ?? "SINGLE",
     movieStatus: movie?.movieStatus ?? "DRAFT",
     isPremiumOnly: Boolean(movie?.isPremiumOnly),
+    commentsLocked: Boolean(movie?.commentsLocked),
+    reviewsLocked: Boolean(movie?.reviewsLocked),
   };
 }
 
@@ -138,14 +154,54 @@ export default function AdminMoviesPage() {
       stats={[
         { label: "Tổng phim", getValue: (items) => items.length, tone: "cyan" },
         {
+          label: "Đã xuất bản",
+          getValue: (items) => items.filter((item) => item.movieStatus === "PUBLISHED").length,
+          tone: "emerald",
+        },
+        {
+          label: "Bản nháp",
+          getValue: (items) => items.filter((item) => item.movieStatus === "DRAFT").length,
+          tone: "amber",
+        },
+        {
+          label: "Sắp chiếu / lưu trữ",
+          getValue: (items) =>
+            items.filter((item) => ["UPCOMING", "ARCHIVED"].includes(item.movieStatus ?? ""))
+              .length,
+          tone: "violet",
+        },
+        {
           label: "Premium",
           getValue: (items) => items.filter((item) => item.isPremiumOnly).length,
           tone: "violet",
         },
         {
-          label: "Đã publish",
-          getValue: (items) => items.filter((item) => item.movieStatus === "PUBLISHED").length,
+          label: "Phim bộ",
+          getValue: (items) => items.filter((item) => item.movieType === "SERIES").length,
+          tone: "cyan",
+        },
+        {
+          label: "Tổng lượt xem",
+          getValue: (items) =>
+            items.reduce((sum, item) => sum + (item.viewCount ?? 0), 0).toLocaleString("vi-VN"),
           tone: "emerald",
+        },
+        {
+          label: "Đánh giá TB",
+          getValue: (items) => {
+            const rated = items.filter((item) => Number(item.averageRating ?? 0) > 0);
+            if (rated.length === 0) return "0.0★";
+            const avg =
+              rated.reduce((sum, item) => sum + Number(item.averageRating ?? 0), 0) / rated.length;
+            return `${avg.toFixed(1)}★`;
+          },
+          tone: "amber",
+        },
+        {
+          label: "Tổng review",
+          getValue: (items) =>
+            items.reduce((sum, item) => sum + (item.totalReviews ?? 0), 0).toLocaleString("vi-VN"),
+          tone: "rose",
         },
       ]}
       columns={[
@@ -164,14 +220,19 @@ export default function AdminMoviesPage() {
         {
           key: "type",
           label: "Loại",
-          render: (movie) => <AdminStatusChip label={movie.movieType} tone="violet" />,
+          render: (movie) => (
+            <AdminStatusChip
+              label={MOVIE_TYPE_LABELS[movie.movieType ?? ""] ?? "Không rõ"}
+              tone="violet"
+            />
+          ),
         },
         {
           key: "status",
           label: "Trạng thái",
           render: (movie) => (
             <AdminStatusChip
-              label={movie.movieStatus}
+              label={MOVIE_STATUS_LABELS[movie.movieStatus ?? ""] ?? "Không rõ"}
               tone={movie.movieStatus === "PUBLISHED" ? "emerald" : "amber"}
             />
           ),
@@ -181,7 +242,7 @@ export default function AdminMoviesPage() {
           label: "Rating",
           render: (movie) => (
             <Typography>
-              {movie.averageRating ?? "-"} / 5 · {movie.totalReviews ?? 0} review
+              {movie.averageRating ?? "-"} / 5 · {movie.totalReviews ?? 0} đánh giá
             </Typography>
           ),
         },

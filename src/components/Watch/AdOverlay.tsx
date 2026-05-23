@@ -197,6 +197,8 @@ export default function AdOverlay({
         ? "Quảng cáo giữa phim"
         : "Quảng cáo sau phim";
 
+  const bottomOffset = "max(8px, calc(8px + env(safe-area-inset-bottom)))";
+
   return (
     <Box
       sx={{
@@ -259,8 +261,8 @@ export default function AdOverlay({
       <Box
         sx={{
           position: "absolute",
-          top: 16,
-          left: 16,
+          top: "max(16px, env(safe-area-inset-top))",
+          left: "max(16px, env(safe-area-inset-left))",
           bgcolor: "rgba(0,0,0,0.6)",
           color: "#fff",
           borderRadius: 1,
@@ -278,8 +280,8 @@ export default function AdOverlay({
         onClick={toggleMute}
         sx={{
           position: "absolute",
-          top: 16,
-          right: 16,
+          top: "max(16px, env(safe-area-inset-top))",
+          right: "max(16px, env(safe-area-inset-right))",
           width: 40,
           height: 40,
           borderRadius: "50%",
@@ -301,8 +303,8 @@ export default function AdOverlay({
           onClick={() => window.open(ad.targetUrl, "_blank")}
           sx={{
             position: "absolute",
-            bottom: 72,
-            left: 16,
+            bottom: bottomOffset,
+            left: "max(16px, env(safe-area-inset-left))",
             bgcolor: "rgba(255,255,255,0.15)",
             backdropFilter: "blur(8px)",
             color: "#fff",
@@ -323,7 +325,7 @@ export default function AdOverlay({
       <Box
         sx={{
           position: "absolute",
-          bottom: 20,
+          bottom: bottomOffset,
           right: 16,
           display: "flex",
           flexDirection: "column",

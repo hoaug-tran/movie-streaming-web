@@ -13,6 +13,8 @@ const REGIONS = [
   { label: "Phim Hàn Quốc mới", value: "South Korea", slug: "han-quoc" },
   { label: "Phim Trung Quốc mới", value: "China", slug: "trung-quoc" },
   { label: "Phim Âu-Mỹ mới", value: "United States", slug: "au-my" },
+  { label: "Phim Việt Nam", value: "Vietnam", slug: "viet-nam" },
+  { label: "Phim các nước khác", value: "OTHER", slug: "quoc-gia-khac" },
 ];
 
 export function RegionalDiscovery() {

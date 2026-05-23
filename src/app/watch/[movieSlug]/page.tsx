@@ -76,7 +76,6 @@ function WatchPageContent({ movieSlug }: { movieSlug: string }) {
   const episodeId = episodeIdParam ? parseInt(episodeIdParam, 10) : undefined;
   const resumeSecond = resumeSecondParam ? Math.max(0, parseInt(resumeSecondParam, 10)) : undefined;
 
-  // Offline mode: load movie/episode từ IndexedDB, KHÔNG gọi API
   const [offlineData, setOfflineData] = useState<{
     movie: MovieDetail;
     episode: Episode;
@@ -116,9 +115,25 @@ function WatchPageContent({ movieSlug }: { movieSlug: string }) {
     queryFn: () => movieService.getMovieDetailBySlug(movieSlug),
     staleTime: 5 * 60 * 1000,
     enabled: !isOfflineMode,
+    retry: 0,
   });
 
-  // Loading state cho cả 2 chế độ
+  useEffect(() => {
+    if (!isError || !episodeId || isOfflineMode) return;
+
+    let cancelled = false;
+    offlineStorage.getMovie(episodeId).then((cached) => {
+      if (cancelled) return;
+      if (cached) {
+        window.location.href = `/watch/offline?episode=${episodeId}&slug=${movieSlug}`;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isError, episodeId, movieSlug, isOfflineMode]);
+
   if ((isOfflineMode && offlineLoading) || (!isOfflineMode && isLoading)) {
     return (
       <Box
@@ -137,7 +152,6 @@ function WatchPageContent({ movieSlug }: { movieSlug: string }) {
     );
   }
 
-  // Resolve movie + episode tuỳ theo mode
   let movie: MovieDetail | null = null;
   let currentEpisode: Episode | null = null;
 

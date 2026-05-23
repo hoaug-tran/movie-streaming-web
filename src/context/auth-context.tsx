@@ -2,10 +2,15 @@
 
 import React, { createContext, ReactNode, useCallback, useEffect, useReducer } from "react";
 import { AuthState, UserInfo, LoginResponse } from "@/modules/auth/types/auth";
-import authService, { isAuthFailure } from "@/modules/auth/api/auth-service";
+import authService, { isAuthFailure, clearAuthTokens } from "@/modules/auth/api/auth-service";
 import { queryClient } from "@/config/react-query";
-import { getFromLocalStorage, removeFromLocalStorage, setInLocalStorage } from "@/utils/helpers";
-
+import { removeFromLocalStorage } from "@/utils/helpers";
+import {
+  broadcastUserUpdate,
+  USER_SYNC_CHANNEL,
+  USER_SYNC_STORAGE_KEY,
+  UserSyncPayload,
+} from "@/modules/auth/utils/user-sync";
 interface AuthContextType extends Omit<AuthState, "refreshToken"> {
   login: (identifier: string, password: string) => Promise<void>;
   loginWithOtpVerified: (
@@ -45,7 +50,14 @@ const initialState: AuthState = {
   error: null,
 };
 
-const protectedRoutePrefixes = ["/profile", "/watchlist", "/favorites", "/history"];
+const protectedRoutePrefixes = [
+  "/profile",
+  "/watchlist",
+  "/favorites",
+  "/history",
+  "/account",
+  "/admin",
+];
 
 const shouldRedirectAfterLogout = (pathname: string) =>
   protectedRoutePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -117,15 +129,14 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const persistAuthSession = (response: LoginResponse) => {
-  setInLocalStorage("user", response.user);
+const persistAuthSession = (_response: LoginResponse) => {
+  clearAuthTokens();
 };
 
 const clearAuthSession = () => {
   removeFromLocalStorage("user");
-  removeFromLocalStorage("accessToken");
-  removeFromLocalStorage("refreshToken");
-  // Xoá cache subscription để user kế tiếp không thừa hưởng gói cũ
+  clearAuthTokens();
+
   removeFromLocalStorage("cached-subscription-plans");
   removeFromLocalStorage("cached-my-subscription");
 
@@ -136,36 +147,80 @@ const clearAuthSession = () => {
   queryClient.clear();
 };
 
+const restoreWithRefreshToken = async (): Promise<{
+  user: UserInfo;
+  accessToken: string;
+  refreshToken: string;
+} | null> => {
+  await authService.refreshToken();
+  const user = await authService.getCurrentUser();
+
+  return {
+    user,
+    accessToken: "cookie",
+    refreshToken: "cookie",
+  };
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState, getInitialAuthState);
 
   useEffect(() => {
-    const storedUser = getFromLocalStorage<UserInfo>("user");
+    authService
+      .getCurrentUser()
+      .then((user) => {
+        dispatch({ type: "SET_USER", payload: user });
+      })
+      .catch(async (error) => {
+        if (isAuthFailure(error)) {
+          try {
+            const restored = await restoreWithRefreshToken();
+            if (restored) {
+              dispatch({ type: "RESTORE_AUTH", payload: restored });
+              return;
+            }
+          } catch {}
 
-    if (storedUser) {
-      authService
-        .getCurrentUser()
-        .then((user) => {
-          dispatch({ type: "SET_USER", payload: user });
-        })
-        .catch((error) => {
-          if (isAuthFailure(error)) {
-            clearAuthSession();
-            dispatch({ type: "LOGOUT" });
-            return;
-          }
+          clearAuthSession();
+          dispatch({ type: "LOGOUT" });
+          return;
+        }
 
-          dispatch({ type: "SET_USER", payload: storedUser });
-          dispatch({
-            type: "SET_ERROR",
-            payload: "Không thể kết nối máy chủ. Phiên đăng nhập tạm thời được giữ lại.",
-          });
+        dispatch({
+          type: "SET_ERROR",
+          payload: "Không thể kết nối máy chủ. Phiên đăng nhập tạm thời được giữ lại.",
         });
-      return;
-    }
+      });
+  }, []);
 
-    clearAuthSession();
-    dispatch({ type: "RESTORE_EMPTY" });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let channel: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) channel = new BroadcastChannel(USER_SYNC_CHANNEL);
+
+    const apply = (payload?: UserSyncPayload) => {
+      if (payload?.type !== "USER_UPDATED") return;
+      dispatch({ type: "SET_USER", payload: payload.user });
+      queryClient.invalidateQueries({ queryKey: ["auth", "me"] }).catch(() => undefined);
+    };
+
+    const onMessage = (event: MessageEvent<UserSyncPayload>) => apply(event.data);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== USER_SYNC_STORAGE_KEY || !event.newValue) return;
+      try {
+        apply(JSON.parse(event.newValue));
+      } catch {}
+    };
+
+    channel?.addEventListener("message", onMessage);
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      channel?.removeEventListener("message", onMessage);
+      channel?.close();
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   const login = useCallback(async (identifier: string, password: string) => {
@@ -258,31 +313,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const setUser = useCallback((user: UserInfo | null) => {
     dispatch({ type: "SET_USER", payload: user });
-
-    if (user) {
-      setInLocalStorage("user", user);
-      return;
-    }
-
-    removeFromLocalStorage("user");
+    broadcastUserUpdate(user);
   }, []);
 
   const refreshSession = useCallback(async () => {
     try {
       const user = await authService.getCurrentUser();
       dispatch({ type: "SET_USER", payload: user });
-      setInLocalStorage("user", user);
     } catch (error) {
       if (isAuthFailure(error)) {
+        try {
+          const restored = await restoreWithRefreshToken();
+          if (restored) {
+            dispatch({ type: "RESTORE_AUTH", payload: restored });
+            return;
+          }
+        } catch {}
+
         clearAuthSession();
         dispatch({ type: "LOGOUT" });
         return;
       }
 
-      const storedUser = getFromLocalStorage<UserInfo>("user");
-      if (storedUser) {
-        dispatch({ type: "SET_USER", payload: storedUser });
-      }
       dispatch({
         type: "SET_ERROR",
         payload: "Không thể kết nối máy chủ. Phiên đăng nhập tạm thời được giữ lại.",
@@ -291,26 +343,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const refreshToken = useCallback(async () => {
-    const currentRefreshToken = state.refreshToken || getFromLocalStorage<string>("refreshToken");
-
-    if (!currentRefreshToken) {
-      clearAuthSession();
-      dispatch({ type: "LOGOUT" });
-      return;
-    }
-
     try {
-      const response = await authService.refreshToken(currentRefreshToken);
-      persistAuthSession(response);
-      dispatch({ type: "AUTH_SUCCESS", payload: response });
+      await authService.refreshToken();
+      const user = await authService.getCurrentUser();
+
+      dispatch({
+        type: "RESTORE_AUTH",
+        payload: {
+          user,
+          accessToken: "cookie",
+          refreshToken: "cookie",
+        },
+      });
     } catch (error) {
       if (isAuthFailure(error)) {
         clearAuthSession();
         dispatch({ type: "LOGOUT" });
       }
+
       throw error;
     }
-  }, [state.refreshToken]);
+  }, []);
 
   const loginWithGoogle = useCallback(async (code: string) => {
     dispatch({ type: "AUTH_START" });

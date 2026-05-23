@@ -91,6 +91,17 @@ class MovieService {
     }
   }
 
+  async getWeeklyTrendingMovies(limit: number = 10): Promise<Movie[]> {
+    try {
+      const data = await apiClient.get<{ movies: Movie[] }>("/discovery/weekly-trending", {
+        params: { limit },
+      });
+      return data?.movies || [];
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async getWeeklyNewMovies(limit: number = 10): Promise<Movie[]> {
     try {
       const data = await apiClient.get<{ movies: Movie[] }>("/discovery/weekly-new", {

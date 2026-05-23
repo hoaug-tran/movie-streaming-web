@@ -11,6 +11,9 @@ import {
   UserSubscription,
 } from "@/modules/subscription/types/subscription";
 import { useNotification } from "@/context/notification-context";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { broadcastUserUpdate, withAvatarCacheBust } from "@/modules/auth/utils/user-sync";
+import { queryClient } from "@/config/react-query";
 
 type LoadState = "loading" | "ready" | "error";
 type EmailStep = "idle" | "current" | "new";
@@ -135,6 +138,7 @@ export type { LoadState, EmailStep, CropSelection, ProfileSettings };
 
 export function useProfileData() {
   const { notify } = useNotification();
+  const { user, setUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cropMoveRef = useRef({ x: 0, y: 0, frame: 0 });
   const [state, setState] = useState<LoadState>("loading");
@@ -287,8 +291,19 @@ export function useProfileData() {
     const previewUrl = crop.previewUrl;
     try {
       const cropped = await createCroppedAvatar(previewUrl, crop.zoom, crop.offsetX, crop.offsetY);
-      const updated = await userService.uploadAvatar(cropped);
+      const updated = withAvatarCacheBust(await userService.uploadAvatar(cropped));
       setProfile(updated);
+      if (user) {
+        const nextUser = {
+          ...user,
+          fullName: updated.fullName ?? user.fullName,
+          avatarUrl: updated.avatarUrl ?? updated.avatar ?? user.avatarUrl,
+          updatedAt: updated.updatedAt ?? user.updatedAt,
+        };
+        setUser(nextUser);
+        broadcastUserUpdate(nextUser);
+        queryClient.invalidateQueries({ queryKey: ["user", "profile"] }).catch(() => undefined);
+      }
       setCrop(null);
       URL.revokeObjectURL(previewUrl);
       notify({ message: "Đã cập nhật ảnh đại diện.", severity: "success" });

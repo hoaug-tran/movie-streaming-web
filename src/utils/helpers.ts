@@ -100,6 +100,43 @@ export const removeFromLocalStorage = (key: string): void => {
   localStorage.removeItem(key);
 };
 
+/* Cookie Utils */
+export const setCookie = (name: string, value: string, maxAgeSeconds: number = 60 * 60): void => {
+  if (typeof window === "undefined") return;
+
+  // Do NOT encode value — JWT tokens contain only base64url-safe chars (A-Za-z0-9-_.)
+  // Encoding dots as %2E breaks Next.js middleware's server-side JWT parsing.
+  const encodedName = encodeURIComponent(name);
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+
+  document.cookie = `${encodedName}=${value}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`;
+};
+
+export const deleteCookie = (name: string): void => {
+  if (typeof window === "undefined") return;
+
+  const encodedName = encodeURIComponent(name);
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+
+  document.cookie = `${encodedName}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+};
+
+export const getCookie = (name: string): string | null => {
+  if (typeof window === "undefined") return null;
+
+  const encodedName = `${encodeURIComponent(name)}=`;
+  const cookies = document.cookie.split("; ");
+
+  for (const cookie of cookies) {
+    if (cookie.startsWith(encodedName)) {
+      // Value is stored as-is (not encoded), return directly
+      return cookie.slice(encodedName.length);
+    }
+  }
+
+  return null;
+};
+
 /* URL Utils */
 export const buildQueryParams = (params: Record<string, any>): string => {
   const query = new URLSearchParams();

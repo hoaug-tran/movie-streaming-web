@@ -56,7 +56,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "*.libsys.me",
       },
     ],
     formats: ["image/avif", "image/webp"],
@@ -84,8 +84,12 @@ const nextConfig = {
         source: "/sw.js",
         headers: [
           {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
+          },
+          {
             key: "Cache-Control",
-            value: "public, max-age=0, must-revalidate",
+            value: "no-cache, no-store, must-revalidate",
           },
           {
             key: "Service-Worker-Allowed",
@@ -99,6 +103,15 @@ const nextConfig = {
           {
             key: "Cache-Control",
             value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },

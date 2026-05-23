@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -13,6 +13,8 @@ import {
   IconButton,
   LinearProgress,
   MenuItem,
+  Pagination,
+  PaginationItem,
   Paper,
   Stack,
   TextField,
@@ -30,8 +32,12 @@ import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import AdminPermissionGate from "./AdminPermissionGate";
 import { AdminPermission } from "../permissions";
+import { getAdminErrorMessage } from "../utils/admin-errors";
 
 type Tone = "cyan" | "violet" | "amber" | "emerald" | "rose";
 
@@ -104,6 +110,31 @@ const getToneColor = (tone: Tone, theme: Theme) => {
   return toneMap[tone];
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Bản nháp",
+  UPCOMING: "Sắp chiếu",
+  PUBLISHED: "Đã xuất bản",
+  ARCHIVED: "Đã lưu trữ",
+  HIDDEN: "Đã ẩn",
+  VISIBLE: "Hiển thị",
+  PENDING: "Đang chờ",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Đã từ chối",
+  RESOLVED: "Đã xử lý",
+  OPEN: "Đang mở",
+  CLOSED: "Đã đóng",
+  ACTIVE: "Hoạt động",
+  INACTIVE: "Tạm tắt",
+  BLOCKED: "Bị khóa",
+  ROLE_ADMIN: "Quản trị viên",
+  ROLE_MODERATOR: "Điều hành viên",
+  ROLE_USER: "Người dùng",
+  SINGLE: "Phim lẻ",
+  SERIES: "Phim bộ",
+};
+
+const formatAdminFilterOption = (value: string) => STATUS_LABELS[value] ?? value;
+
 export default function AdminManagementPage<T extends { id: number }>({
   permission,
   title,
@@ -141,6 +172,15 @@ export default function AdminManagementPage<T extends { id: number }>({
   const [formState, setFormState] = useState<{ mode: "create" | "edit"; item: T | null } | null>(
     null
   );
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset page to 1 when any filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, status, extraFilterValues]);
 
   const entityLabel =
     title
@@ -207,6 +247,14 @@ export default function AdminManagementPage<T extends { id: number }>({
       return matchesSearch && matchesStatus && matchesExtra;
     });
   }, [getSearchText, getStatus, items, search, status, extraFilters, extraFilterValues]);
+
+  const totalItems = filteredItems.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, page, pageSize]);
 
   return (
     <AdminPermissionGate permission={permission}>
@@ -321,7 +369,7 @@ export default function AdminManagementPage<T extends { id: number }>({
                       <MenuItem value="ALL">Tất cả</MenuItem>
                       {statuses.map((option) => (
                         <MenuItem key={option} value={option}>
-                          {option}
+                          {formatAdminFilterOption(option)}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -355,19 +403,21 @@ export default function AdminManagementPage<T extends { id: number }>({
           {listQuery.isLoading && <LinearProgress color="primary" />}
           {listQuery.isError && (
             <Alert severity="error">
-              Không tải được dữ liệu. Vui lòng thử lại hoặc kiểm tra kết nối.
+              {getAdminErrorMessage(
+                listQuery.error,
+                "Không tải được dữ liệu. Vui lòng thử lại hoặc kiểm tra kết nối."
+              )}
             </Alert>
           )}
           {actionMutation.isError && (
             <Alert severity="error">
-              Thao tác thất bại. Vui lòng kiểm tra lại dữ liệu hoặc liên hệ quản trị viên.
+              {getAdminErrorMessage(
+                actionMutation.error,
+                "Thao tác thất bại. Vui lòng kiểm tra lại dữ liệu."
+              )}
             </Alert>
           )}
-          {formMutation.isError && (
-            <Alert severity="error">
-              Không lưu được. Vui lòng kiểm tra lại thông tin và thử lại.
-            </Alert>
-          )}
+
           {notice && (
             <Alert severity="info" onClose={() => setNotice(null)}>
               {notice}
@@ -430,7 +480,7 @@ export default function AdminManagementPage<T extends { id: number }>({
                   </Box>
                 </Box>
                 <Box component="tbody">
-                  {filteredItems.map((item) => (
+                  {paginatedItems.map((item) => (
                     <Box
                       component="tr"
                       key={item.id}
@@ -448,6 +498,7 @@ export default function AdminManagementPage<T extends { id: number }>({
                       ))}
                       <Box
                         component="td"
+                        onClick={(event) => event.stopPropagation()}
                         sx={{
                           p: 2,
                           textAlign: "right",
@@ -471,7 +522,10 @@ export default function AdminManagementPage<T extends { id: number }>({
                                   size="small"
                                   color="primary"
                                   disabled={actionMutation.isPending || formMutation.isPending}
-                                  onClick={() => setFormState({ mode: "edit", item })}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setFormState({ mode: "edit", item });
+                                  }}
                                   aria-label="Sửa"
                                   sx={{
                                     borderRadius: 1.25,
@@ -497,7 +551,8 @@ export default function AdminManagementPage<T extends { id: number }>({
                                   size="small"
                                   color="error"
                                   disabled={actionMutation.isPending || formMutation.isPending}
-                                  onClick={() => {
+                                  onClick={(event) => {
+                                    event.stopPropagation();
                                     if (
                                       window.confirm(
                                         "Bạn có chắc muốn xóa mục này không? Hành động này không thể hoàn tác."
@@ -582,7 +637,8 @@ export default function AdminManagementPage<T extends { id: number }>({
                                 size="small"
                                 color={muiColor}
                                 disabled={isDisabled}
-                                onClick={() => {
+                                onClick={(event) => {
+                                  event.stopPropagation();
                                   if (!href && action.run) actionMutation.mutate({ item, action });
                                 }}
                                 {...(href ? { component: "a", href } : {})}
@@ -639,6 +695,112 @@ export default function AdminManagementPage<T extends { id: number }>({
                 </Typography>
               </Box>
             )}
+
+            {filteredItems.length > 0 && (
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  p: 2,
+                  borderTop: `1px solid ${theme.palette.divider}`,
+                  bgcolor: alpha(theme.palette.background.default, 0.4),
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  Hiển thị{" "}
+                  <strong style={{ color: theme.palette.text.primary }}>
+                    {totalItems === 0 ? 0 : (page - 1) * pageSize + 1}
+                  </strong>{" "}
+                  -{" "}
+                  <strong style={{ color: theme.palette.text.primary }}>
+                    {Math.min(page * pageSize, totalItems)}
+                  </strong>{" "}
+                  trong số{" "}
+                  <strong style={{ color: theme.palette.text.primary }}>{totalItems}</strong>{" "}
+                  {entityLabel}
+                </Typography>
+
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={3}
+                  alignItems="center"
+                  sx={{
+                    width: { xs: "100%", sm: "auto" },
+                    justifyContent: { xs: "space-between", sm: "flex-end" },
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+                      Số dòng mỗi trang:
+                    </Typography>
+                    <TextField
+                      select
+                      size="small"
+                      value={pageSize}
+                      onChange={(event) => {
+                        setPageSize(Number(event.target.value));
+                        setPage(1);
+                      }}
+                      SelectProps={{
+                        IconComponent: KeyboardArrowDownRoundedIcon,
+                      }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1.25,
+                          fontSize: 13,
+                          bgcolor: alpha(theme.palette.background.paper, 0.4),
+                          "& fieldset": { borderColor: theme.palette.divider },
+                        },
+                        "& .MuiSelect-select": { py: 0.5, px: 1.5 },
+                        minWidth: 70,
+                      }}
+                    >
+                      {[10, 20, 50, 100].map((size) => (
+                        <MenuItem key={size} value={size}>
+                          {size}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Stack>
+
+                  <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={(_e, val) => setPage(val)}
+                    variant="outlined"
+                    shape="rounded"
+                    color="primary"
+                    size="small"
+                    renderItem={(item) => (
+                      <PaginationItem
+                        slots={{
+                          previous: ChevronLeftRoundedIcon,
+                          next: ChevronRightRoundedIcon,
+                        }}
+                        {...item}
+                        sx={{
+                          borderRadius: 1.25,
+                          borderColor: theme.palette.divider,
+                          bgcolor: alpha(theme.palette.background.paper, 0.4),
+                          color: theme.palette.text.secondary,
+                          "&.Mui-selected": {
+                            bgcolor: alpha(theme.palette.primary.main, 0.16),
+                            color: theme.palette.primary.main,
+                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                            fontWeight: 800,
+                            "&:hover": {
+                              bgcolor: alpha(theme.palette.primary.main, 0.24),
+                            },
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </Stack>
+              </Stack>
+            )}
           </Paper>
         </Stack>
         {renderForm &&
@@ -648,7 +810,7 @@ export default function AdminManagementPage<T extends { id: number }>({
             item: formState.item,
             open: Boolean(formState),
             submitting: formMutation.isPending,
-            error: formMutation.error instanceof Error ? formMutation.error.message : null,
+            error: formMutation.error ? getAdminErrorMessage(formMutation.error) : null,
             onClose: () => setFormState(null),
             onSubmit: (payload) =>
               formMutation.mutate({ mode: formState.mode, item: formState.item, payload }),

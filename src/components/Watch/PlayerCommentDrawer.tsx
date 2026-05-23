@@ -219,7 +219,8 @@ export default function PlayerCommentDrawer({
             alignItems: "center",
             justifyContent: "space-between",
             px: 2,
-            py: 1.5,
+            pt: "max(12px, env(safe-area-inset-top))",
+            pb: 1.5,
             borderBottom: `1px solid ${alpha("#fff", 0.08)}`,
             flexShrink: 0,
           }}

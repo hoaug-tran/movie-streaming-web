@@ -69,6 +69,17 @@ export default function WatchPlayer({
 
   const QUALITY_ORDER: VideoQuality[] = ["720p", "1080p", "4K"];
 
+  const normalizeQuality = (quality?: string): VideoQuality => {
+    const q = String(quality || "720p")
+      .trim()
+      .toUpperCase();
+
+    if (q === "4K" || q === "2160P" || q === "UHD") return "4K";
+    if (q === "1080P" || q === "FHD" || q === "FULL_HD") return "1080p";
+
+    return "720p";
+  };
+
   const getQualityUrl = (videoUrl: string, quality: VideoQuality): string => {
     const match = videoUrl.match(
       /^(.*\/stream\/series\/episodes\/\d+\/)([^/]+)(\/master\.m3u8.*)$/
@@ -80,22 +91,28 @@ export default function WatchPlayer({
   const selectBestQuality = (available: string[], max: VideoQuality): VideoQuality => {
     const maxIdx = QUALITY_ORDER.indexOf(max);
     if (maxIdx < 0) return "720p";
-    const availableSet = new Set(available);
+
+    const normalizedAvailable = available.map((q) => normalizeQuality(q));
+    const availableSet = new Set(normalizedAvailable);
+
     const allowedSorted = QUALITY_ORDER.filter((q, idx) => idx <= maxIdx && availableSet.has(q));
-    return (allowedSorted[allowedSorted.length - 1] as VideoQuality) || "720p";
+    return allowedSorted[allowedSorted.length - 1] || "720p";
   };
 
   const pickSafeInitialQuality = (available: string[]): VideoQuality => {
-    if (available.length === 0) return "720p";
-    if (available.includes("720p")) return "720p";
-    const sorted = QUALITY_ORDER.filter((q) => available.includes(q));
-    return (sorted[0] as VideoQuality) || "720p";
+    const normalizedAvailable = available.map((q) => normalizeQuality(q));
+
+    if (normalizedAvailable.length === 0) return "720p";
+    if (normalizedAvailable.includes("720p")) return "720p";
+
+    return QUALITY_ORDER.find((q) => normalizedAvailable.includes(q)) || "720p";
   };
 
   const buildInitialUrl = (episode: Episode): string => {
     const available = episode.availableQualities ?? [];
     const baseUrl = episode.videoUrl ?? "";
     if (available.length === 0) return baseUrl;
+
     const safeQuality = pickSafeInitialQuality(available);
     return getQualityUrl(baseUrl, safeQuality);
   };
@@ -153,7 +170,6 @@ export default function WatchPlayer({
   }>({ preRoll: [], midRoll: [], postRoll: [] });
   const [midRollFired, setMidRollFired] = useState(false);
   const [postRollFired, setPostRollFired] = useState(false);
-  const [midRollTimestamp, setMidRollTimestamp] = useState<number>(0);
   const [preRollPending, setPreRollPending] = useState(false);
 
   const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,7 +193,10 @@ export default function WatchPlayer({
   const COMPLETION_PERCENT = 0.95;
   const COMPLETION_GRACE_SECONDS = 10;
 
-  const pickHighestPriority = <T,>(arr: T[]): T | null => (arr.length > 0 ? arr[0] : null);
+  const pickAd = (ads: Advertisement[]): Advertisement | null => {
+    if (!ads || ads.length === 0) return null;
+    return ads[0];
+  };
 
   const getFiniteDuration = useCallback(() => {
     const videoDuration = videoRef.current?.duration;
@@ -255,7 +274,7 @@ export default function WatchPlayer({
         try {
           video.currentTime = resumeSecond;
         } catch {
-          // safari may throw if metadata not loaded yet, retry on canplay below
+          // iOS stupid
         }
         lastPlaybackSecondRef.current = Math.floor(resumeSecond);
         setCurrentTime(resumeSecond);
@@ -322,7 +341,6 @@ export default function WatchPlayer({
   }, [currentAd]);
 
   useEffect(() => {
-    // Phim offline (đã tải về) → không phát ads, kể cả khi user là Free.
     if (hasAdsFree || offlineSrc) {
       setAdsForEpisode({ preRoll: [], midRoll: [], postRoll: [] });
       setPreRollPending(false);
@@ -343,7 +361,7 @@ export default function WatchPlayer({
         if (cancelled) return;
 
         setAdsForEpisode({ preRoll: pre, midRoll: mid, postRoll: post });
-        const preAd = pickHighestPriority(pre);
+        const preAd = pickAd(pre);
         if (preAd) {
           preRollEpisodeIdRef.current = selectedEpisode.id;
           showAd(preAd, "PRE_ROLL");
@@ -367,10 +385,12 @@ export default function WatchPlayer({
       return;
     }
 
+    const normalizedAvailable = available.map((q) => normalizeQuality(q));
     const allowedMaxIdx = QUALITY_ORDER.indexOf(maxQuality);
     const currentIdx = QUALITY_ORDER.indexOf(selectedQuality);
+
     const userPickedHigherThanAllowed = currentIdx > allowedMaxIdx;
-    const currentNotAvailable = !available.includes(selectedQuality);
+    const currentNotAvailable = !normalizedAvailable.includes(selectedQuality);
 
     if (userPickedHigherThanAllowed || currentNotAvailable) {
       const best = selectBestQuality(available, maxQuality);
@@ -387,23 +407,33 @@ export default function WatchPlayer({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEpisode.id, maxQuality]);
+  }, [
+    selectedEpisode.id,
+    selectedEpisode.videoUrl,
+    selectedEpisode.availableQualities,
+    maxQuality,
+    selectedQuality,
+  ]);
 
   useEffect(() => {
+    let cancelled = false;
     const blobUrls: string[] = [];
 
     offlineStorage.isDownloaded(selectedEpisode.id).then(async (downloaded) => {
+      if (cancelled) return;
+
       if (!downloaded) {
         setOfflineSrc(undefined);
         return;
       }
+
       const record = await offlineStorage.getMovie(selectedEpisode.id);
+      if (cancelled) return;
       if (!record) {
         setOfflineSrc(undefined);
         return;
       }
 
-      // Sắp xếp segment theo số thứ tự để build playlist đúng order
       const sortedUrls = [...record.segmentUrls].sort((a, b) => {
         const matchA = a.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
         const matchB = b.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
@@ -413,16 +443,12 @@ export default function WatchPlayer({
         return 0;
       });
 
-      // Verify ít nhất segment đầu tiên tồn tại trong IDB,
-      // tránh trường hợp record movie còn nhưng segments bị mất
       const firstSegmentData = await offlineStorage.getSegment(sortedUrls[0]);
       if (!firstSegmentData) {
         setOfflineSrc(undefined);
         return;
       }
 
-      // Cập nhật lại record.segmentUrls đã sort để service worker mapping
-      // theo cùng index. CHỈ ghi đè trong IDB nếu thứ tự khác trước đó.
       const isReordered = sortedUrls.some((u, i) => u !== record.segmentUrls[i]);
       if (isReordered) {
         await offlineStorage.saveMovie({
@@ -431,19 +457,21 @@ export default function WatchPlayer({
         });
       }
 
-      // QUAN TRỌNG: Dùng same-origin URL để service worker intercept và
-      // đọc segment từ IDB. Blob URL trong playlist KHÔNG hoạt động trên
-      // iOS Safari native HLS, và bị quirk khi đi qua HLS.js worker.
-      // Dùng absolute URL với origin vì playlist là blob: URL — một số HLS engine
-      // resolve relative URI từ blob URL không nhất quán.
       const eid = selectedEpisode.id;
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const segPaths = sortedUrls.map((_, idx) => `${origin}/__offline__/seg/${eid}/${idx}.ts`);
 
       let keyLine = "";
-      const keyRecord = await offlineStorage.getKey(eid);
+
+      const offlineQuality = normalizeQuality(
+        record.quality || selectedEpisode.availableQualities?.[0]
+      );
+      const keyRecord = await offlineStorage.getKey(eid, offlineQuality);
+
+      if (cancelled) return;
+
       if (keyRecord?.keyData) {
-        keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="${origin}/__offline__/key/${eid}"\n`;
+        keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="${origin}/__offline__/key/${eid}/${encodeURIComponent(offlineQuality)}"\n`;
       }
 
       const duration = record.durationSeconds
@@ -463,13 +491,18 @@ export default function WatchPlayer({
       const m3u8Blob = new Blob([m3u8Lines.join("\n")], { type: "application/vnd.apple.mpegurl" });
       const playlistUrl = URL.createObjectURL(m3u8Blob);
       blobUrls.push(playlistUrl);
-      setOfflineSrc(playlistUrl);
+
+      if (!cancelled) {
+        setOfflineSrc(playlistUrl);
+      }
     });
 
     return () => {
+      cancelled = true;
       blobUrls.forEach((u) => URL.revokeObjectURL(u));
       setOfflineSrc(undefined);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEpisode.id, isOnline]);
 
   useEffect(() => {
@@ -600,7 +633,6 @@ export default function WatchPlayer({
   useEffect(() => {
     setMidRollFired(false);
     setPostRollFired(false);
-    setMidRollTimestamp(0);
     setAdsForEpisode({ preRoll: [], midRoll: [], postRoll: [] });
     if (preRollEpisodeIdRef.current !== selectedEpisode.id) {
       setCurrentAd(null);
@@ -693,26 +725,20 @@ export default function WatchPlayer({
     if (hasAdsFree || offlineSrc) return;
 
     if (!midRollFired && d > 60 && t >= d * 0.5) {
-      const midAd = pickHighestPriority(adsForEpisode.midRoll);
+      const midAd = pickAd(adsForEpisode.midRoll);
       if (midAd) {
         setMidRollFired(true);
-        setMidRollTimestamp(t);
         void saveProgress(true);
         showAd(midAd, "MID_ROLL", t);
       }
     }
 
-    if (!postRollFired && midRollFired && d > 1200) {
-      const postRollStart = midRollTimestamp + 600;
-      const postRollEnd = d - 600;
-
-      if (t >= postRollStart && t <= postRollEnd) {
-        const postAd = pickHighestPriority(adsForEpisode.postRoll);
-        if (postAd) {
-          setPostRollFired(true);
-          void saveProgress(true);
-          showAd(postAd, "POST_ROLL", t);
-        }
+    if (!postRollFired && d > 60 && t >= d * 0.8) {
+      const postAd = pickAd(adsForEpisode.postRoll);
+      if (postAd) {
+        setPostRollFired(true);
+        void saveProgress(true);
+        showAd(postAd, "POST_ROLL", t);
       }
     }
   }, [
@@ -723,7 +749,6 @@ export default function WatchPlayer({
     PREVIEW_LIMIT_SECONDS,
     midRollFired,
     postRollFired,
-    midRollTimestamp,
     adsForEpisode,
     saveProgress,
     showAd,
@@ -742,11 +767,31 @@ export default function WatchPlayer({
         .catch(() => {});
     }
 
+    if (!hasAdsFree && !offlineSrc && !postRollFired) {
+      const postAd = pickAd(adsForEpisode.postRoll);
+      if (postAd) {
+        setPostRollFired(true);
+        showAd(postAd, "POST_ROLL", Math.floor(duration));
+        return;
+      }
+    }
+
     const currentIdx = episodes.findIndex((e) => e.id === selectedEpisode.id);
     if (currentIdx >= 0 && currentIdx < episodes.length - 1) {
       setSelectedEpisode(episodes[currentIdx + 1]);
     }
-  }, [episodes, selectedEpisode, duration, isAuthenticated, movie.id]);
+  }, [
+    adsForEpisode.postRoll,
+    duration,
+    episodes,
+    hasAdsFree,
+    isAuthenticated,
+    movie.id,
+    offlineSrc,
+    postRollFired,
+    selectedEpisode.id,
+    showAd,
+  ]);
 
   const handleAdSkipped = useCallback(() => {
     const shouldResume =
@@ -781,15 +826,30 @@ export default function WatchPlayer({
     return () => clearTimeout(t);
   }, [isIPhone, isPlaying]);
 
-  const togglePlay = useCallback(() => {
-    if (!videoRef.current) return;
-    if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play();
+  const togglePlay = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (currentAd || preRollPending || showPreviewWall) return;
+
+    if (!video.paused) {
+      video.pause();
+      setIsPlaying(false);
+      return;
     }
-    setIsPlaying(!isPlaying);
-  }, [isPlaying]);
+
+    try {
+      await video.play();
+      setIsPlaying(true);
+    } catch (err) {
+      const error = err as DOMException;
+
+      if (error.name !== "AbortError") {
+        console.warn("Video play failed:", error);
+      }
+
+      setIsPlaying(false);
+    }
+  }, [currentAd, preRollPending, showPreviewWall]);
 
   const handleSeek = useCallback(
     (value: number) => {
@@ -814,7 +874,7 @@ export default function WatchPlayer({
           videoRef.current.muted = true;
         }
       } catch {
-        // iOS Safari throws when setting volume on detached element
+        // iOS Safari stupid
       }
     }
     setVolume(clamped);
@@ -873,7 +933,7 @@ export default function WatchPlayer({
           fsVideo.webkitEnterFullscreen();
           setIsFullscreen(true);
         } catch {
-          // iOS fuck you
+          // iOS Safari đôi lúc throw khi video chưa sẵn sàng metadata; bỏ qua an toàn.
         }
       }
       return;
@@ -1021,14 +1081,18 @@ export default function WatchPlayer({
       onMouseMove={handleMouseMove}
       onClick={(e) => {
         if (currentAd) return;
+
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-player-control="true"]')) return;
+
         if (isIPhone) {
-          const target = e.target as HTMLElement;
           if (!target.closest('[data-iphone-player-control="true"]')) {
             setIPhoneOverlayVisible((v) => !v);
           }
           return;
         }
-        togglePlay();
+
+        void togglePlay();
       }}
       sx={{
         position: "fixed",
@@ -1051,7 +1115,7 @@ export default function WatchPlayer({
         onPlay={() => setIsPlaying(true)}
         onPause={() => {
           setIsPlaying(false);
-          saveProgress(true);
+          void saveProgress(true);
         }}
         onEnded={handleVideoEnded}
         onLoaded={handleVideoLoaded}
@@ -1070,43 +1134,50 @@ export default function WatchPlayer({
       )}
 
       {!currentAd && !isIPhone && (
-        <PlayerControls
-          show={showControls}
-          movie={movie}
-          episode={selectedEpisode}
-          episodes={episodes}
-          isPlaying={isPlaying}
-          currentTime={currentTime}
-          duration={duration}
-          volume={volume}
-          isMuted={isMuted}
-          isFullscreen={isFullscreen}
-          availableQualities={selectedEpisode.availableQualities ?? []}
-          currentQuality={selectedQuality}
-          maxQuality={maxQuality}
-          onPlay={togglePlay}
-          onSeek={handleSeek}
-          onVolumeChange={handleVolumeChange}
-          onMuteToggle={handleMuteToggle}
-          onFullscreen={handleFullscreen}
-          onBack={handleBack}
-          onEpisodeSelect={(ep) => setSelectedEpisode(ep)}
-          onQualityChange={(q) => {
-            const qIdx = QUALITY_ORDER.indexOf(q);
-            const maxIdx = QUALITY_ORDER.indexOf(maxQuality);
-            if (qIdx > maxIdx) {
-              router.push("/pricing");
-              return;
-            }
-            const available = selectedEpisode.availableQualities ?? [];
-            if (available.length > 0 && !available.includes(q)) return;
-            setSelectedQuality(q);
-            setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
-          }}
-          commentOpen={showComments}
-          onCommentToggle={() => setShowComments((prev) => !prev)}
-          fullscreenContainer={isFullscreen ? containerRef.current : null}
-        />
+        <Box data-player-control="true" onClick={(e) => e.stopPropagation()}>
+          <PlayerControls
+            show={showControls}
+            movie={movie}
+            episode={selectedEpisode}
+            episodes={episodes}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            volume={volume}
+            isMuted={isMuted}
+            isFullscreen={isFullscreen}
+            availableQualities={selectedEpisode.availableQualities ?? []}
+            currentQuality={selectedQuality}
+            maxQuality={maxQuality}
+            onPlay={togglePlay}
+            onSeek={handleSeek}
+            onVolumeChange={handleVolumeChange}
+            onMuteToggle={handleMuteToggle}
+            onFullscreen={handleFullscreen}
+            onBack={handleBack}
+            onEpisodeSelect={(ep) => setSelectedEpisode(ep)}
+            onQualityChange={(q) => {
+              const qIdx = QUALITY_ORDER.indexOf(q);
+              const maxIdx = QUALITY_ORDER.indexOf(maxQuality);
+
+              if (qIdx > maxIdx) {
+                router.push("/pricing");
+                return;
+              }
+
+              const available = selectedEpisode.availableQualities ?? [];
+              const normalizedAvailable = available.map((item) => normalizeQuality(item));
+
+              if (normalizedAvailable.length > 0 && !normalizedAvailable.includes(q)) return;
+
+              setSelectedQuality(q);
+              setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
+            }}
+            commentOpen={showComments}
+            onCommentToggle={() => setShowComments((prev) => !prev)}
+            fullscreenContainer={isFullscreen ? containerRef.current : null}
+          />
+        </Box>
       )}
 
       {!currentAd && isIPhone && iPhoneOverlayVisible && (
@@ -1126,7 +1197,6 @@ export default function WatchPlayer({
               gap: 1,
               background:
                 "linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.42) 64%, rgba(0,0,0,0) 100%)",
-              // Cộng thêm 14px base để vẫn có khoảng cách an toàn khi env() = 0
               paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
               paddingBottom: "14px",
               paddingLeft: "calc(env(safe-area-inset-left, 0px) + 16px)",
@@ -1190,7 +1260,6 @@ export default function WatchPlayer({
               bottom: 0,
               zIndex: 20,
               pointerEvents: "auto",
-              // Tách paddingLeft/Right để landscape iPhone (notch trái) né đúng
               paddingLeft: "calc(env(safe-area-inset-left, 0px) + 16px)",
               paddingRight: "calc(env(safe-area-inset-right, 0px) + 16px)",
               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
@@ -1241,7 +1310,7 @@ export default function WatchPlayer({
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                 <IconButton
-                  onClick={togglePlay}
+                  onClick={() => void togglePlay()}
                   sx={{ color: "#fff" }}
                   aria-label={isPlaying ? "Tạm dừng" : "Phát"}
                 >
@@ -1447,9 +1516,14 @@ export default function WatchPlayer({
                   const qIdx = QUALITY_ORDER.indexOf(q);
                   const maxIdx = QUALITY_ORDER.indexOf(maxQuality);
                   const isLocked = qIdx > maxIdx;
+
                   const available = selectedEpisode.availableQualities ?? [];
-                  const isAvailable = available.length === 0 || available.includes(q);
+                  const normalizedAvailable = available.map((item) => normalizeQuality(item));
+                  const isAvailable =
+                    normalizedAvailable.length === 0 || normalizedAvailable.includes(q);
+
                   const isActive = q === selectedQuality;
+
                   return (
                     <Box
                       key={q}
@@ -1458,7 +1532,9 @@ export default function WatchPlayer({
                           router.push("/pricing");
                           return;
                         }
+
                         if (!isAvailable) return;
+
                         setSelectedQuality(q);
                         setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
                         setIPhoneShowQuality(false);
@@ -1653,28 +1729,56 @@ export default function WatchPlayer({
         <DialogContent>
           <Typography
             sx={{
-              color: "rgba(255,255,255,0.7)",
+              color: "rgba(255,255,255,0.72)",
               fontFamily: "Inter, sans-serif",
-              fontSize: "0.9rem",
-              mb: 2,
+              fontSize: "0.92rem",
+              mb: 2.5,
+              lineHeight: 1.65,
             }}
           >
-            Tài khoản của bạn đang được xem trên thiết bị khác. Phiên xem hiện tại đã bị ngắt.
+            Gói hiện tại đã đạt giới hạn thiết bị xem đồng thời. Khi thiết bị khác bắt đầu xem,
+            phiên này sẽ tự dừng để bảo vệ quyền truy cập của bạn.
           </Typography>
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={() => router.push("/")}
-            sx={{
-              bgcolor: "#C8102E",
-              "&:hover": { bgcolor: "#A00B24" },
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 600,
-              borderRadius: 2,
-            }}
-          >
-            Về trang chủ
-          </Button>
+          <Box sx={{ display: "flex", gap: 1.25, flexDirection: "column" }}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => router.push("/profile?tab=devices")}
+              sx={{
+                bgcolor: "#C8102E",
+                "&:hover": { bgcolor: "#A00B24" },
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 700,
+                borderRadius: 2,
+                py: 1.15,
+              }}
+            >
+              Quản lý thiết bị
+            </Button>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => router.push("/pricing")}
+              sx={{
+                borderColor: "rgba(255,255,255,0.2)",
+                color: "#fff",
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 650,
+                borderRadius: 2,
+                py: 1.05,
+              }}
+            >
+              Nâng cấp gói xem
+            </Button>
+            <Button
+              variant="text"
+              fullWidth
+              onClick={() => router.push("/")}
+              sx={{ color: "rgba(255,255,255,0.62)", fontFamily: "Inter, sans-serif" }}
+            >
+              Về trang chủ
+            </Button>
+          </Box>
         </DialogContent>
       </Dialog>
     </Box>

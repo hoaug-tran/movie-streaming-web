@@ -34,11 +34,7 @@ const SSE_BUFFER_DELIMITER = "\n\n";
 const CHAT_STREAM_INACTIVITY_MS = 60_000;
 
 function getAuthHeader(): Record<string, string> {
-  if (typeof window === "undefined") {
-    return {};
-  }
-  const token = localStorage.getItem("accessToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return {};
 }
 
 export async function streamChat(options: ChatStreamOptions): Promise<void> {

@@ -43,7 +43,7 @@ async function cachePoster(episodeId: number, posterUrl: string | undefined): Pr
     const data = await res.arrayBuffer();
     await offlineStorage.savePoster(episodeId, contentType, data);
   } catch {
-    // poster caching is best-effort, do not fail the download
+    // ignore
   }
 }
 
@@ -79,10 +79,9 @@ export async function downloadEpisode(
     const batch = segments.slice(i, i + BATCH);
     await Promise.all(
       batch.map(async (seg) => {
-        const token = localStorage.getItem("accessToken");
         const res = await fetch(seg.url, {
           signal,
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "include",
         });
         if (!res.ok) throw new Error(`Segment fetch failed: ${res.status}`);
         const data = await res.arrayBuffer();

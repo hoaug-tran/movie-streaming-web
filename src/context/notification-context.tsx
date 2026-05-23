@@ -30,8 +30,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         open={!!notification}
         autoHideDuration={4200}
         onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        sx={{ top: { xs: 82, md: 88 } }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{
+          top: { xs: 82, md: 88 },
+          left: { xs: "50%", md: "auto" },
+          right: { xs: "auto", md: 24 },
+          transform: { xs: "translateX(-50%)", md: "none" },
+        }}
       >
         <Alert
           severity={notification?.severity ?? "info"}

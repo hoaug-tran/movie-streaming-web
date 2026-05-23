@@ -40,7 +40,7 @@ export default function MoviesPage() {
           </Breadcrumbs>
 
           <Typography
-            variant="h2"
+            variant="h1"
             mb={0.5}
             fontWeight={800}
             letterSpacing="-0.03em"

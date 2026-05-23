@@ -1,4 +1,3 @@
-/* Common API Response Types */
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -24,15 +23,13 @@ export interface ErrorResponse {
   path: string;
 }
 
-/* Pagination */
-export interface PaginationParams {
+export type PaginationParams = {
   page?: number;
   limit?: number;
   sort?: string;
   order?: "asc" | "desc";
-}
+};
 
-/* API Request/Response Common */
 export interface ApiErrorDetail {
   code: string;
   message: string;

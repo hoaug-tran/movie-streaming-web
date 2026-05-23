@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   alpha,
   Avatar,
@@ -17,12 +17,15 @@ import {
   IconButton,
   LinearProgress,
   MenuItem,
+  Pagination,
+  PaginationItem,
   Paper,
   Stack,
   TextField,
   Tooltip,
   Typography,
   useTheme,
+  Alert,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -31,6 +34,9 @@ import {
   Delete as DeleteIcon,
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
+  ChevronLeftRounded as ChevronLeftRoundedIcon,
+  ChevronRightRounded as ChevronRightRoundedIcon,
+  KeyboardArrowDownRounded as KeyboardArrowDownRoundedIcon,
 } from "@mui/icons-material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -43,6 +49,7 @@ import {
 import AdminPermissionGate from "@/modules/admin/components/AdminPermissionGate";
 import { AdminStatusChip } from "@/modules/admin/components/AdminManagementPage";
 import AvatarCropUpload from "@/components/Common/AvatarCropUpload";
+import { getAdminErrorMessage } from "@/modules/admin/utils/admin-errors";
 
 type SortKey = "name-asc" | "name-desc" | "created-desc" | "login-desc";
 type RoleFilter = "ALL" | "ROLE_ADMIN" | "ROLE_USER";
@@ -161,11 +168,7 @@ function UserFormDialog({
       <Divider />
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
-          {error && (
-            <Typography color="error" variant="body2">
-              {error}
-            </Typography>
-          )}
+          {error && <Alert severity="error">{error}</Alert>}
 
           <AvatarCropUpload
             currentUrl={avatarUrl}
@@ -296,6 +299,15 @@ export default function AdminUsersPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset page on search or filter update
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter, statusFilter, planFilter]);
+
   const {
     data: users = [],
     isLoading,
@@ -347,8 +359,8 @@ export default function AdminUsersPage() {
       }
       invalidate();
       setFormState(null);
-    } catch {
-      setFormError("Thao tác thất bại. Kiểm tra lại dữ liệu.");
+    } catch (err) {
+      setFormError(getAdminErrorMessage(err, "Thao tác thất bại. Kiểm tra lại dữ liệu."));
     } finally {
       setFormSubmitting(false);
     }
@@ -379,6 +391,14 @@ export default function AdminUsersPage() {
         return 0;
       });
   }, [users, search, sort, roleFilter, statusFilter, planFilter]);
+
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const stats = [
     { label: "Tổng tài khoản", value: users.length, tone: theme.palette.primary.main },
@@ -605,7 +625,7 @@ export default function AdminUsersPage() {
                   </Box>
                 </Box>
                 <Box component="tbody">
-                  {filtered.map((user) => {
+                  {paginatedItems.map((user) => {
                     const plan = getPlanDisplay(user);
                     return (
                       <Box
@@ -781,6 +801,113 @@ export default function AdminUsersPage() {
                 </Box>
               </Box>
             </Box>
+
+            {filtered.length > 0 && (
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  p: 2,
+                  borderTop: `1px solid ${theme.palette.divider}`,
+                  bgcolor: alpha(theme.palette.background.default, 0.4),
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  Hiển thị{" "}
+                  <strong style={{ color: theme.palette.text.primary }}>
+                    {totalItems === 0 ? 0 : (page - 1) * pageSize + 1}
+                  </strong>{" "}
+                  -{" "}
+                  <strong style={{ color: theme.palette.text.primary }}>
+                    {Math.min(page * pageSize, totalItems)}
+                  </strong>{" "}
+                  trong số{" "}
+                  <strong style={{ color: theme.palette.text.primary }}>{totalItems}</strong> người
+                  dùng
+                </Typography>
+
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={3}
+                  alignItems="center"
+                  sx={{
+                    width: { xs: "100%", sm: "auto" },
+                    justifyContent: { xs: "space-between", sm: "flex-end" },
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+                      Số dòng mỗi trang:
+                    </Typography>
+                    <TextField
+                      select
+                      size="small"
+                      value={pageSize}
+                      onChange={(event) => {
+                        setPageSize(Number(event.target.value));
+                        setPage(1);
+                      }}
+                      SelectProps={{
+                        IconComponent: KeyboardArrowDownRoundedIcon,
+                      }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1.25,
+                          fontSize: 13,
+                          bgcolor: alpha(theme.palette.background.paper, 0.4),
+                          "& fieldset": { borderColor: theme.palette.divider },
+                        },
+                        "& .MuiSelect-select": { py: 0.5, px: 1.5 },
+                        minWidth: 70,
+                      }}
+                    >
+                      {[10, 20, 50, 100].map((size) => (
+                        <MenuItem key={size} value={size}>
+                          {size}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Stack>
+
+                  <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={(_e, val) => setPage(val)}
+                    variant="outlined"
+                    shape="rounded"
+                    color="primary"
+                    size="small"
+                    renderItem={(item) => (
+                      <PaginationItem
+                        slots={{
+                          previous: ChevronLeftRoundedIcon,
+                          next: ChevronRightRoundedIcon,
+                        }}
+                        {...item}
+                        sx={{
+                          borderRadius: 1.25,
+                          borderColor: theme.palette.divider,
+                          bgcolor: alpha(theme.palette.background.paper, 0.4),
+                          color: theme.palette.text.secondary,
+                          "&.Mui-selected": {
+                            bgcolor: alpha(theme.palette.primary.main, 0.16),
+                            color: theme.palette.primary.main,
+                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                            fontWeight: 800,
+                            "&:hover": {
+                              bgcolor: alpha(theme.palette.primary.main, 0.24),
+                            },
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </Stack>
+              </Stack>
+            )}
+
             {!isLoading && filtered.length === 0 && (
               <Box sx={{ p: 4, textAlign: "center" }}>
                 <Typography color="text.secondary">Không có người dùng phù hợp.</Typography>

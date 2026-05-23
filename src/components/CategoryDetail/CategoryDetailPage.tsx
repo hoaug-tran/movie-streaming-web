@@ -68,7 +68,7 @@ const DEFAULT_STYLE: GenreStyle = {
 };
 
 const sortOptions = [
-  { label: "Mới nhất", value: "createdAt" },
+  { label: "Mới cập nhật", value: "publishedAt" },
   { label: "Đánh giá cao", value: "averageRating" },
   { label: "Xem nhiều", value: "viewCount" },
 ];
@@ -192,7 +192,7 @@ function CategoryHero({
         <Stack spacing={3} sx={{ maxWidth: 980 }}>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip
-              label="Genre portal"
+              label="Vũ trụ mách bảo"
               sx={{
                 borderRadius: 1,
                 bgcolor: alpha(style.accent, 0.18),
@@ -200,7 +200,7 @@ function CategoryHero({
                 fontWeight: 900,
               }}
             />
-            <Chip label={`${movieCount} tín hiệu`} variant="outlined" sx={{ borderRadius: 1 }} />
+            <Chip label={`${movieCount} phim`} variant="outlined" sx={{ borderRadius: 1 }} />
           </Stack>
           <Typography
             component="h1"
@@ -272,7 +272,7 @@ function ControlDeck({
       >
         <Stack direction="row" spacing={1} alignItems="center">
           <BoltRoundedIcon sx={{ color: style.accent }} />
-          <Typography fontWeight={900}>Bộ lọc tín hiệu</Typography>
+          <Typography fontWeight={900}>Lọc phim trong thể loại</Typography>
         </Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           {sortOptions.map((option) => (
@@ -392,7 +392,7 @@ function MovieGrid({ movies, isLoading }: { movies: MovieSummary[]; isLoading: b
 }
 
 export default function CategoryDetailPage({ categorySlug }: CategoryDetailPageProps) {
-  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortBy, setSortBy] = useState("publishedAt");
   const [keyword, setKeyword] = useState("");
   const [movieType, setMovieType] = useState("");
   const [fromYear, setFromYear] = useState<number | undefined>();
@@ -507,7 +507,11 @@ export default function CategoryDetailPage({ categorySlug }: CategoryDetailPageP
           <Typography variant="h4" fontWeight={950} letterSpacing="-0.035em">
             Nội dung nổi bật
           </Typography>
-          <Chip label={`${movies.length} phim`} size="small" sx={{ borderRadius: 1 }} />
+          <Chip
+            label={`${movies.length}/${moviesQuery.data?.pages[0]?.totalElements ?? movies.length} phim`}
+            size="small"
+            sx={{ borderRadius: 1 }}
+          />
         </Stack>
         <MovieGrid movies={movies} isLoading={moviesQuery.isLoading || categoriesQuery.isLoading} />
         {moviesQuery.isFetchingNextPage && (

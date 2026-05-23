@@ -6,6 +6,7 @@ import { offlineStorage, OfflineMovieRecord } from "@/lib/offline-storage";
 import { usePwa } from "./use-pwa";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useSubscription } from "./use-subscription";
+import { precacheOfflineApp } from "@/lib/sw-client";
 
 interface UseOfflineDownloadReturn {
   status: DownloadStatus;
@@ -47,17 +48,33 @@ export function useOfflineDownload(episodeId: number): UseOfflineDownloadReturn 
 
   useEffect(() => {
     if (!episodeId) return;
+
+    let cancelled = false;
+
     offlineStorage.isDownloaded(episodeId).then((downloaded) => {
+      if (cancelled) return;
+
       if (downloaded) {
-        offlineStorage.getMovie(episodeId).then((rec) => {
+        offlineStorage.getMovie(episodeId).then(async (rec) => {
+          if (cancelled) return;
+
           setRecord(rec ?? null);
-          setStatus("downloaded");
+
+          await precacheOfflineApp().catch(() => null);
+
+          if (!cancelled) {
+            setStatus("downloaded");
+          }
         });
       } else {
         setStatus("idle");
         setRecord(null);
       }
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [episodeId]);
 
   const startDownload = useCallback(
@@ -72,13 +89,19 @@ export function useOfflineDownload(episodeId: number): UseOfflineDownloadReturn 
 
       try {
         await downloadEpisode(episodeId, quality, setProgress, controller.signal);
+
         const rec = await offlineStorage.getMovie(episodeId);
         setRecord(rec ?? null);
+
+        // Quan trọng: cache app shell + /watch/offline + chunks trước khi báo downloaded
+        await precacheOfflineApp();
+
         setStatus("downloaded");
       } catch (err: unknown) {
         if ((err as { name?: string })?.name === "AbortError") {
           setStatus("idle");
         } else {
+          console.error("[OfflineDownload] download failed", err);
           setStatus("error");
         }
       } finally {

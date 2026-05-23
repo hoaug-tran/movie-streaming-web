@@ -11,6 +11,7 @@ interface ChatBubbleProps {
 }
 
 const MOVIE_TOKEN_REGEX = /\[MOVIE:([a-z0-9_-]+):([^\]]+)\]/g;
+const MARKDOWN_LINK_REGEX = /\[([^\]]+)\]\((\/[a-z0-9][a-z0-9/_?=&.-]*)\)/gi;
 const BOLD_REGEX = /\*\*([^*]+)\*\*/g;
 const PATH_REGEX = /(\/[a-z0-9][a-z0-9/_-]*)/gi;
 
@@ -68,7 +69,7 @@ function MovieCard({ slug, title, accent }: { slug: string; title: string; accen
 }
 
 function renderLine(line: string, accent: string, isUser: boolean, lineIdx: number): ReactNode {
-  const working = line;
+  const working = line.replace(/\*\*\s*\*\*/g, "").replace(/__\s*__/g, "");
   const matches: { start: number; end: number; node: ReactNode }[] = [];
 
   let m: RegExpExecArray | null;
@@ -82,6 +83,32 @@ function renderLine(line: string, accent: string, isUser: boolean, lineIdx: numb
       end: m.index + m[0].length,
       node: (
         <MovieCard key={`mv-${lineIdx}-${m.index}`} slug={slug} title={title} accent={accent} />
+      ),
+    });
+  }
+
+  const markdownLinkRe = new RegExp(MARKDOWN_LINK_REGEX);
+  while ((m = markdownLinkRe.exec(working)) !== null) {
+    const label = m[1];
+    const href = m[2];
+    const overlap = matches.some((mm) => m!.index < mm.end && m!.index + m![0].length > mm.start);
+    if (overlap) continue;
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      node: (
+        <Link
+          key={`md-l-${lineIdx}-${m.index}`}
+          href={href}
+          style={{
+            color: isUser ? "#fff" : accent,
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            fontWeight: 600,
+          }}
+        >
+          {label}
+        </Link>
       ),
     });
   }

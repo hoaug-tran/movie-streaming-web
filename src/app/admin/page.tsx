@@ -2,20 +2,56 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, Skeleton } from "@mui/material";
 import { adminService } from "@/modules/admin/api";
 import { ExecutivePanel } from "@/modules/admin/components/dashboard/sections/ExecutivePanel";
 import { ContentRadar } from "@/modules/admin/components/dashboard/sections/ContentRadar";
 import { SystemTerminal } from "@/modules/admin/components/dashboard/sections/SystemTerminal";
 import { MainAreaChart } from "@/modules/admin/components/dashboard/charts/MainAreaChart";
 import { MultiLineChart } from "@/modules/admin/components/dashboard/charts/MultiLineChart";
-import { RadialProgress } from "@/modules/admin/components/dashboard/charts/RadialProgress";
 import { BentoContainer } from "@/modules/admin/components/dashboard/BentoContainer";
+import Link from "next/link";
+import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
+import MovieCreationRoundedIcon from "@mui/icons-material/MovieCreationRounded";
+import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
+import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import AssignmentRoundedIcon from "@mui/icons-material/AssignmentRounded";
+
+const workloadConfig: Record<string, { href: string; icon: any; actionLabel: string }> = {
+  "Báo cáo chờ xử lý": {
+    href: "/admin/reports",
+    icon: ReportProblemRoundedIcon,
+    actionLabel: "Duyệt báo cáo",
+  },
+  "Phim nháp": {
+    href: "/admin/movies",
+    icon: MovieCreationRoundedIcon,
+    actionLabel: "Biên tập ngay",
+  },
+  "Bình luận bị ẩn": {
+    href: "/admin/comments",
+    icon: ForumRoundedIcon,
+    actionLabel: "Xem bình luận",
+  },
+  "Tài khoản chờ kích hoạt": {
+    href: "/admin/users",
+    icon: PeopleAltRoundedIcon,
+    actionLabel: "Xác minh ngay",
+  },
+  "Gói sắp hết hạn": {
+    href: "/admin/subscriptions",
+    icon: WorkspacePremiumRoundedIcon,
+    actionLabel: "Xem chi tiết",
+  },
+};
 
 export default function AdminPage() {
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["admin-dashboard-summary"],
     queryFn: adminService.getDashboardSummary,
+    refetchInterval: 5000,
   });
 
   const metrics = data?.metrics ?? [];
@@ -28,15 +64,166 @@ export default function AdminPage() {
   const activities = data?.userActivities ?? data?.activities ?? [];
   const adminActivities = data?.adminActivities ?? [];
 
-  const maxWorkload = useMemo(
-    () => Math.max(1, ...(data?.workload ?? []).map((item) => item.value)),
-    [data?.workload]
-  );
-
   const maxDistribution = useMemo(
     () => Math.max(1, ...(data?.distributions ?? []).map((item) => item.value)),
     [data?.distributions]
   );
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          p: { xs: 1.5, sm: 2, md: 3 },
+          pt: { xs: 2, md: 3 },
+          pb: { xs: 6, md: 8 },
+          maxWidth: 1600,
+          mx: "auto",
+          width: "100%",
+          overflowX: "hidden",
+        }}
+      >
+        <Box sx={{ mb: { xs: 2, md: 3 } }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 950,
+              letterSpacing: "-0.02em",
+              fontSize: { xs: "1.55rem", sm: "1.9rem", md: "2.125rem" },
+              lineHeight: { xs: 1.15, md: 1.2 },
+            }}
+          >
+            Trang quản trị Gió Phim / Tổng quan
+          </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "minmax(0, 1fr)",
+              md: "repeat(2, minmax(0, 1fr))",
+              xl: "repeat(4, minmax(0, 1fr))",
+            },
+            autoRows: { xs: "auto", xl: "minmax(180px, auto)" },
+            gap: { xs: 1.5, sm: 2, md: 2.5 },
+            alignItems: "stretch",
+          }}
+        >
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <BentoContainer key={idx}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ width: "100%" }}>
+                  <Skeleton variant="text" width="60%" height={16} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="40%" height={32} />
+                </Box>
+                <Skeleton variant="rectangular" width={48} height={28} sx={{ borderRadius: 1 }} />
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: "auto" }}>
+                <Skeleton variant="rectangular" width={40} height={16} sx={{ borderRadius: 0.5 }} />
+                <Skeleton variant="text" width="50%" height={14} />
+              </Box>
+            </BentoContainer>
+          ))}
+
+          {Array.from({ length: 2 }).map((_, idx) => (
+            <BentoContainer
+              key={idx}
+              gridColumn={{ xs: "1 / -1", xl: "span 2" }}
+              gridRow={{ xs: "auto", xl: "span 2" }}
+            >
+              <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                <Box sx={{ mb: 2 }}>
+                  <Skeleton variant="text" width="30%" height={16} />
+                  <Skeleton variant="text" width="50%" height={60} sx={{ mt: 1, mb: 1 }} />
+                  <Skeleton variant="text" width="20%" height={16} />
+                </Box>
+                <Box sx={{ mt: "auto" }}>
+                  <Skeleton
+                    variant="rectangular"
+                    height={120}
+                    width="100%"
+                    sx={{ borderRadius: 2 }}
+                  />
+                </Box>
+              </Box>
+            </BentoContainer>
+          ))}
+
+          <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }}>
+            <Skeleton variant="text" width="40%" height={32} sx={{ mb: 3 }} />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+                gap: 2,
+              }}
+            >
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    p: 2.25,
+                    borderRadius: 3,
+                    bgcolor: "rgba(255, 255, 255, 0.02)",
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    minHeight: 155,
+                  }}
+                >
+                  <Box>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1.5 }}>
+                      <Skeleton variant="circular" width={36} height={36} />
+                      <Skeleton
+                        variant="rectangular"
+                        width={40}
+                        height={24}
+                        sx={{ borderRadius: 1.5 }}
+                      />
+                    </Box>
+                    <Skeleton variant="text" width="80%" height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="text" width="60%" height={14} />
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+                    <Skeleton variant="text" width="40%" height={16} />
+                    <Skeleton variant="circular" width={16} height={16} />
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </BentoContainer>
+
+          <BentoContainer gridColumn={{ xs: "1 / -1", xl: "span 2" }}>
+            <Skeleton variant="text" width="40%" height={32} sx={{ mb: 3 }} />
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 2.5 }}>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <Box key={idx}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Skeleton variant="text" width="30%" height={16} />
+                    <Skeleton variant="text" width="10%" height={16} />
+                  </Box>
+                  <Skeleton
+                    variant="rectangular"
+                    height={4}
+                    width="100%"
+                    sx={{ borderRadius: 2 }}
+                  />
+                </Box>
+              ))}
+            </Box>
+          </BentoContainer>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -80,7 +267,7 @@ export default function AdminPage() {
         <ExecutivePanel
           metrics={metrics}
           workload={workload}
-          maxWorkload={maxWorkload}
+          maxWorkload={1}
           trendSets={trendSets}
         />
 
@@ -179,32 +366,123 @@ export default function AdminPage() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-              gap: { xs: 1.75, sm: 2.5, md: 3 },
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+              gap: 2,
             }}
           >
-            {workload.slice(0, 6).map((item) => (
-              <Box
-                key={item.name}
-                sx={{ display: "flex", gap: { xs: 1.5, sm: 2 }, alignItems: "center", minWidth: 0 }}
-              >
-                <RadialProgress
-                  value={item.value}
-                  max={maxWorkload}
-                  color={item.color}
-                  size={54}
-                  strokeWidth={5}
-                />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap variant="subtitle2" sx={{ fontWeight: 900 }}>
-                    {item.name}
-                  </Typography>
-                  <Typography noWrap variant="caption" color="text.secondary">
-                    {item.value} chờ xử lý
-                  </Typography>
+            {workload.slice(0, 6).map((item) => {
+              const config = workloadConfig[item.name] || {
+                href: "/admin",
+                icon: AssignmentRoundedIcon,
+                actionLabel: "Xử lý",
+              };
+              const IconComponent = config.icon;
+              return (
+                <Box
+                  key={item.name}
+                  sx={{
+                    p: 2.25,
+                    borderRadius: 3,
+                    bgcolor: "rgba(255, 255, 255, 0.02)",
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    minHeight: 155,
+                    textDecoration: "none",
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    cursor: "pointer",
+                    "&:hover": {
+                      transform: "translateY(-4px)",
+                      bgcolor: "rgba(255, 255, 255, 0.04)",
+                      borderColor: `${item.color}50`,
+                      boxShadow: `0 8px 24px ${item.color}15`,
+                      "& .workload-action-icon": {
+                        transform: "translateX(4px)",
+                        color: "text.primary",
+                      },
+                    },
+                  }}
+                  component={Link}
+                  href={config.href}
+                >
+                  <Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        mb: 1.5,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          p: 1,
+                          borderRadius: 2,
+                          bgcolor: `${item.color}15`,
+                          color: item.color,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <IconComponent sx={{ fontSize: 20 }} />
+                      </Box>
+                      <Box
+                        sx={{
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: 2,
+                          bgcolor: "background.paper",
+                          border: "1px solid rgba(255, 255, 255, 0.08)",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 900, color: item.color }}>
+                          {item.value}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 800, mb: 0.5, color: "text.primary", lineHeight: 1.3 }}
+                    >
+                      {item.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      {item.caption || "Công việc đang chờ xử lý."}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      mt: 2,
+                      pt: 1.5,
+                      borderTop: "1px solid rgba(255,255,255,0.03)",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 800,
+                        color: item.color,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {config.actionLabel}
+                    </Typography>
+                    <ChevronRightRoundedIcon
+                      className="workload-action-icon"
+                      sx={{ fontSize: 18, color: "text.secondary", transition: "all 0.2s ease" }}
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            ))}
+              );
+            })}
           </Box>
         </BentoContainer>
 
@@ -360,11 +638,20 @@ export default function AdminPage() {
             </Box>
           </BentoContainer>
         </Box>
-        <SystemTerminal
-          signals={signals}
-          activities={activities}
-          adminActivities={adminActivities}
-        />
+        <Box
+          sx={{
+            mt: { xs: 4, md: 5 },
+            display: "flex",
+            flexDirection: "column",
+            gap: { xs: 3, md: 4 },
+          }}
+        >
+          <SystemTerminal
+            signals={signals}
+            activities={activities}
+            adminActivities={adminActivities}
+          />
+        </Box>
       </Box>
     </Box>
   );

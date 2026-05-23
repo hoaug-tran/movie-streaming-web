@@ -99,7 +99,15 @@ export function SocialEngagementSection() {
             alignItems: { md: "stretch" },
           }}
         >
-          <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box
+            sx={{
+              flex: { md: "0 1 58%" },
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: 1.5,
+            }}
+          >
             {allComments.slice(0, 4).map((comment, idx) => {
               const accent = ACCENT_COLORS[idx % ACCENT_COLORS.length];
               const isHighlighted = idx === activeComment;
@@ -157,6 +165,8 @@ export function SocialEngagementSection() {
                   >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Avatar
+                        src={comment.authorAvatarUrl || comment.user?.avatar || undefined}
+                        alt={comment.authorFullName || comment.authorUsername || "Người dùng"}
                         sx={{
                           width: 26,
                           height: 26,
@@ -167,7 +177,14 @@ export function SocialEngagementSection() {
                           flexShrink: 0,
                         }}
                       >
-                        {comment.movieTitle?.[0] || "K"}
+                        {(
+                          comment.authorFullName ||
+                          comment.authorUsername ||
+                          comment.user?.fullName ||
+                          "U"
+                        )
+                          .trim()[0]
+                          ?.toUpperCase()}
                       </Avatar>
                       <Box>
                         <Typography
@@ -178,7 +195,10 @@ export function SocialEngagementSection() {
                             lineHeight: 1.1,
                           }}
                         >
-                          Khán giả
+                          {comment.authorFullName ||
+                            comment.authorUsername ||
+                            comment.user?.fullName ||
+                            "Người dùng"}
                         </Typography>
                         <Typography sx={{ fontSize: "0.65rem", color: "text.secondary" }}>
                           {formatDistanceToNow(new Date(comment.createdAt), {
@@ -237,7 +257,7 @@ export function SocialEngagementSection() {
           <Box
             sx={{
               flexShrink: 0,
-              width: { xs: "100%", md: 280 },
+              width: { xs: "100%", md: 360, lg: 400 },
               display: "flex",
               flexDirection: "column",
               gap: 0,
@@ -308,6 +328,8 @@ export function SocialEngagementSection() {
                   }}
                 >
                   <Avatar
+                    src={comment.authorAvatarUrl || comment.user?.avatar || undefined}
+                    alt={comment.authorFullName || comment.authorUsername || "Người dùng"}
                     sx={{
                       width: 28,
                       height: 28,
@@ -319,7 +341,14 @@ export function SocialEngagementSection() {
                       transition: "background-color 0.2s",
                     }}
                   >
-                    {comment.movieTitle?.[0] || "K"}
+                    {(
+                      comment.authorFullName ||
+                      comment.authorUsername ||
+                      comment.user?.fullName ||
+                      "U"
+                    )
+                      .trim()[0]
+                      ?.toUpperCase()}
                   </Avatar>
                   <Box sx={{ minWidth: 0 }}>
                     {comment.movieTitle && (

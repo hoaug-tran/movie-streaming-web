@@ -21,6 +21,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
@@ -85,6 +86,7 @@ type MovieCommentsSectionProps = {
   slug: string;
   initialComments: MovieComment[];
   episodes: Episode[];
+  commentsLocked?: boolean;
 };
 
 export function MovieCommentsSection({
@@ -92,6 +94,7 @@ export function MovieCommentsSection({
   slug,
   initialComments,
   episodes,
+  commentsLocked = false,
 }: MovieCommentsSectionProps) {
   const theme = useTheme();
   const router = useRouter();
@@ -167,6 +170,10 @@ export function MovieCommentsSection({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!requireAuth()) return;
+    if (commentsLocked) {
+      setContentError("Phim này hiện không cho phép bình luận.");
+      return;
+    }
     const trimmed = content.trim();
     if (trimmed.length < MIN_COMMENT_LENGTH) {
       setContentError(`Bình luận phải có ít nhất ${MIN_COMMENT_LENGTH} ký tự.`);
@@ -180,6 +187,10 @@ export function MovieCommentsSection({
   const handleReplySubmit = (event: FormEvent, parentCommentId: number) => {
     event.preventDefault();
     if (!requireAuth()) return;
+    if (commentsLocked) {
+      setReplyError("Phim này hiện không cho phép phản hồi bình luận.");
+      return;
+    }
     const trimmed = replyContent.trim();
     if (trimmed.length < MIN_COMMENT_LENGTH) {
       setReplyError(`Phản hồi phải có ít nhất ${MIN_COMMENT_LENGTH} ký tự.`);
@@ -260,13 +271,13 @@ export function MovieCommentsSection({
               Bình luận
             </Typography>
             <Typography
-              variant="h3"
+              variant="h4"
               component="h2"
               fontWeight={950}
-              letterSpacing="-0.035em"
-              sx={{ fontSize: { xs: "2rem", sm: "2.35rem", md: "3rem" }, lineHeight: 1.08 }}
+              letterSpacing="-0.03em"
+              sx={{ fontSize: { xs: "1.8rem", sm: "2.05rem", md: "2.35rem" }, lineHeight: 1.12 }}
             >
-              Phòng trò chuyện sau suất chiếu
+              Góc bình luận của khán giả
             </Typography>
           </Box>
           {comments.length > 8 && (
@@ -312,19 +323,24 @@ export function MovieCommentsSection({
             }
             error={Boolean(contentError)}
             helperText={contentError}
-            disabled={loading || createComment.isPending}
+            disabled={loading || createComment.isPending || commentsLocked}
             fullWidth
           />
           <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5}>
             <Typography variant="caption" color="text.secondary">
-              Nội dung tối đa {MAX_COMMENT_LENGTH} ký tự.
+              {commentsLocked
+                ? "Bình luận đang tạm khóa."
+                : `Nội dung tối đa ${MAX_COMMENT_LENGTH} ký tự.`}
             </Typography>
             <Button
               id="movie-comment-submit"
               type="submit"
               variant="contained"
               disabled={
-                loading || createComment.isPending || content.trim().length < MIN_COMMENT_LENGTH
+                loading ||
+                createComment.isPending ||
+                commentsLocked ||
+                content.trim().length < MIN_COMMENT_LENGTH
               }
             >
               <SendRoundedIcon />
@@ -332,6 +348,30 @@ export function MovieCommentsSection({
           </Stack>
         </Stack>
       </Paper>
+
+      {commentsLocked && (
+        <Paper
+          elevation={0}
+          sx={{
+            mb: 2.5,
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 1.5,
+            border: `1px solid ${alpha(theme.palette.warning.main, 0.32)}`,
+            background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.16)}, ${alpha(theme.palette.background.paper, 0.9)})`,
+          }}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <LockRoundedIcon color="warning" />
+            <Box>
+              <Typography fontWeight={900}>Bình luận đang tạm khóa</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Người xem vẫn có thể đọc các bình luận cũ, nhưng không thể gửi bình luận hoặc trả
+                lời mới.
+              </Typography>
+            </Box>
+          </Stack>
+        </Paper>
+      )}
 
       <Stack spacing={1.5}>
         {rootComments.length ? (
@@ -362,13 +402,16 @@ export function MovieCommentsSection({
                 episodeText={episodeLabel(comment, episodes)}
                 onLike={() => handleLike(comment.id)}
                 onReply={() =>
-                  requireAuth()
-                    ? setReplyingTo(replyingTo === comment.id ? null : comment.id)
-                    : undefined
+                  commentsLocked
+                    ? undefined
+                    : requireAuth()
+                      ? setReplyingTo(replyingTo === comment.id ? null : comment.id)
+                      : undefined
                 }
                 likeDisabled={toggleLike.isPending}
                 liked={likedCommentIds.has(comment.id)}
                 onReport={() => handleOpenReport(comment)}
+                replyDisabled={commentsLocked}
               />
 
               <Collapse in={replyingTo === comment.id} unmountOnExit>
@@ -391,6 +434,7 @@ export function MovieCommentsSection({
                     placeholder={`Enter để gửi · Shift + Enter để xuống dòng (tối thiểu ${MIN_COMMENT_LENGTH} ký tự)`}
                     error={Boolean(replyError)}
                     helperText={replyError}
+                    disabled={commentsLocked || createComment.isPending}
                     fullWidth
                   />
                   <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 1 }}>
@@ -407,7 +451,9 @@ export function MovieCommentsSection({
                       type="submit"
                       variant="contained"
                       disabled={
-                        replyContent.trim().length < MIN_COMMENT_LENGTH || createComment.isPending
+                        commentsLocked ||
+                        replyContent.trim().length < MIN_COMMENT_LENGTH ||
+                        createComment.isPending
                       }
                     >
                       Gửi trả lời
@@ -453,7 +499,9 @@ export function MovieCommentsSection({
             }}
           >
             <Typography color="text.secondary">
-              Chưa có bình luận nào. Hãy mở màn cuộc trò chuyện đầu tiên.
+              {commentsLocked
+                ? "Chưa có bình luận nào để hiển thị."
+                : "Chưa có bình luận nào. Hãy mở màn cuộc trò chuyện đầu tiên."}
             </Typography>
           </Paper>
         )}
@@ -498,6 +546,7 @@ type CommentContentProps = {
   liked: boolean;
   compact?: boolean;
   onReport: () => void;
+  replyDisabled?: boolean;
 };
 
 function CommentContent({
@@ -509,6 +558,7 @@ function CommentContent({
   liked,
   compact,
   onReport,
+  replyDisabled = false,
 }: CommentContentProps) {
   const theme = useTheme();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -593,6 +643,7 @@ function CommentContent({
               onClick={onReply}
               size="small"
               startIcon={<ReplyRoundedIcon />}
+              disabled={replyDisabled}
               sx={{ ml: 1 }}
             >
               Trả lời {comment.replyCount ? `(${comment.replyCount})` : ""}

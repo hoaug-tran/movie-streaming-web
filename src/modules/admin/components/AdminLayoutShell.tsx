@@ -1,7 +1,7 @@
 "use client";
 
 import NextLink from "next/link";
-import { ReactNode, useMemo, useState } from "react";
+import { MouseEvent, ReactNode, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   alpha,
@@ -261,13 +261,22 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
               {items.map((item) => {
                 const allowed = hasAdminPermission(user?.role, item.permission);
                 const active = pathname === item.href;
+                const handleNavClick = (event: MouseEvent<HTMLElement>) => {
+                  if (!allowed) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                  }
+                  setMobileOpen(false);
+                };
                 const button = (
                   <ListItemButton
                     component={allowed ? NextLink : "button"}
                     href={allowed ? item.href : undefined}
-                    disabled={!allowed}
                     selected={active}
-                    onClick={() => setMobileOpen(false)}
+                    onClick={handleNavClick}
+                    aria-disabled={!allowed}
+                    tabIndex={allowed ? 0 : -1}
                     sx={{
                       mb: 0.5,
                       borderRadius: 1.5,
@@ -278,15 +287,23 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
                         ? `1px solid ${alpha(theme.palette.primary.main, 0.34)}`
                         : "1px solid transparent",
                       background: active ? alpha(theme.palette.primary.main, 0.14) : "transparent",
-                      transition: theme.transitions.create(["background-color", "border-color"], {
-                        duration: theme.transitions.duration.shorter,
-                      }),
-                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.08) },
-                      "&.Mui-disabled": { opacity: 0.48 },
+                      opacity: allowed ? 1 : 0.4,
+                      cursor: allowed ? "pointer" : "not-allowed",
+                      pointerEvents: allowed ? "auto" : "none",
+                      transition: theme.transitions.create(
+                        ["background-color", "border-color", "opacity"],
+                        {
+                          duration: theme.transitions.duration.shorter,
+                        }
+                      ),
+                      "&:hover": allowed
+                        ? { bgcolor: alpha(theme.palette.primary.main, 0.08) }
+                        : { bgcolor: "transparent" },
                     }}
                   >
                     <ListItemIcon
                       sx={{
+                        position: "relative",
                         color: active
                           ? theme.palette.primary.light
                           : allowed
@@ -296,7 +313,28 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
                         justifyContent: "center",
                       }}
                     >
-                      {allowed ? item.icon : <LockRoundedIcon />}
+                      {item.icon}
+                      {!allowed && (
+                        <Box
+                          component="span"
+                          sx={{
+                            position: "absolute",
+                            right: collapsed ? -4 : 4,
+                            bottom: -2,
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            bgcolor: alpha(theme.palette.background.paper, 0.95),
+                            border: `1px solid ${theme.palette.divider}`,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: theme.palette.text.secondary,
+                          }}
+                        >
+                          <LockRoundedIcon sx={{ fontSize: 10 }} />
+                        </Box>
+                      )}
                     </ListItemIcon>
                     {!collapsed && (
                       <ListItemText
@@ -310,10 +348,16 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
                 return (
                   <Tooltip
                     key={item.href}
-                    title={collapsed ? item.label : allowed ? "" : "Không có quyền truy cập"}
+                    title={
+                      allowed
+                        ? collapsed
+                          ? item.label
+                          : ""
+                        : `${item.label} • Bạn không có quyền truy cập`
+                    }
                     placement="right"
                   >
-                    <Box>{button}</Box>
+                    <Box sx={{ cursor: allowed ? "pointer" : "not-allowed" }}>{button}</Box>
                   </Tooltip>
                 );
               })}

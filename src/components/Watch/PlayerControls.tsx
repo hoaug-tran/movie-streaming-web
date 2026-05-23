@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Box,
   IconButton,
@@ -14,11 +14,13 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  ButtonBase,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
   Popover,
+  CircularProgress,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -49,6 +51,7 @@ import EpisodeList from "./EpisodeList";
 import { useOfflineDownload } from "@/hooks/use-offline-download";
 import IOSInstallInstructions from "@/components/PWA/IOSInstallInstructions";
 import { isIOSDevice } from "@/lib/platform";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
 
 interface PlayerControlsProps {
   show: boolean;
@@ -91,6 +94,17 @@ const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const ALL_QUALITIES: VideoQuality[] = ["4K", "1080p", "720p"];
 const QUALITY_ORDER: VideoQuality[] = ["720p", "1080p", "4K"];
 
+const normalizeQuality = (quality?: string): VideoQuality => {
+  const q = String(quality || "720p")
+    .trim()
+    .toUpperCase();
+
+  if (q === "4K" || q === "2160P" || q === "UHD") return "4K";
+  if (q === "1080P" || q === "FHD" || q === "FULL_HD") return "1080p";
+
+  return "720p";
+};
+
 const menuBoxSx = {
   position: "absolute" as const,
   bottom: "100%",
@@ -132,8 +146,10 @@ export default function PlayerControls({
   fullscreenContainer,
 }: PlayerControlsProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const theme = useTheme();
   const isCompact = useMediaQuery(theme.breakpoints.down("md"));
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
@@ -146,6 +162,7 @@ export default function PlayerControls({
 
   const download = useOfflineDownload(episode.id);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [showDownloadQualityDialog, setShowDownloadQualityDialog] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const isSeries = movie.movieType === "SERIES" && episodes.length > 1;
@@ -169,6 +186,10 @@ export default function PlayerControls({
     if (!isCompact && volumeAnchor) setVolumeAnchor(null);
   }, [isCompact, volumeAnchor]);
 
+  useEffect(() => {
+    setShowDownloadQualityDialog(false);
+  }, [episode.id]);
+
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
     const videoEl = document.querySelector("video");
@@ -187,7 +208,7 @@ export default function PlayerControls({
         await videoEl.requestPictureInPicture();
       }
     } catch {
-      // PiP not supported on this device or permission denied
+      // nếu PiP không hỗ trợ
     }
     setOverflowAnchor(null);
   };
@@ -198,9 +219,11 @@ export default function PlayerControls({
       router.push("/pricing");
       return;
     }
-    if (availableQualities.includes(q)) {
+
+    if (getQualityAvailable(q)) {
       onQualityChange(q);
     }
+
     setShowQualityMenu(false);
   };
 
@@ -219,20 +242,55 @@ export default function PlayerControls({
     onMuteToggle();
   };
 
+  const getQualityAvailable = (q: VideoQuality) => {
+    if (!availableQualities || availableQualities.length === 0) return true;
+
+    const supportedSet = new Set(availableQualities.map((item) => normalizeQuality(item)));
+
+    return supportedSet.has(q);
+  };
+
   const handleDownloadClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!download.isPWA || !download.canDownloadOffline) {
-      setShowDownloadDialog(true);
+
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      router.push(`/auth/login?returnTo=${encodeURIComponent(pathname || "/")}`);
+      setOverflowAnchor(null);
       return;
     }
+
+    if (!download.isPWA || !download.canDownloadOffline) {
+      setShowDownloadDialog(true);
+      setOverflowAnchor(null);
+      return;
+    }
+
     if (download.status === "idle" || download.status === "error") {
-      download.startDownload("720p");
+      setShowDownloadQualityDialog(true);
     } else if (download.status === "downloading") {
       download.cancelDownload();
     } else if (download.status === "downloaded") {
-      download.deleteDownload();
+      void download.deleteDownload();
     }
+
     setOverflowAnchor(null);
+  };
+
+  const handleDownloadQualitySelect = (q: VideoQuality) => {
+    const qIdx = QUALITY_ORDER.indexOf(q);
+
+    if (qIdx > maxQualityIdx) {
+      setShowDownloadQualityDialog(false);
+      router.push("/pricing");
+      return;
+    }
+
+    if (!getQualityAvailable(q)) return;
+
+    void download.startDownload(q);
+    setShowDownloadQualityDialog(false);
   };
 
   const handleInstallFromDialog = async () => {
@@ -243,28 +301,49 @@ export default function PlayerControls({
     setShowDownloadDialog(false);
   };
 
+  const downloadPercent = Math.max(0, Math.min(100, download.progress?.percent ?? 0));
+  const isDownloading = download.status === "downloading";
+
   const downloadIcon =
     download.status === "downloaded" ? (
       <FileDownloadDone sx={{ fontSize: 22 }} />
-    ) : download.status === "downloading" ? (
-      <DownloadingOutlined sx={{ fontSize: 22 }} />
+    ) : isDownloading ? (
+      <Box
+        sx={{
+          position: "relative",
+          width: 28,
+          height: 28,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <CircularProgress
+          variant={downloadPercent > 0 ? "determinate" : "indeterminate"}
+          value={downloadPercent}
+          size={28}
+          thickness={4}
+          sx={{
+            color: "#C8102E",
+            position: "absolute",
+            inset: 0,
+          }}
+        />
+        <DownloadingOutlined sx={{ fontSize: 17, color: "#fff", zIndex: 1 }} />
+      </Box>
     ) : (
       <FileDownloadOutlined sx={{ fontSize: 22 }} />
     );
 
   const downloadColor =
-    download.status === "downloaded"
-      ? "#22c55e"
-      : download.status === "downloading"
-        ? "#C8102E"
-        : "#fff";
+    download.status === "downloaded" ? "#22c55e" : isDownloading ? "#C8102E" : "#fff";
 
   const downloadTooltip = !download.isPWA
     ? "Tải phim — Cần cài ứng dụng"
-    : download.status === "downloading"
-      ? `Đang tải ${download.progress?.percent ?? 0}%`
+    : isDownloading
+      ? `Đang tải ${downloadPercent}%`
       : download.status === "downloaded"
-        ? "Đã Tải phim"
+        ? "Đã tải phim"
         : "Tải phim";
 
   return (
@@ -571,8 +650,7 @@ export default function PlayerControls({
                   {ALL_QUALITIES.map((q) => {
                     const qIdx = QUALITY_ORDER.indexOf(q);
                     const isLocked = qIdx > maxQualityIdx;
-                    const isAvailable =
-                      availableQualities.length === 0 || availableQualities.includes(q);
+                    const isAvailable = getQualityAvailable(q);
                     const isActive = q === currentQuality;
                     return (
                       <Box
@@ -654,10 +732,12 @@ export default function PlayerControls({
               <Tooltip title={downloadTooltip}>
                 <IconButton
                   onClick={handleDownloadClick}
+                  disabled={authLoading}
                   sx={{
                     color: downloadColor,
                     display: { xs: "none", md: "inline-flex" },
                     "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+                    "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" },
                   }}
                   aria-label="Tải phim"
                 >
@@ -713,6 +793,7 @@ export default function PlayerControls({
         onClose={() => setVolumeAnchor(null)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+        container={fullscreenContainer ?? undefined}
         slotProps={{
           paper: {
             onClick: (e) => e.stopPropagation(),
@@ -735,7 +816,6 @@ export default function PlayerControls({
           },
         }}
         sx={{ zIndex: 2147483647 }}
-        container={fullscreenContainer ?? undefined}
         disableScrollLock
       >
         <Slider
@@ -771,6 +851,7 @@ export default function PlayerControls({
         onClose={() => setOverflowAnchor(null)}
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
         transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+        container={fullscreenContainer ?? undefined}
         PaperProps={{
           sx: {
             bgcolor: "rgba(20,20,20,0.95)",
@@ -783,7 +864,6 @@ export default function PlayerControls({
           },
         }}
         sx={{ zIndex: 2147483647 }}
-        container={fullscreenContainer ?? undefined}
         disableScrollLock
       >
         <MenuItem
@@ -825,7 +905,17 @@ export default function PlayerControls({
             onClick={handleDownloadClick}
             sx={{ "&:hover": { bgcolor: "rgba(255,255,255,0.06)" } }}
           >
-            <ListItemIcon sx={{ color: downloadColor }}>{downloadIcon}</ListItemIcon>
+            <ListItemIcon
+              sx={{
+                color: downloadColor,
+                minWidth: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {downloadIcon}
+            </ListItemIcon>
             <ListItemText
               primary="Tải phim"
               secondary={
@@ -921,7 +1011,7 @@ export default function PlayerControls({
             {ALL_QUALITIES.map((q) => {
               const qIdx = QUALITY_ORDER.indexOf(q);
               const isLocked = qIdx > maxQualityIdx;
-              const isAvailable = availableQualities.length === 0 || availableQualities.includes(q);
+              const isAvailable = getQualityAvailable(q);
               const isActive = q === currentQuality;
               return (
                 <Box
@@ -981,7 +1071,155 @@ export default function PlayerControls({
           container={fullscreenContainer ?? undefined}
         />
       )}
+      <Dialog
+        open={showDownloadQualityDialog}
+        onClose={() => setShowDownloadQualityDialog(false)}
+        onClick={(e) => e.stopPropagation()}
+        container={fullscreenContainer ?? undefined}
+        maxWidth="xs"
+        fullWidth
+        sx={{ zIndex: 2147483647 }}
+        PaperProps={{
+          sx: {
+            bgcolor: "#161616",
+            border: "1px solid rgba(200,16,46,0.25)",
+            borderRadius: 3,
+            backgroundImage: "none",
+            mx: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, pt: 3, px: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
+            <Box
+              component="img"
+              src="/icons/logo.webp"
+              alt="Gió Phim"
+              sx={{ width: 48, height: 48, borderRadius: 2, flexShrink: 0 }}
+            />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                sx={{
+                  fontWeight: 800,
+                  fontSize: "1.1rem",
+                  color: "#F0F0F0",
+                  lineHeight: 1.2,
+                }}
+              >
+                Chọn chất lượng tải phim
+              </Typography>
 
+              <Typography
+                sx={{
+                  fontSize: "0.78rem",
+                  color: "#8A8A8A",
+                  mt: 0.3,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {movie.title}
+                {isSeries && episode.episodeNumber ? ` · Tập ${episode.episodeNumber}` : ""}
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent
+          sx={{
+            px: 3,
+            pt: "8px !important",
+            pb: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+          }}
+        >
+          {ALL_QUALITIES.map((q) => {
+            const qIdx = QUALITY_ORDER.indexOf(q);
+            const isLocked = qIdx > maxQualityIdx;
+            const isAvailable = getQualityAvailable(q);
+
+            return (
+              <ButtonBase
+                key={q}
+                onClick={() => handleDownloadQualitySelect(q)}
+                disabled={!isLocked && !isAvailable}
+                sx={{
+                  width: "100%",
+                  minHeight: 52,
+                  px: 2,
+                  py: 1.25,
+                  borderRadius: 1.5,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  bgcolor: "rgba(255,255,255,0.04)",
+                  color: isLocked
+                    ? "rgba(255,255,255,0.42)"
+                    : isAvailable
+                      ? "#F0F0F0"
+                      : "rgba(255,255,255,0.35)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1.5,
+                  textAlign: "left",
+                  cursor: isLocked || isAvailable ? "pointer" : "default",
+                  "&:hover": {
+                    bgcolor:
+                      isLocked || isAvailable ? "rgba(200,16,46,0.14)" : "rgba(255,255,255,0.04)",
+                    borderColor:
+                      isLocked || isAvailable ? "rgba(200,16,46,0.35)" : "rgba(255,255,255,0.1)",
+                  },
+                  "&.Mui-disabled": {
+                    color: "rgba(255,255,255,0.28)",
+                    opacity: 1,
+                  },
+                }}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>
+                    {qualityLabel(q)}
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      color: "rgba(255,255,255,0.48)",
+                      fontSize: "0.74rem",
+                      mt: 0.2,
+                    }}
+                  >
+                    {isLocked
+                      ? "Cần nâng cấp gói"
+                      : isAvailable
+                        ? "Sẵn sàng tải về thiết bị"
+                        : "Chưa có chất lượng này"}
+                  </Typography>
+                </Box>
+
+                {isLocked ? (
+                  <Lock sx={{ fontSize: 18, opacity: 0.72 }} />
+                ) : (
+                  <FileDownloadOutlined sx={{ fontSize: 20, opacity: isAvailable ? 1 : 0.35 }} />
+                )}
+              </ButtonBase>
+            );
+          })}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button
+            onClick={() => setShowDownloadQualityDialog(false)}
+            sx={{
+              color: "#8A8A8A",
+              textTransform: "none",
+              fontWeight: 600,
+            }}
+          >
+            Để sau
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog
         open={showDownloadDialog}
         onClose={() => setShowDownloadDialog(false)}

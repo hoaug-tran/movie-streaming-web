@@ -36,15 +36,6 @@ const isOurBackend = (url: string) => {
   }
 };
 
-const getAccessToken = (): string | null => {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem("accessToken");
-  } catch {
-    return null;
-  }
-};
-
 export default function HlsPlayer({
   videoRef,
   src,
@@ -67,9 +58,7 @@ export default function HlsPlayer({
   const shouldPlayRef = useRef(shouldPlay);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [useNativeHls] = useState<boolean>(detectNativeHls);
-  // Khi phát offline (m3u8 từ blob với same-origin segments) PHẢI dùng HLS.js
-  // để fetch đi qua Service Worker. Native HLS trên Safari bypass SW không truy
-  // xuất được IndexedDB.
+
   const isOffline = Boolean(offlineSrc);
   const useNative = useNativeHls && !isOffline;
 
@@ -88,28 +77,43 @@ export default function HlsPlayer({
     setErrorMsg(null);
   }, [src, offlineSrc]);
 
-  const tryPlayWithMutedFallback = useCallback(
-    async (video: HTMLVideoElement) => {
-      const wasMuted = video.muted;
-      if (wasMuted) {
-        video.muted = false;
-      }
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  const onDurationChangeRef = useRef(onDurationChange);
+  const onPlayRef = useRef(onPlay);
+  const onPauseRef = useRef(onPause);
+  const onEndedRef = useRef(onEnded);
+  const onLoadedRef = useRef(onLoaded);
+  const onMutedChangeRef = useRef(onMutedChange);
+
+  useEffect(() => {
+    onTimeUpdateRef.current = onTimeUpdate;
+    onDurationChangeRef.current = onDurationChange;
+    onPlayRef.current = onPlay;
+    onPauseRef.current = onPause;
+    onEndedRef.current = onEnded;
+    onLoadedRef.current = onLoaded;
+    onMutedChangeRef.current = onMutedChange;
+  });
+
+  const tryPlayWithMutedFallback = useCallback(async (video: HTMLVideoElement) => {
+    const wasMuted = video.muted;
+    if (wasMuted) {
+      video.muted = false;
+    }
+    try {
+      await video.play();
+      onMutedChangeRef.current?.(false);
+      return;
+    } catch {
+      video.muted = true;
+      onMutedChangeRef.current?.(true);
       try {
         await video.play();
-        onMutedChange?.(false);
-        return;
       } catch {
-        video.muted = true;
-        onMutedChange?.(true);
-        try {
-          await video.play();
-        } catch {
-          // IOS suck
-        }
+        // autoplay bị chặn thì thôi
       }
-    },
-    [onMutedChange]
-  );
+    }
+  }, []);
 
   useEffect(() => {
     if (useNative) return;
@@ -150,10 +154,6 @@ export default function HlsPlayer({
           if (url.startsWith("blob:")) return;
           if (isOurBackend(url)) {
             xhr.withCredentials = true;
-            const token = getAccessToken();
-            if (token) {
-              xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-            }
           }
         },
       });
@@ -202,7 +202,7 @@ export default function HlsPlayer({
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
-  }, [actualSrc, videoRef, useNative]);
+  }, [actualSrc, videoRef, useNative, tryPlayWithMutedFallback]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -226,7 +226,7 @@ export default function HlsPlayer({
     return () => {
       video.removeEventListener("loadedmetadata", onLoadedMeta);
     };
-  }, [actualSrc, videoRef, useNative]);
+  }, [actualSrc, videoRef, useNative, tryPlayWithMutedFallback]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -238,37 +238,7 @@ export default function HlsPlayer({
     }
 
     video.pause();
-  }, [shouldPlay, videoRef]);
-
-  const onTimeUpdateRef = useRef(onTimeUpdate);
-  const onDurationChangeRef = useRef(onDurationChange);
-  const onPlayRef = useRef(onPlay);
-  const onPauseRef = useRef(onPause);
-  const onEndedRef = useRef(onEnded);
-  const onLoadedRef = useRef(onLoaded);
-  const onMutedChangeRef = useRef(onMutedChange);
-
-  useEffect(() => {
-    onTimeUpdateRef.current = onTimeUpdate;
-  });
-  useEffect(() => {
-    onDurationChangeRef.current = onDurationChange;
-  });
-  useEffect(() => {
-    onPlayRef.current = onPlay;
-  });
-  useEffect(() => {
-    onPauseRef.current = onPause;
-  });
-  useEffect(() => {
-    onEndedRef.current = onEnded;
-  });
-  useEffect(() => {
-    onLoadedRef.current = onLoaded;
-  });
-  useEffect(() => {
-    onMutedChangeRef.current = onMutedChange;
-  });
+  }, [shouldPlay, videoRef, tryPlayWithMutedFallback]);
 
   useEffect(() => {
     const video = videoRef.current;

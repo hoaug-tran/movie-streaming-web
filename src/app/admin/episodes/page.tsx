@@ -34,10 +34,14 @@ import { useUploadProgress } from "@/context/upload-progress-context";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
 
 const STATUS_OPTIONS = [
-  { value: "DRAFT", label: "Draft" },
-  { value: "HIDDEN", label: "Hidden" },
-  { value: "PUBLISHED", label: "Published" },
+  { value: "DRAFT", label: "Bản nháp" },
+  { value: "HIDDEN", label: "Đã ẩn" },
+  { value: "PUBLISHED", label: "Đã xuất bản" },
 ];
+
+const STATUS_LABELS = Object.fromEntries(
+  STATUS_OPTIONS.map((option) => [option.value, option.label])
+);
 
 function formatDuration(seconds?: number | null) {
   if (!seconds || seconds <= 0) return "—";
@@ -75,7 +79,7 @@ export default function AdminEpisodesPage() {
       stats={[
         { label: "Tổng tập", getValue: (items) => items.length, tone: "cyan" },
         {
-          label: "Đã publish",
+          label: "Đã xuất bản",
           getValue: (items) => items.filter((i) => i.status === "PUBLISHED").length,
           tone: "emerald",
         },
@@ -120,7 +124,7 @@ export default function AdminEpisodesPage() {
                   }}
                 >
                   <Typography variant="caption" color="text.disabled">
-                    No thumb
+                    Chưa có ảnh
                   </Typography>
                 </Box>
               )}
@@ -151,7 +155,17 @@ export default function AdminEpisodesPage() {
                 {ep.movieTitle ?? `#${ep.movieId ?? "—"}`}
               </Typography>
               <Typography variant="caption" color="text.secondary" noWrap>
-                {[ep.movieReleaseYear, ep.movieCountry, ep.movieType].filter(Boolean).join(" · ")}
+                {[
+                  ep.movieReleaseYear,
+                  ep.movieCountry,
+                  ep.movieType === "SERIES"
+                    ? "Phim bộ"
+                    : ep.movieType === "SINGLE"
+                      ? "Phim lẻ"
+                      : ep.movieType,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </Typography>
             </Stack>
           ),
@@ -196,7 +210,7 @@ export default function AdminEpisodesPage() {
           label: "Trạng thái",
           render: (ep) => (
             <AdminStatusChip
-              label={ep.status || "DRAFT"}
+              label={STATUS_LABELS[ep.status ?? "DRAFT"] ?? "Bản nháp"}
               tone={ep.status === "PUBLISHED" ? "emerald" : "amber"}
             />
           ),

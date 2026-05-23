@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -15,6 +15,8 @@ import {
   Grid,
   LinearProgress,
   MenuItem,
+  Pagination,
+  PaginationItem,
   Paper,
   Stack,
   TextField,
@@ -29,8 +31,12 @@ import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import AdminPermissionGate from "@/modules/admin/components/AdminPermissionGate";
 import { AdminReport, adminService, ResolveReportPayload } from "@/modules/admin/api";
+import { getAdminErrorMessage } from "@/modules/admin/utils/admin-errors";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 
 const statusOptions = ["ALL", "PENDING", "RESOLVED", "REJECTED"] as const;
@@ -68,6 +74,16 @@ export default function AdminReportsPage() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset page on search or filter update
+  useEffect(() => {
+    setPage(1);
+  }, [status, target, search]);
 
   const reportsQuery = useQuery({
     queryKey: ["admin", "reports"],
@@ -95,6 +111,14 @@ export default function AdminReportsPage() {
     });
   }, [reports, search, status, target]);
 
+  const totalItems = filteredReports.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  const paginatedReports = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredReports.slice(start, start + pageSize);
+  }, [filteredReports, page, pageSize]);
+
   const selectedReport =
     filteredReports.find((r) => r.id === selectedId) ?? filteredReports[0] ?? null;
   const pendingCount = reports.filter((r) => r.status === "PENDING").length;
@@ -103,9 +127,12 @@ export default function AdminReportsPage() {
 
   const runAction = async (key: string, fn: () => Promise<unknown>) => {
     setActionLoading(key);
+    setActionError(null);
     try {
       await fn();
       queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
+    } catch (err) {
+      setActionError(getAdminErrorMessage(err, "Không thể xử lý báo cáo. Vui lòng thử lại."));
     } finally {
       setActionLoading(null);
     }
@@ -150,6 +177,7 @@ export default function AdminReportsPage() {
 
   const handleReject = () => {
     if (!selectedReport) return;
+    setActionError(null);
     resolveMutation.mutate({ reportId: selectedReport.id, payload: { status: "REJECTED" } });
   };
 
@@ -264,11 +292,19 @@ export default function AdminReportsPage() {
 
           {reportsQuery.isLoading && <LinearProgress color="primary" />}
           {reportsQuery.isError && (
-            <Alert severity="error">Không tải được danh sách báo cáo.</Alert>
+            <Alert severity="error">
+              {getAdminErrorMessage(reportsQuery.error, "Không tải được danh sách báo cáo.")}
+            </Alert>
           )}
-          {(resolveMutation.isError || (actionLoading === null && resolveMutation.isError)) && (
-            <Alert severity="error">Không thể xử lý báo cáo. Vui lòng thử lại.</Alert>
+          {resolveMutation.isError && (
+            <Alert severity="error">
+              {getAdminErrorMessage(
+                resolveMutation.error,
+                "Không thể xử lý báo cáo. Vui lòng thử lại."
+              )}
+            </Alert>
           )}
+          {actionError && <Alert severity="error">{actionError}</Alert>}
 
           {!reportsQuery.isLoading && filteredReports.length === 0 ? (
             <Box
@@ -276,7 +312,10 @@ export default function AdminReportsPage() {
                 py: 8,
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "flex-start",
+                alignItems: "center",
+                textAlign: "center",
+                minHeight: "40vh",
+                justifyContent: "center",
                 gap: 1,
                 color: "text.secondary",
               }}
@@ -291,7 +330,7 @@ export default function AdminReportsPage() {
               {/* Report list */}
               <Grid item xs={12} lg={7}>
                 <Stack spacing={1.5}>
-                  {filteredReports.map((report) => {
+                  {paginatedReports.map((report) => {
                     const active = selectedReport?.id === report.id;
                     return (
                       <Paper
@@ -359,6 +398,112 @@ export default function AdminReportsPage() {
                     );
                   })}
                 </Stack>
+
+                {/* Pagination Footer */}
+                {filteredReports.length > 0 && (
+                  <Stack
+                    direction="column"
+                    spacing={2}
+                    alignItems="center"
+                    sx={{
+                      mt: 2,
+                      p: 2,
+                      borderRadius: 1.5,
+                      bgcolor: alpha(theme.palette.background.paper, 0.4),
+                      border: `1px solid ${theme.palette.divider}`,
+                    }}
+                  >
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={2}
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{ width: "100%" }}
+                    >
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                        Hiển thị{" "}
+                        <strong style={{ color: theme.palette.text.primary }}>
+                          {totalItems === 0 ? 0 : (page - 1) * pageSize + 1}
+                        </strong>{" "}
+                        -{" "}
+                        <strong style={{ color: theme.palette.text.primary }}>
+                          {Math.min(page * pageSize, totalItems)}
+                        </strong>{" "}
+                        trong số{" "}
+                        <strong style={{ color: theme.palette.text.primary }}>{totalItems}</strong>{" "}
+                        báo cáo
+                      </Typography>
+
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+                          Số dòng:
+                        </Typography>
+                        <TextField
+                          select
+                          size="small"
+                          value={pageSize}
+                          onChange={(event) => {
+                            setPageSize(Number(event.target.value));
+                            setPage(1);
+                          }}
+                          SelectProps={{
+                            IconComponent: KeyboardArrowDownRoundedIcon,
+                          }}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              borderRadius: 1.25,
+                              fontSize: 13,
+                              bgcolor: alpha(theme.palette.background.paper, 0.4),
+                              "& fieldset": { borderColor: theme.palette.divider },
+                            },
+                            "& .MuiSelect-select": { py: 0.5, px: 1.5 },
+                            minWidth: 70,
+                          }}
+                        >
+                          {[10, 20, 50, 100].map((size) => (
+                            <MenuItem key={size} value={size}>
+                              {size}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Stack>
+                    </Stack>
+
+                    <Pagination
+                      count={totalPages}
+                      page={page}
+                      onChange={(_e, val) => setPage(val)}
+                      variant="outlined"
+                      shape="rounded"
+                      color="primary"
+                      size="small"
+                      renderItem={(item) => (
+                        <PaginationItem
+                          slots={{
+                            previous: ChevronLeftRoundedIcon,
+                            next: ChevronRightRoundedIcon,
+                          }}
+                          {...item}
+                          sx={{
+                            borderRadius: 1.25,
+                            borderColor: theme.palette.divider,
+                            bgcolor: alpha(theme.palette.background.paper, 0.4),
+                            color: theme.palette.text.secondary,
+                            "&.Mui-selected": {
+                              bgcolor: alpha(theme.palette.primary.main, 0.16),
+                              color: theme.palette.primary.main,
+                              borderColor: alpha(theme.palette.primary.main, 0.3),
+                              fontWeight: 800,
+                              "&:hover": {
+                                bgcolor: alpha(theme.palette.primary.main, 0.24),
+                              },
+                            },
+                          }}
+                        />
+                      )}
+                    />
+                  </Stack>
+                )}
               </Grid>
 
               {/* Detail panel */}
@@ -631,7 +776,7 @@ export default function AdminReportsPage() {
                             }}
                           >
                             <Typography variant="caption" color="info.main" fontWeight={700}>
-                              {isAdmin ? "ADMIN" : "MODERATOR"} · Quyền hạn
+                              {isAdmin ? "Quản trị viên" : "Điều hành viên"} · Quyền hạn
                             </Typography>
                             <Typography
                               variant="caption"

@@ -393,6 +393,11 @@ function SectionTitle({ eyebrow, title }: { eyebrow?: string; title: string }) {
   );
 }
 
+interface PersonRoleInfo {
+  role: string;
+  characterName?: string;
+}
+
 interface GroupedPerson {
   personId: number;
   displayName: string;
@@ -400,8 +405,21 @@ interface GroupedPerson {
   biography?: string;
   birthDate?: string;
   nationality?: string;
-  roles: string[];
+  roles: PersonRoleInfo[];
 }
+
+interface StudioInfo {
+  id: number;
+  name: string;
+  slug?: string;
+  logoUrl?: string;
+  description?: string;
+  country?: string;
+  website?: string;
+}
+
+const formatPersonRole = (item: PersonRoleInfo) =>
+  item.characterName ? `${item.role} • vai ${item.characterName}` : item.role;
 
 function PersonCard({ person }: { person: GroupedPerson }) {
   const theme = useTheme();
@@ -409,6 +427,7 @@ function PersonCard({ person }: { person: GroupedPerson }) {
     defaultMatches: false,
   });
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const isValidAvatar =
     person.avatarUrl &&
     !person.avatarUrl.startsWith("blob:") &&
@@ -416,9 +435,58 @@ function PersonCard({ person }: { person: GroupedPerson }) {
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(person.displayName)}&background=random&color=fff&size=64`;
   const avatarSrc = isValidAvatar ? person.avatarUrl! : fallbackAvatar;
 
+  const content = (
+    <Box>
+      <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
+        <Avatar src={avatarSrc} alt={person.displayName} sx={{ width: 52, height: 52 }} />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography fontWeight={800}>{person.displayName}</Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.4 }}>
+            {person.roles.map((role) => (
+              <Chip
+                key={`${role.role}-${role.characterName ?? "crew"}`}
+                label={formatPersonRole(role)}
+                size="small"
+                color="primary"
+                sx={{ fontSize: "0.65rem", height: 20 }}
+              />
+            ))}
+          </Stack>
+        </Box>
+      </Box>
+      {person.birthDate && (
+        <Typography variant="caption" color="text.secondary" display="block">
+          Sinh: {new Date(person.birthDate).toLocaleDateString("vi-VN")}
+        </Typography>
+      )}
+      {person.nationality && (
+        <Typography variant="caption" color="text.secondary" display="block">
+          Quốc tịch: {person.nationality}
+        </Typography>
+      )}
+      {person.biography && (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{
+            mt: 1,
+            lineHeight: 1.5,
+            display: "-webkit-box",
+            WebkitLineClamp: { xs: 8, sm: 4 },
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {person.biography}
+        </Typography>
+      )}
+    </Box>
+  );
+
   return (
     <>
       <Box
+        onClick={!hasHoverPointer ? () => setDialogOpen(true) : undefined}
         onMouseEnter={hasHoverPointer ? (e) => setAnchor(e.currentTarget) : undefined}
         onMouseLeave={hasHoverPointer ? () => setAnchor(null) : undefined}
         sx={{
@@ -428,9 +496,12 @@ function PersonCard({ person }: { person: GroupedPerson }) {
           py: 0.75,
           px: 1,
           borderRadius: 1,
-          cursor: "default",
-          transition: "background .18s",
-          "&:hover": { background: alpha(theme.palette.primary.main, 0.08) },
+          cursor: hasHoverPointer ? "default" : "pointer",
+          transition: "background .18s, transform .18s",
+          "&:hover": {
+            background: alpha(theme.palette.primary.main, 0.08),
+            transform: "translateX(2px)",
+          },
         }}
       >
         <Avatar
@@ -445,8 +516,8 @@ function PersonCard({ person }: { person: GroupedPerson }) {
           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.3 }}>
             {person.roles.map((role) => (
               <Chip
-                key={role}
-                label={role}
+                key={`${role.role}-${role.characterName ?? "crew"}`}
+                label={formatPersonRole(role)}
                 size="small"
                 variant="outlined"
                 color="primary"
@@ -469,8 +540,8 @@ function PersonCard({ person }: { person: GroupedPerson }) {
           sx: {
             pointerEvents: "auto",
             p: 2,
-            minWidth: 240,
-            maxWidth: 320,
+            minWidth: 260,
+            maxWidth: 340,
             background: alpha(theme.palette.background.paper, 0.96),
             backdropFilter: "blur(18px)",
             border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
@@ -478,50 +549,130 @@ function PersonCard({ person }: { person: GroupedPerson }) {
           },
         }}
       >
-        <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
-          <Avatar src={avatarSrc} alt={person.displayName} sx={{ width: 52, height: 52 }} />
-          <Box>
-            <Typography fontWeight={800}>{person.displayName}</Typography>
-            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.4 }}>
-              {person.roles.map((role) => (
-                <Chip
-                  key={role}
-                  label={role}
-                  size="small"
-                  color="primary"
-                  sx={{ fontSize: "0.65rem", height: 18 }}
-                />
-              ))}
-            </Stack>
-          </Box>
-        </Box>
-        {person.birthDate && (
-          <Typography variant="caption" color="text.secondary" display="block">
-            Sinh: {new Date(person.birthDate).toLocaleDateString("vi-VN")}
-          </Typography>
-        )}
-        {person.nationality && (
-          <Typography variant="caption" color="text.secondary" display="block">
-            Quốc tịch: {person.nationality}
-          </Typography>
-        )}
-        {person.biography && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              mt: 1,
-              lineHeight: 1.5,
-              display: "-webkit-box",
-              WebkitLineClamp: 4,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {person.biography}
-          </Typography>
-        )}
+        {content}
       </Menu>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ pr: 6 }}>Thông tin nhân sự</DialogTitle>
+        <IconButton
+          aria-label="Đóng thông tin nhân sự"
+          onClick={() => setDialogOpen(false)}
+          sx={{ position: "absolute", right: 10, top: 10 }}
+        >
+          ×
+        </IconButton>
+        <DialogContent>{content}</DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function StudioChip({ studio }: { studio: StudioInfo }) {
+  const theme = useTheme();
+  const hasHoverPointer = useMediaQuery("(hover: hover) and (pointer: fine)", {
+    defaultMatches: false,
+  });
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const logoSrc =
+    studio.logoUrl &&
+    !studio.logoUrl.startsWith("blob:") &&
+    !studio.logoUrl.startsWith("https://example.com")
+      ? studio.logoUrl
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(studio.name)}&background=111827&color=fff&size=96`;
+
+  const content = (
+    <Box sx={{ maxWidth: 330 }}>
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+        <Avatar src={logoSrc} alt={studio.name} variant="rounded" sx={{ width: 52, height: 52 }} />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography fontWeight={900} noWrap>
+            {studio.name}
+          </Typography>
+          <Typography variant="caption" color="primary" fontWeight={800}>
+            Studio / Nhà xuất bản
+          </Typography>
+        </Box>
+      </Stack>
+      {studio.country && (
+        <Typography variant="caption" color="text.secondary" display="block">
+          Quốc gia: {studio.country}
+        </Typography>
+      )}
+      {studio.website && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ overflowWrap: "anywhere" }}
+        >
+          Website: {studio.website}
+        </Typography>
+      )}
+      {studio.description ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.55 }}>
+          {studio.description}
+        </Typography>
+      ) : (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.55 }}>
+          Đơn vị phát hành / sản xuất liên quan đến bộ phim này.
+        </Typography>
+      )}
+    </Box>
+  );
+
+  return (
+    <>
+      <Chip
+        label={studio.name}
+        variant="outlined"
+        size="small"
+        onClick={!hasHoverPointer ? () => setDialogOpen(true) : undefined}
+        onMouseEnter={hasHoverPointer ? (e) => setAnchor(e.currentTarget) : undefined}
+        onMouseLeave={hasHoverPointer ? () => setAnchor(null) : undefined}
+        sx={{
+          cursor: "pointer",
+          borderColor: alpha(theme.palette.primary.main, 0.35),
+          "&:hover": {
+            bgcolor: alpha(theme.palette.primary.main, 0.12),
+            borderColor: theme.palette.primary.main,
+          },
+        }}
+      />
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        disableAutoFocus
+        disableEnforceFocus
+        sx={{ pointerEvents: "none" }}
+        PaperProps={{
+          onMouseEnter: () => {},
+          onMouseLeave: () => setAnchor(null),
+          sx: {
+            pointerEvents: "auto",
+            p: 2,
+            minWidth: 260,
+            maxWidth: 360,
+            background: alpha(theme.palette.background.paper, 0.96),
+            backdropFilter: "blur(18px)",
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            borderRadius: 2,
+          },
+        }}
+      >
+        {content}
+      </Menu>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ pr: 6 }}>Thông tin studio</DialogTitle>
+        <IconButton
+          aria-label="Đóng thông tin studio"
+          onClick={() => setDialogOpen(false)}
+          sx={{ position: "absolute", right: 10, top: 10 }}
+        >
+          ×
+        </IconButton>
+        <DialogContent>{content}</DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -588,10 +739,19 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
                 {movie.tags?.map((item) => (
                   <Chip key={item.id} label={item.name} variant="outlined" size="small" />
                 ))}
-                {movie.studios?.map((item) => {
-                  const studioName = (item as any).studio?.name || (item as any).name;
-                  if (!studioName) return null;
-                  return <Chip key={item.id} label={studioName} variant="outlined" size="small" />;
+                {movie.studios?.map((raw) => {
+                  const source = (raw as any).studio ?? raw;
+                  const studio: StudioInfo = {
+                    id: source.id ?? (raw as any).id,
+                    name: source.name,
+                    slug: source.slug,
+                    logoUrl: source.logoUrl,
+                    description: source.description,
+                    country: source.country,
+                    website: source.website,
+                  };
+                  if (!studio.name) return null;
+                  return <StudioChip key={studio.id ?? studio.name} studio={studio} />;
                 })}
               </Stack>
             ) : null}
@@ -646,8 +806,14 @@ function InfoSection({ movie }: { movie: MovieDetail }) {
                         });
                       }
                       const role = mp.role;
-                      if (role && !grouped.get(pid)!.roles.includes(role)) {
-                        grouped.get(pid)!.roles.push(role);
+                      const characterName = mp.characterName || mp.character || mp.character_name;
+                      const roleExists = grouped
+                        .get(pid)!
+                        .roles.some(
+                          (item) => item.role === role && item.characterName === characterName
+                        );
+                      if (role && !roleExists) {
+                        grouped.get(pid)!.roles.push({ role, characterName });
                       }
                     });
                     return Array.from(grouped.values()).map((gp) => (
@@ -980,7 +1146,9 @@ function ReviewSection({
       history.movieId === movie.id &&
       (history.isCompleted || Number(history.progressPercent || 0) >= reviewEligibilityPercent)
   );
-  const canReview = Boolean(eligibleHistory);
+  const reviewsLocked = Boolean(movie.reviewsLocked);
+  const hasWatchedEnoughToReview = Boolean(eligibleHistory);
+  const canReview = hasWatchedEnoughToReview && !reviewsLocked;
   const isSeries = movie.movieType === "SERIES";
   const track = reviews.length ? [...reviews, ...reviews] : [];
 
@@ -1034,8 +1202,12 @@ function ReviewSection({
 
   const handleSubmit = async () => {
     if (!requireAuth()) return;
+    if (reviewsLocked) {
+      setMessage("Phim này hiện không cho phép đánh giá.");
+      return;
+    }
     if (!canReview) {
-      setMessage("Bạn cần xem ít nhất 80% nội dung trước khi gửi review.");
+      setMessage("Bạn cần xem ít nhất 80% nội dung trước khi gửi đánh giá.");
       return;
     }
     setMessage(null);
@@ -1087,11 +1259,11 @@ function ReviewSection({
                   key={value}
                   id={`movie-review-rating-${value}`}
                   onClick={() => setRating(value)}
-                  disabled={!canReview}
+                  disabled={!canReview || reviewsLocked}
                   sx={{
                     color:
                       value <= rating ? theme.palette.primary.main : theme.palette.text.disabled,
-                    opacity: canReview ? 1 : 0.45,
+                    opacity: canReview && !reviewsLocked ? 1 : 0.45,
                   }}
                   aria-label={`Chọn ${value} sao`}
                 >
@@ -1108,9 +1280,11 @@ function ReviewSection({
               inputProps={{ maxLength: reviewMaxLength }}
               onChange={(event) => setContent(event.target.value.slice(0, reviewMaxLength))}
               placeholder={
-                canReview
-                  ? "Enter để gửi · Shift + Enter để xuống dòng"
-                  : "Bạn cần xem ít nhất 80% để có thể review"
+                reviewsLocked
+                  ? "Phim này hiện không cho phép đánh giá"
+                  : canReview
+                    ? "Enter để gửi · Shift + Enter để xuống dòng"
+                    : "Bạn cần xem ít nhất 80% để có thể đánh giá"
               }
               fullWidth
             />
@@ -1119,12 +1293,16 @@ function ReviewSection({
                 {!canReview && <LockRoundedIcon fontSize="small" color="warning" />}
                 <Typography
                   variant="caption"
-                  color={canReview ? "text.secondary" : "warning.light"}
+                  color={
+                    reviewsLocked ? "warning.light" : canReview ? "text.secondary" : "warning.light"
+                  }
                   sx={{ overflowWrap: "anywhere" }}
                 >
-                  {canReview
-                    ? `Review áp dụng cho toàn phim. ${content.length}/${reviewMaxLength} ký tự.`
-                    : `Bạn cần xem ít nhất 80% ${isSeries ? "một tập" : "phim"} để có thể review.`}
+                  {reviewsLocked
+                    ? "Đánh giá đang tạm khóa. Bạn vẫn có thể xem các đánh giá cũ."
+                    : canReview
+                      ? `Đánh giá áp dụng cho toàn phim. ${content.length}/${reviewMaxLength} ký tự.`
+                      : `Bạn cần xem ít nhất 80% ${isSeries ? "một tập" : "phim"} để có thể đánh giá.`}
                 </Typography>
               </Stack>
               <Button
@@ -1133,7 +1311,10 @@ function ReviewSection({
                 variant="contained"
                 onClick={handleSubmit}
                 disabled={
-                  createReview.isPending || !canReview || content.trim().length < reviewMinLength
+                  createReview.isPending ||
+                  reviewsLocked ||
+                  !canReview ||
+                  content.trim().length < reviewMinLength
                 }
               >
                 <SendRoundedIcon />
@@ -1275,7 +1456,9 @@ function ReviewSection({
             }}
           >
             <Typography color="text.secondary">
-              Chưa có review nào. Hãy xem ít nhất 80% phim rồi để lại cảm nhận đầu tiên.
+              {reviewsLocked
+                ? "Đánh giá đang tạm khóa. Chưa có đánh giá nào để hiển thị."
+                : "Chưa có đánh giá nào. Hãy xem ít nhất 80% phim rồi để lại cảm nhận đầu tiên."}
             </Typography>
           </Paper>
         )}
@@ -1579,6 +1762,7 @@ export default function MovieDetailPage({ slug }: MovieDetailPageProps) {
         slug={slug}
         initialComments={comments}
         episodes={data.movie.episodes || []}
+        commentsLocked={Boolean(data.movie.commentsLocked)}
       />
     </Box>
   );

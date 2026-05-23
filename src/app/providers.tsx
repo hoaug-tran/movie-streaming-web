@@ -16,14 +16,17 @@ import { NotificationProvider } from "@/context/notification-context";
 import { UploadProgressProvider } from "@/context/upload-progress-context";
 import UploadProgressSnackbar from "@/components/Upload/UploadProgressSnackbar";
 import InstallBanner from "@/components/PWA/InstallBanner";
+import PwaRecoveryManager from "@/components/PWA/PwaRecoveryManager";
 import GioPhimBot from "@/components/Chatbot/GioPhimBot";
 import { usePushNotification } from "@/hooks/use-push-notification";
+import { useNotificationSync } from "@/modules/notification/hooks/useNotificationSync";
 
 function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { searchOpen, searchQuery, setSearchOpen, setSearchQuery } = useSearch();
   const isAdminRoute = pathname?.startsWith("/admin");
   usePushNotification();
+  useNotificationSync();
 
   const handleCloseSearch = () => {
     setSearchOpen(false);
@@ -62,6 +65,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             <NotificationProvider>
               <UploadProgressProvider>
                 <LayoutWrapper>{children}</LayoutWrapper>
+                <PwaRecoveryManager />
                 <UploadProgressSnackbar />
               </UploadProgressProvider>
             </NotificationProvider>

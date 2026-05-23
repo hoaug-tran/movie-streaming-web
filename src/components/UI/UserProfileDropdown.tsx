@@ -94,15 +94,19 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
         sx={{
           display: "flex",
           alignItems: "center",
-          gap: 1,
+          gap: { xs: 0.75, sm: 1 },
           textTransform: "none",
           color: "text.primary",
-          padding: "6px 12px",
+          padding: { xs: "6px", sm: "6px 10px", md: "6px 12px" },
           borderRadius: 1.5,
           border: "1px solid",
           borderColor: planAccent?.border ?? "divider",
           backgroundColor: planAccent?.background ?? "transparent",
           boxShadow: planAccent ? `inset 0 0 0 1px ${planAccent.shadow}` : "none",
+          minWidth: 0,
+          maxWidth: { xs: 44, sm: 132, md: 190 },
+          flexShrink: 1,
+          overflow: "hidden",
           transition: "all 0.3s ease",
           "&:hover": {
             backgroundColor: planAccent?.hover ?? "action.hover",
@@ -110,7 +114,7 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
           },
         }}
       >
-        <Box sx={{ position: "relative" }}>
+        <Box sx={{ position: "relative", flexShrink: 0 }}>
           <Avatar
             src={avatarUrl || undefined}
             alt={user?.fullName || "User"}
@@ -135,7 +139,8 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
             display: { xs: "none", sm: "block" },
             fontWeight: 500,
             fontSize: "0.9rem",
-            maxWidth: "150px",
+            maxWidth: { sm: 72, md: 128 },
+            minWidth: 0,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",

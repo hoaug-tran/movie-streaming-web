@@ -50,6 +50,7 @@ function extractMovies(data: unknown): Movie[] {
     const d = data as Record<string, unknown>;
     if (Array.isArray(d.content)) return d.content as Movie[];
     if (Array.isArray(d.data)) return d.data as Movie[];
+    if (Array.isArray(d.movies)) return d.movies as Movie[];
     if (Array.isArray(d.items)) {
       return (d.items as Array<{ movie?: Movie | null }>)
         .map((item) => item?.movie)
@@ -60,14 +61,7 @@ function extractMovies(data: unknown): Movie[] {
 }
 
 async function fetchMovies(url: string): Promise<Movie[]> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const headers: HeadersInit = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
   const res = await fetch(url, {
-    headers,
     credentials: "include",
   });
   if (res.status === 401 || res.status === 403) return [];
@@ -96,17 +90,11 @@ export interface SearchMovieParams {
 }
 
 async function searchMovies(params: SearchMovieParams): Promise<Movie[]> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
   const res = await fetch(`${API_BASE}/movies/search`, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(params),
     credentials: "include",
   });
@@ -179,15 +167,11 @@ export function useRecommendedMovies(enabled = true) {
 
   const refreshMutation = useMutation({
     mutationFn: async (): Promise<Movie[]> => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      if (!token) return [];
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
       const res = await fetch(`${API_BASE}/recommendations/me/refresh`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
       });
       if (res.status === 401 || res.status === 403) return [];
@@ -217,15 +201,11 @@ export function useRefreshRecommendations() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (): Promise<Movie[]> => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      if (!token) return [];
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
       const res = await fetch(`${API_BASE}/recommendations/me/refresh`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
       });
       if (!res.ok) throw new Error(`API error ${res.status}: /recommendations/me/refresh`);
@@ -261,7 +241,16 @@ export function useTopRatedMovies() {
 export function useCarouselMovies() {
   return useQuery({
     queryKey: ["movies", "carousel"],
-    queryFn: () => searchMovies({ sortBy: "averageRating", sortDirection: "DESC", size: 6 }),
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/discovery/weekly-trending?limit=6`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("API error: /discovery/weekly-trending");
+      const data = await res.json();
+      return extractMovies(data).filter((movie) =>
+        Boolean(movie.id && movie.slug && movie.bannerUrl)
+      );
+    },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,

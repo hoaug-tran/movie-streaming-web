@@ -5,12 +5,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Autocomplete,
   Box,
+  Button,
   FormControlLabel,
+  IconButton,
   Stack,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
+import { Close } from "@mui/icons-material";
 import AdminManagementPage, {
   AdminStatusChip,
 } from "@/modules/admin/components/AdminManagementPage";
@@ -293,6 +296,7 @@ export default function AdminNotificationsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [detailItem, setDetailItem] = useState<AdminNotification | null>(null);
 
   const handleCreate = async (
     payload: AdminNotificationPayload | AdminBroadcastPayload,
@@ -369,11 +373,22 @@ export default function AdminNotificationsPage() {
           {
             key: "user",
             label: "Người nhận",
-            render: (item) => (
-              <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                {item.userId ? `#${item.userId}` : "-"}
-              </Typography>
-            ),
+            render: (item) => {
+              if (!item.userId) {
+                return <AdminStatusChip label="Toàn hệ thống" tone="violet" />;
+              }
+              const displayName = item.userFullName ?? item.userUsername;
+              return (
+                <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                    {displayName ?? `#${item.userId}`}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap>
+                    {item.userUsername ? `@${item.userUsername}` : `ID #${item.userId}`}
+                  </Typography>
+                </Stack>
+              );
+            },
           },
           {
             key: "title",
@@ -424,6 +439,7 @@ export default function AdminNotificationsPage() {
           adminService.updateNotification(item.id, payload as AdminNotificationUpdatePayload)
         }
         onDelete={(item) => adminService.deleteNotification(item.id)}
+        onRowClick={(item) => setDetailItem(item)}
         renderForm={({ mode, item, open, submitting, error, onClose, onSubmit }) => {
           if (mode === "create") return null;
           return (
@@ -462,6 +478,119 @@ export default function AdminNotificationsPage() {
         submitting={createSubmitting}
         error={createError}
       />
+
+      <Box>
+        {detailItem && (
+          <Box
+            component="div"
+            sx={{
+              position: "fixed",
+              inset: 0,
+              bgcolor: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1300,
+            }}
+            onClick={() => setDetailItem(null)}
+          >
+            <Box
+              component="div"
+              onClick={(e) => e.stopPropagation()}
+              sx={{
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                p: 3,
+                maxWidth: 600,
+                width: "90%",
+                maxHeight: "80vh",
+                overflowY: "auto",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
+                }}
+              >
+                <Typography variant="h6" fontWeight={700}>
+                  Chi tiết thông báo #{detailItem.id}
+                </Typography>
+                <IconButton size="small" onClick={() => setDetailItem(null)}>
+                  <Close fontSize="small" />
+                </IconButton>
+              </Box>
+              <Box sx={{ display: "grid", gap: 2 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                    Tiêu đề
+                  </Typography>
+                  <Typography variant="body2">{detailItem.title}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                    Nội dung
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                    {detailItem.content}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                    Loại
+                  </Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <AdminStatusChip
+                      label={
+                        NOTIFICATION_TYPES.find((t) => t.value === detailItem.type)?.label ??
+                        detailItem.type
+                      }
+                      tone={TYPE_TONE[detailItem.type] ?? "cyan"}
+                    />
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                    Người nhận
+                  </Typography>
+                  <Typography variant="body2">
+                    {!detailItem.userId
+                      ? "Toàn hệ thống"
+                      : `${detailItem.userFullName ?? detailItem.userUsername ?? `#${detailItem.userId}`}`}
+                  </Typography>
+                </Box>
+                {detailItem.actionUrl && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                      URL hành động
+                    </Typography>
+                    <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
+                      {detailItem.actionUrl}
+                    </Typography>
+                  </Box>
+                )}
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                    Thời gian tạo
+                  </Typography>
+                  <Typography variant="body2">
+                    {detailItem.createdAt
+                      ? new Date(detailItem.createdAt).toLocaleString("vi-VN")
+                      : "-"}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={{ mt: 3, display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                <Button onClick={() => setDetailItem(null)} sx={{ textTransform: "none" }}>
+                  Đóng
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        )}
+      </Box>
     </>
   );
 }

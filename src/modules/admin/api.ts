@@ -39,8 +39,28 @@ export interface AdminActivity {
   id: string;
   title: string;
   description: string;
-  severity: "info" | "warning" | "success";
-  time: string;
+  severity:
+    | "info"
+    | "warning"
+    | "success"
+    | "danger"
+    | "INFO"
+    | "SUCCESS"
+    | "WARNING"
+    | "DANGER"
+    | string;
+  time?: string;
+  scope?: "USER" | "ADMIN" | "SYSTEM" | string;
+  actorId?: number;
+  actorName?: string;
+  action?: string;
+  targetType?: string;
+  targetId?: string;
+  targetLabel?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AdminRankingItem {
@@ -102,7 +122,7 @@ export interface ResolveReportPayload {
 }
 
 export type AdminMovieType = "SINGLE" | "SERIES" | string;
-export type AdminMovieStatus = "DRAFT" | "REVIEWING" | "PUBLISHED" | "ARCHIVED" | string;
+export type AdminMovieStatus = "DRAFT" | "UPCOMING" | "PUBLISHED" | "ARCHIVED" | string;
 
 export interface AdminMovie {
   id: number;
@@ -184,13 +204,11 @@ export interface AdminMoviePayload {
   movieType: AdminMovieType;
   movieStatus: AdminMovieStatus;
   isPremiumOnly: boolean;
+  commentsLocked?: boolean;
+  reviewsLocked?: boolean;
 }
 
 export interface AdminEpisodePayload {
-  /**
-   * Optional. Khi update, có thể đặt movieId mới để gán tập phim sang phim cha khác.
-   * Khi create, server sẽ lấy movieId từ path nên field này không cần.
-   */
   movieId?: number | null;
   title: string;
   episodeNumber: number;
@@ -302,6 +320,9 @@ export interface AdminAd {
   endAt?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  deliveryStatus?: "RUNNING" | "PAUSED" | "SCHEDULED" | "EXPIRED" | string | null;
+  deliveryStatusLabel?: string | null;
+  eligibleNow?: boolean | null;
 }
 
 export interface AdminAdPayload {
@@ -440,6 +461,8 @@ export type AdminNotificationType =
 export interface AdminNotification {
   id: number;
   userId?: number | null;
+  userFullName?: string | null;
+  userUsername?: string | null;
   title: string;
   content: string;
   type: AdminNotificationType;
@@ -474,6 +497,193 @@ export interface AdminBroadcastPayload {
   sendEmail?: boolean;
 }
 
+type UploadProgressStatus = {
+  percent: number;
+  phase: "uploading" | "finalizing" | "done";
+  bytesUploaded: number;
+  totalBytes: number;
+  currentChunk: number;
+  totalChunks: number;
+  speedKBps: number;
+  etaSeconds: number | null;
+  message: string;
+};
+
+async function uploadSourceSmart({
+  kind,
+  id,
+  file,
+  onProgress,
+  apiBase,
+}: {
+  kind: "episode" | "movie";
+  id: number;
+  file: File;
+  onProgress?: (status: UploadProgressStatus) => void;
+  apiBase?: string;
+}): Promise<{ id: number; videoUrl: string; status: string }> {
+  const SINGLE_THRESHOLD = 80 * 1024 * 1024;
+  const CHUNK_SIZE = 8 * 1024 * 1024;
+  const PARALLELISM = 3;
+  const base = apiBase || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
+  const startedAt = Date.now();
+
+  const reportProgress = (
+    bytesUploaded: number,
+    currentChunk: number,
+    totalChunks: number,
+    phase: UploadProgressStatus["phase"],
+    message: string
+  ) => {
+    if (!onProgress) return;
+    const elapsedSec = Math.max(0.001, (Date.now() - startedAt) / 1000);
+    const speedKBps = bytesUploaded / 1024 / elapsedSec;
+    const remainingBytes = file.size - bytesUploaded;
+    const etaSeconds =
+      speedKBps > 0 && phase === "uploading" ? Math.round(remainingBytes / 1024 / speedKBps) : null;
+    onProgress({
+      percent: Math.min(100, Math.round((bytesUploaded / file.size) * 100)),
+      phase,
+      bytesUploaded,
+      totalBytes: file.size,
+      currentChunk,
+      totalChunks,
+      speedKBps,
+      etaSeconds,
+      message,
+    });
+  };
+
+  if (file.size <= SINGLE_THRESHOLD) {
+    reportProgress(0, 0, 1, "uploading", "Đang upload file...");
+    return new Promise((resolve, reject) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      const segment = kind === "movie" ? "movies" : "episodes";
+      xhr.open("POST", `${base}/admin/media/${segment}/${id}/source`);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) reportProgress(ev.loaded, 1, 1, "uploading", "Đang upload...");
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          reportProgress(
+            file.size,
+            1,
+            1,
+            "done",
+            "Upload xong, server đang transcode 720p/1080p/4K..."
+          );
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve({ id, videoUrl: "", status: "TRANSCODING" });
+          }
+        } else {
+          reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Upload network error"));
+      xhr.send(fd);
+    });
+  }
+
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  reportProgress(0, 0, totalChunks, "uploading", `Khởi tạo upload (${totalChunks} chunks)...`);
+
+  const initParams = new URLSearchParams({
+    fileName: file.name,
+    fileSize: String(file.size),
+    totalChunks: String(totalChunks),
+  });
+  const initRes = await fetch(`${base}/admin/media/chunked/init?${initParams.toString()}`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!initRes.ok) throw new Error(`Init chunked upload failed: ${initRes.status}`);
+  const { uploadId } = (await initRes.json()) as { uploadId: string };
+
+  const chunkBytes = new Array<number>(totalChunks).fill(0);
+  let chunksDone = 0;
+  const reportFromChunks = (msg: string) => {
+    const total = chunkBytes.reduce((a, b) => a + b, 0);
+    reportProgress(total, chunksDone, totalChunks, "uploading", msg);
+  };
+
+  const uploadChunk = (i: number): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const blob = file.slice(start, end);
+      const fd = new FormData();
+      fd.append("file", blob, file.name);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${base}/admin/media/chunked/${uploadId}/chunks/${i}`);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          chunkBytes[i] = ev.loaded;
+          reportFromChunks(
+            `Đang upload chunk ${chunksDone + 1}-${Math.min(chunksDone + PARALLELISM, totalChunks)}/${totalChunks}`
+          );
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          chunkBytes[i] = end - start;
+          chunksDone++;
+          reportFromChunks(`Đã xong ${chunksDone}/${totalChunks} chunks`);
+          resolve();
+        } else {
+          reject(new Error(`Chunk ${i} HTTP ${xhr.status}: ${xhr.responseText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error(`Chunk ${i} network error`));
+      xhr.send(fd);
+    });
+
+  let next = 0;
+  const workers: Promise<void>[] = [];
+  for (let w = 0; w < Math.min(PARALLELISM, totalChunks); w++) {
+    workers.push(
+      (async () => {
+        while (true) {
+          const myIndex = next++;
+          if (myIndex >= totalChunks) return;
+          await uploadChunk(myIndex);
+        }
+      })()
+    );
+  }
+  await Promise.all(workers);
+
+  reportProgress(
+    file.size,
+    totalChunks,
+    totalChunks,
+    "finalizing",
+    "Đang ghép file trên server..."
+  );
+
+  const finalizeRes = await fetch(
+    `${base}/admin/media/chunked/${uploadId}/finalize/${kind}/${id}`,
+    { method: "POST", credentials: "include" }
+  );
+  if (!finalizeRes.ok) {
+    const text = await finalizeRes.text().catch(() => "");
+    throw new Error(`Finalize failed: ${finalizeRes.status} ${text}`);
+  }
+  reportProgress(
+    file.size,
+    totalChunks,
+    totalChunks,
+    "done",
+    "Upload xong, server đang transcode 720p/1080p/4K (chạy ngầm vài phút)..."
+  );
+  return finalizeRes.json();
+}
+
 export const adminService = {
   getDashboardSummary(): Promise<AdminDashboardSummary> {
     return apiClient.get<AdminDashboardSummary>("/admin/dashboard/summary");
@@ -488,7 +698,7 @@ export const adminService = {
   },
 
   getMovies(): Promise<AdminMovie[]> {
-    return apiClient.get<AdminMovie[]>("/movies");
+    return apiClient.get<AdminMovie[]>("/admin/movies");
   },
 
   getMovieDetail(movieId: number): Promise<AdminMovieDetail> {
@@ -524,7 +734,7 @@ export const adminService = {
   },
 
   updateMovieStatus(movieId: number, movieStatus: string): Promise<AdminMovie> {
-    return apiClient.patch<AdminMovie>(`/admin/movies/${movieId}/status`, { movieStatus });
+    return apiClient.patch<AdminMovie>(`/admin/movies/${movieId}/status`, { status: movieStatus });
   },
 
   updateMovieInteractionLocks(
@@ -726,7 +936,7 @@ export const adminService = {
   },
 
   getSubscriptionPlans(): Promise<AdminSubscriptionPlan[]> {
-    return apiClient.get<AdminSubscriptionPlan[]>("/subscriptions/plans");
+    return apiClient.get<AdminSubscriptionPlan[]>("/subscriptions/admin/plans");
   },
 
   createSubscriptionPlan(payload: any): Promise<AdminSubscriptionPlan> {
@@ -812,11 +1022,31 @@ export const adminService = {
       .catch(() => ({}));
   },
 
-  /**
-   * Smart upload episode source: tự chia chunk khi >80MB để tránh giới hạn 100MB của Cloudflare.
-   * Upload tới 3 chunks song song để tăng throughput x3 qua tunnel cloudflared.
-   * Trả về rich status để UI hiển thị: phase, chunk hiện tại, tốc độ, ETA.
-   */
+  async uploadMovieSourceSmart(
+    movieId: number,
+    file: File,
+    onProgress?: (status: {
+      percent: number;
+      phase: "uploading" | "finalizing" | "done";
+      bytesUploaded: number;
+      totalBytes: number;
+      currentChunk: number;
+      totalChunks: number;
+      speedKBps: number;
+      etaSeconds: number | null;
+      message: string;
+    }) => void,
+    apiBase?: string
+  ): Promise<{ id: number; videoUrl: string; status: string }> {
+    return uploadSourceSmart({
+      kind: "movie",
+      id: movieId,
+      file,
+      onProgress,
+      apiBase,
+    });
+  },
+
   async uploadEpisodeSourceSmart(
     episodeId: number,
     file: File,
@@ -831,171 +1061,45 @@ export const adminService = {
       etaSeconds: number | null;
       message: string;
     }) => void,
-    apiBase?: string,
-    token?: string | null
-  ): Promise<{ videoUrl: string; status: string }> {
-    const SINGLE_THRESHOLD = 80 * 1024 * 1024;
-    const CHUNK_SIZE = 8 * 1024 * 1024;
-    const PARALLELISM = 3;
-    const base = apiBase || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
-    const auth =
-      token ?? (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null);
-    const headers: Record<string, string> = auth ? { Authorization: `Bearer ${auth}` } : {};
-
-    const startedAt = Date.now();
-    const reportProgress = (
-      bytesUploaded: number,
-      currentChunk: number,
-      totalChunks: number,
-      phase: "uploading" | "finalizing" | "done",
-      message: string
-    ) => {
-      if (!onProgress) return;
-      const elapsedSec = Math.max(0.001, (Date.now() - startedAt) / 1000);
-      const speedKBps = bytesUploaded / 1024 / elapsedSec;
-      const remainingBytes = file.size - bytesUploaded;
-      const etaSeconds =
-        speedKBps > 0 && phase === "uploading"
-          ? Math.round(remainingBytes / 1024 / speedKBps)
-          : null;
-      onProgress({
-        percent: Math.min(100, Math.round((bytesUploaded / file.size) * 100)),
-        phase,
-        bytesUploaded,
-        totalBytes: file.size,
-        currentChunk,
-        totalChunks,
-        speedKBps,
-        etaSeconds,
-        message,
-      });
-    };
-
-    if (file.size <= SINGLE_THRESHOLD) {
-      reportProgress(0, 0, 1, "uploading", "Đang upload file...");
-      return new Promise((resolve, reject) => {
-        const fd = new FormData();
-        fd.append("file", file);
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", `${base}/admin/media/episodes/${episodeId}/source`);
-        if (auth) xhr.setRequestHeader("Authorization", `Bearer ${auth}`);
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) reportProgress(ev.loaded, 1, 1, "uploading", "Đang upload...");
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            reportProgress(
-              file.size,
-              1,
-              1,
-              "done",
-              "Upload xong, server đang transcode 720p/1080p/4K..."
-            );
-            try {
-              resolve(JSON.parse(xhr.responseText));
-            } catch {
-              resolve({ videoUrl: "", status: "TRANSCODING" });
-            }
-          } else reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
-        };
-        xhr.onerror = () => reject(new Error("Upload network error"));
-        xhr.send(fd);
-      });
-    }
-
-    // Chunked upload path
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    reportProgress(0, 0, totalChunks, "uploading", `Khởi tạo upload (${totalChunks} chunks)...`);
-
-    const initParams = new URLSearchParams({
-      fileName: file.name,
-      fileSize: String(file.size),
-      totalChunks: String(totalChunks),
+    apiBase?: string
+  ): Promise<{ id: number; videoUrl: string; status: string }> {
+    return uploadSourceSmart({
+      kind: "episode",
+      id: episodeId,
+      file,
+      onProgress,
+      apiBase,
     });
-    const initRes = await fetch(`${base}/admin/media/chunked/init?${initParams.toString()}`, {
-      method: "POST",
-      headers,
-    });
-    if (!initRes.ok) throw new Error(`Init chunked upload failed: ${initRes.status}`);
-    const { uploadId } = (await initRes.json()) as { uploadId: string };
+  },
 
-    const chunkBytes = new Array<number>(totalChunks).fill(0);
-    let chunksDone = 0;
-    const reportFromChunks = (msg: string) => {
-      const total = chunkBytes.reduce((a, b) => a + b, 0);
-      reportProgress(total, chunksDone, totalChunks, "uploading", msg);
-    };
+  getActivities(params: {
+    scope?: string;
+    severity?: string;
+    actorId?: number;
+    actorName?: string;
+    action?: string;
+    search?: string;
+    page?: number;
+    size?: number;
+  }): Promise<{
+    content: AdminActivity[];
+    totalPages: number;
+    totalElements: number;
+    currentPage: number;
+    pageSize: number;
+    hasNext: boolean;
+  }> {
+    const qs = new URLSearchParams();
+    if (params.scope) qs.append("scope", params.scope);
+    if (params.severity) qs.append("severity", params.severity);
+    if (params.actorId) qs.append("actorId", String(params.actorId));
+    if (params.actorName) qs.append("actorName", params.actorName);
+    if (params.action) qs.append("action", params.action);
+    if (params.search) qs.append("search", params.search);
+    if (params.page !== undefined) qs.append("page", String(params.page));
+    if (params.size !== undefined) qs.append("size", String(params.size));
 
-    const uploadChunk = (i: number): Promise<void> =>
-      new Promise((resolve, reject) => {
-        const start = i * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        const blob = file.slice(start, end);
-        const fd = new FormData();
-        fd.append("file", blob, file.name);
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", `${base}/admin/media/chunked/${uploadId}/chunks/${i}`);
-        if (auth) xhr.setRequestHeader("Authorization", `Bearer ${auth}`);
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) {
-            chunkBytes[i] = ev.loaded;
-            reportFromChunks(
-              `Đang upload chunk ${chunksDone + 1}-${Math.min(chunksDone + PARALLELISM, totalChunks)}/${totalChunks}`
-            );
-          }
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            chunkBytes[i] = end - start;
-            chunksDone++;
-            reportFromChunks(`Đã xong ${chunksDone}/${totalChunks} chunks`);
-            resolve();
-          } else reject(new Error(`Chunk ${i} HTTP ${xhr.status}: ${xhr.responseText}`));
-        };
-        xhr.onerror = () => reject(new Error(`Chunk ${i} network error`));
-        xhr.send(fd);
-      });
-
-    // Worker pool: PARALLELISM chunks song song
-    let next = 0;
-    const workers: Promise<void>[] = [];
-    for (let w = 0; w < Math.min(PARALLELISM, totalChunks); w++) {
-      workers.push(
-        (async () => {
-          while (true) {
-            const myIndex = next++;
-            if (myIndex >= totalChunks) return;
-            await uploadChunk(myIndex);
-          }
-        })()
-      );
-    }
-    await Promise.all(workers);
-
-    reportProgress(
-      file.size,
-      totalChunks,
-      totalChunks,
-      "finalizing",
-      "Đang ghép file trên server..."
-    );
-
-    const finalizeRes = await fetch(
-      `${base}/admin/media/chunked/${uploadId}/finalize/episode/${episodeId}`,
-      { method: "POST", headers }
-    );
-    if (!finalizeRes.ok) {
-      const text = await finalizeRes.text().catch(() => "");
-      throw new Error(`Finalize failed: ${finalizeRes.status} ${text}`);
-    }
-    reportProgress(
-      file.size,
-      totalChunks,
-      totalChunks,
-      "done",
-      "Upload xong, server đang transcode 720p/1080p/4K (chạy ngầm vài phút)..."
-    );
-    return finalizeRes.json();
+    return apiClient.get(`/admin/activities?${qs.toString()}`);
   },
 
   uploadVideo(file: File): Promise<{ videoUrl: string }> {

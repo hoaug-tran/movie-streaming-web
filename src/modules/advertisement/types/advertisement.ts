@@ -8,6 +8,7 @@ export interface Advertisement {
   skipAfterSeconds: number;
   durationSeconds?: number;
   isActive: boolean;
+  priority?: number;
 }
 
 export interface AdvertisementViewRequest {

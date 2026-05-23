@@ -1,35 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Box,
-  Container,
-  Typography,
-  Stack,
-  Breadcrumbs,
-  Link as MuiLink,
-  alpha,
-  useTheme,
-  CircularProgress,
-  IconButton,
-  Tooltip,
-} from "@mui/material";
 import NextLink from "next/link";
 import {
-  ChevronRight,
-  Activity,
-  Server,
-  Cloud,
-  CreditCard,
-  Mail,
-  Database,
+  alpha,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  IconButton,
+  Link as MuiLink,
+  Stack,
+  Typography,
+  useTheme,
+} from "@mui/material";
+import {
+  Bell,
   CheckCircle2,
-  AlertTriangle,
-  Wrench,
-  RefreshCw,
-  Cpu,
-  HardDrive,
+  ChevronRight,
+  CreditCard,
+  Download,
   Film,
+  HelpCircle,
+  RefreshCw,
+  ShieldCheck,
+  UserRound,
 } from "lucide-react";
 import { Footer } from "@/components/Layout/Footer";
 import {
@@ -39,116 +34,92 @@ import {
   type SystemStatusPayload,
 } from "@/services/system-service";
 
-const STATUS_META: Record<
-  SystemStatusLevel,
-  { label: string; color: string; bg: string; description: string }
-> = {
+type PublicService = {
+  id: string;
+  title: string;
+  description: string;
+  icon: typeof Film;
+  componentIds: string[];
+};
+
+const STATUS_META: Record<SystemStatusLevel, { label: string; headline: string; color: string }> = {
   operational: {
-    label: "Hoạt động bình thường",
+    label: "Ổn định",
+    headline: "Gió Phim đang hoạt động bình thường",
     color: "#22c55e",
-    bg: "rgba(34,197,94,0.12)",
-    description: "Mọi tính năng đang phục vụ ổn định.",
   },
   degraded: {
-    label: "Giảm hiệu năng",
+    label: "Có chậm nhẹ",
+    headline: "Một số tính năng có thể phản hồi chậm",
     color: "#f59e0b",
-    bg: "rgba(245,158,11,0.12)",
-    description: "Có chậm cục bộ ở một số khu vực.",
   },
-  maintenance: {
-    label: "Đang bảo trì",
-    color: "#3b82f6",
-    bg: "rgba(59,130,246,0.12)",
-    description: "Bảo trì theo lịch, người dùng có thể gián đoạn ngắn.",
-  },
-  outage: {
-    label: "Mất kết nối",
-    color: "#ef4444",
-    bg: "rgba(239,68,68,0.12)",
-    description: "Đang khắc phục, sẽ cập nhật liên tục.",
-  },
+  maintenance: { label: "Bảo trì", headline: "Hệ thống đang được bảo trì", color: "#3b82f6" },
+  outage: { label: "Gián đoạn", headline: "Một số dịch vụ đang gián đoạn", color: "#ef4444" },
 };
 
-const COMPONENT_ICONS: Record<string, typeof Server> = {
-  api: Server,
-  database: Database,
-  redis: Cloud,
-  payment: CreditCard,
-  mail: Mail,
-  storage: HardDrive,
-  transcoder: Film,
-};
+const PUBLIC_SERVICES: PublicService[] = [
+  {
+    id: "watch",
+    title: "Xem phim & phát video",
+    description: "Trải nghiệm xem phim, chuyển tập, chất lượng HLS và phát video.",
+    icon: Film,
+    componentIds: ["api", "storage", "transcoder"],
+  },
+  {
+    id: "account",
+    title: "Đăng nhập & tài khoản",
+    description: "Đăng nhập, hồ sơ cá nhân, lịch sử xem và danh sách yêu thích.",
+    icon: UserRound,
+    componentIds: ["api", "database", "redis"],
+  },
+  {
+    id: "premium",
+    title: "Thanh toán Premium",
+    description: "Đăng ký gói, xác nhận thanh toán và quyền xem nội dung Premium.",
+    icon: CreditCard,
+    componentIds: ["payment", "api", "database"],
+  },
+  {
+    id: "notify",
+    title: "Thông báo & email",
+    description: "Email xác thực, thông báo tài khoản và cập nhật từ hệ thống.",
+    icon: Bell,
+    componentIds: ["mail", "api"],
+  },
+  {
+    id: "offline",
+    title: "Tải xuống & offline",
+    description: "Tải phim về thiết bị, lưu cache và tiếp tục xem khi mạng yếu.",
+    icon: Download,
+    componentIds: ["storage", "api"],
+  },
+];
 
-function StatusPill({ status }: { status: SystemStatusLevel }) {
-  const meta = STATUS_META[status];
-  return (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 0.75,
-        px: 1.1,
-        py: 0.4,
-        borderRadius: 99,
-        backgroundColor: meta.bg,
-        color: meta.color,
-        fontSize: "0.72rem",
-        fontWeight: 800,
-        letterSpacing: "0.04em",
-      }}
-    >
-      <Box
-        sx={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          backgroundColor: meta.color,
-          boxShadow: `0 0 8px ${meta.color}`,
-        }}
-      />
-      {meta.label}
-    </Box>
-  );
-}
-
-function formatUptime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return "—";
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days} ngày ${hours} giờ`;
-  if (hours > 0) return `${hours} giờ ${minutes} phút`;
-  return `${minutes} phút`;
+function mergeStatus(components: SystemComponentStatus[], ids: string[]): SystemStatusLevel {
+  const picked = components.filter((c) => ids.includes(c.id));
+  if (picked.some((c) => c.status === "outage")) return "outage";
+  if (picked.some((c) => c.status === "maintenance")) return "maintenance";
+  if (picked.some((c) => c.status === "degraded")) return "degraded";
+  return "operational";
 }
 
 export default function StatusPage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-
   const [data, setData] = useState<SystemStatusPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [lastUpdated, setLastUpdated] = useState("");
 
-  const refresh = useCallback(async (silent: boolean = false) => {
+  const refresh = useCallback(async (silent = false) => {
     if (silent) setRefreshing(true);
     else setLoading(true);
-    setError(null);
     try {
       const payload = await systemService.getStatus();
       setData(payload);
       setLastUpdated(
-        new Date().toLocaleString("vi-VN", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })
+        new Date().toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })
       );
-    } catch (err) {
-      const message =
-        (err as { message?: string })?.message ||
-        "Không lấy được dữ liệu trạng thái. Có thể máy chủ đang ngoại tuyến.";
-      setError(message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -161,433 +132,241 @@ export default function StatusPage() {
     return () => clearInterval(id);
   }, [refresh]);
 
-  const overall: SystemStatusLevel = data?.overall ?? "outage";
-  const overallMeta = STATUS_META[overall];
-  const components: SystemComponentStatus[] = useMemo(() => data?.components ?? [], [data]);
-
-  const summary = useMemo(() => {
-    if (!data) return null;
-    const total = components.length;
-    const healthy = components.filter((c) => c.status === "operational").length;
-    return { total, healthy };
-  }, [components, data]);
+  const overall = data?.overall ?? "operational";
+  const meta = STATUS_META[overall];
+  const components = useMemo(() => data?.components ?? [], [data]);
 
   return (
-    <Box sx={{ backgroundColor: "background.default", minHeight: "100vh" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary" }}>
       <Box
         sx={{
           position: "relative",
-          pt: { xs: 11, md: 14 },
-          pb: { xs: 4, md: 6 },
           overflow: "hidden",
+          pt: { xs: 11, md: 15 },
+          pb: { xs: 6, md: 9 },
           borderBottom: `1px solid ${theme.palette.divider}`,
-          background: isDark
-            ? `linear-gradient(180deg, ${alpha(overallMeta.color, 0.1)} 0%, transparent 70%)`
-            : `linear-gradient(180deg, ${alpha(overallMeta.color, 0.06)} 0%, transparent 70%)`,
+          background: `radial-gradient(circle at 20% 0%, ${alpha(theme.palette.primary.main, 0.22)}, transparent 34%), radial-gradient(circle at 86% 12%, ${alpha(meta.color, 0.18)}, transparent 30%)`,
         }}
       >
-        <Container maxWidth="lg" sx={{ position: "relative" }}>
-          <Breadcrumbs
-            separator={<ChevronRight size={14} />}
-            sx={{
-              mb: 3,
-              fontSize: "0.78rem",
-              "& .MuiBreadcrumbs-separator": { color: "text.disabled", mx: 0.75 },
-            }}
+        <Container maxWidth="lg">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ mb: 4, color: "text.secondary" }}
           >
-            <MuiLink
-              component={NextLink}
-              href="/"
-              sx={{
-                textDecoration: "none",
-                color: "text.secondary",
-                fontSize: "0.78rem",
-                fontWeight: 500,
-                "&:hover": { color: "text.primary" },
-              }}
-            >
+            <MuiLink component={NextLink} href="/" color="inherit" underline="hover">
               Trang chủ
             </MuiLink>
-            <MuiLink
-              component={NextLink}
-              href="/support"
-              sx={{
-                textDecoration: "none",
-                color: "text.secondary",
-                fontSize: "0.78rem",
-                fontWeight: 500,
-                "&:hover": { color: "text.primary" },
-              }}
-            >
+            <ChevronRight size={14} />
+            <MuiLink component={NextLink} href="/support" color="inherit" underline="hover">
               Hỗ trợ
             </MuiLink>
-            <Typography sx={{ color: "text.primary", fontWeight: 600, fontSize: "0.78rem" }}>
-              Trạng thái hệ thống
-            </Typography>
-          </Breadcrumbs>
+            <ChevronRight size={14} />
+            <Typography color="text.primary">Trạng thái</Typography>
+          </Stack>
 
           <Box
             sx={{
-              p: { xs: 3, md: 4 },
-              borderRadius: 3,
-              border: `1px solid ${alpha(overallMeta.color, 0.4)}`,
-              backgroundColor: isDark
-                ? alpha(overallMeta.color, 0.08)
-                : alpha(overallMeta.color, 0.05),
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "auto 1fr auto" },
-              gap: 3,
-              alignItems: "center",
+              p: { xs: 3, md: 5 },
+              borderRadius: 4,
+              border: `1px solid ${alpha(meta.color, 0.36)}`,
+              bgcolor: alpha(theme.palette.background.paper, isDark ? 0.68 : 0.9),
+              boxShadow: `0 28px 90px ${alpha(meta.color, 0.16)}`,
+              backdropFilter: "blur(20px)",
             }}
           >
-            <Box
-              sx={{
-                width: 64,
-                height: 64,
-                borderRadius: 2,
-                display: "grid",
-                placeItems: "center",
-                color: overallMeta.color,
-                backgroundColor: alpha(overallMeta.color, 0.16),
-                border: `1px solid ${alpha(overallMeta.color, 0.3)}`,
-                flexShrink: 0,
-              }}
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={3}
+              alignItems={{ md: "center" }}
+              justifyContent="space-between"
             >
-              {overall === "operational" ? (
-                <CheckCircle2 size={26} />
-              ) : overall === "outage" ? (
-                <AlertTriangle size={26} />
-              ) : overall === "maintenance" ? (
-                <Wrench size={26} />
-              ) : (
-                <Activity size={26} />
-              )}
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                sx={{
-                  fontSize: "0.72rem",
-                  fontWeight: 800,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  color: overallMeta.color,
-                  mb: 0.5,
-                }}
-              >
-                Trạng thái tổng quan
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: { xs: "1.6rem", md: "2.2rem" },
-                  fontWeight: 950,
-                  letterSpacing: "-0.03em",
-                  color: "text.primary",
-                  lineHeight: 1.1,
-                }}
-              >
-                {loading && !data ? "Đang kiểm tra..." : overallMeta.label}
-              </Typography>
-              <Typography sx={{ color: "text.secondary", mt: 0.5, fontSize: "0.92rem" }}>
-                {error ? error : overallMeta.description}
-              </Typography>
-            </Box>
-            <Stack spacing={1} sx={{ alignItems: { xs: "flex-start", md: "flex-end" } }}>
-              <Stack
-                direction="row"
-                spacing={0.75}
-                alignItems="center"
-                sx={{ color: "text.secondary" }}
-              >
-                <Tooltip title="Tải lại ngay">
-                  <IconButton
-                    size="small"
-                    onClick={() => refresh(true)}
-                    disabled={refreshing}
-                    sx={{ color: "text.secondary" }}
-                  >
-                    {refreshing ? (
-                      <CircularProgress size={14} thickness={5} />
-                    ) : (
-                      <RefreshCw size={13} />
-                    )}
-                  </IconButton>
-                </Tooltip>
-                <Typography sx={{ fontSize: "0.78rem" }}>Cập nhật {lastUpdated || "—"}</Typography>
+              <Stack spacing={2} sx={{ maxWidth: 760 }}>
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 1,
+                    color: meta.color,
+                    fontWeight: 900,
+                  }}
+                >
+                  <CheckCircle2 size={18} /> {meta.label}
+                </Box>
+                <Typography
+                  component="h1"
+                  sx={{
+                    fontSize: { xs: "2.25rem", md: "4rem" },
+                    fontWeight: 950,
+                    letterSpacing: "-0.06em",
+                    lineHeight: 0.98,
+                  }}
+                >
+                  {loading && !data ? "Đang kiểm tra hệ thống..." : meta.headline}
+                </Typography>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: { xs: "1rem", md: "1.1rem" },
+                    lineHeight: 1.8,
+                  }}
+                >
+                  Trang này tóm tắt các chức năng quan trọng dành cho người xem. Dữ liệu tự động cập
+                  nhật mỗi phút, không hiển thị chi tiết kỹ thuật nội bộ.
+                </Typography>
               </Stack>
-              {data ? (
-                <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>
-                  Uptime hệ thống:{" "}
-                  <Box component="span" sx={{ color: "text.primary", fontWeight: 800 }}>
-                    {formatUptime(data.uptimeSeconds)}
-                  </Box>
+              <Stack spacing={1.5} alignItems={{ xs: "flex-start", md: "flex-end" }}>
+                <IconButton
+                  onClick={() => refresh(true)}
+                  disabled={refreshing}
+                  sx={{ border: `1px solid ${theme.palette.divider}` }}
+                >
+                  {refreshing ? <CircularProgress size={18} /> : <RefreshCw size={18} />}
+                </IconButton>
+                <Typography sx={{ color: "text.secondary", fontSize: "0.85rem" }}>
+                  Cập nhật: {lastUpdated || "—"}
                 </Typography>
-              ) : null}
-              {summary ? (
-                <Typography sx={{ fontSize: "0.78rem", color: "text.secondary" }}>
-                  Thành phần khoẻ mạnh:{" "}
-                  <Box component="span" sx={{ color: "text.primary", fontWeight: 800 }}>
-                    {summary.healthy}/{summary.total}
-                  </Box>
-                </Typography>
-              ) : null}
+              </Stack>
             </Stack>
           </Box>
         </Container>
       </Box>
 
-      <Container maxWidth="lg" sx={{ pt: { xs: 4, md: 6 }, pb: { xs: 6, md: 9 } }}>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ sm: "flex-end" }}
-          sx={{ mb: 3, gap: 1 }}
-        >
-          <Box>
-            <Typography
-              sx={{
-                fontSize: "0.72rem",
-                fontWeight: 800,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                color: "primary.main",
-                mb: 0.5,
-              }}
-            >
-              Hệ thống thành phần
-            </Typography>
-            <Typography
-              component="h2"
-              sx={{
-                fontSize: { xs: "1.5rem", md: "2rem" },
-                fontWeight: 900,
-                letterSpacing: "-0.03em",
-                lineHeight: 1.1,
-                color: "text.primary",
-              }}
-            >
-              Theo dõi từng dịch vụ
-            </Typography>
-            <Typography sx={{ color: "text.secondary", mt: 0.5, fontSize: "0.9rem" }}>
-              Dữ liệu được kiểm tra trực tiếp từ máy chủ Spring Boot, Redis, MySQL, PayOS, mail và
-              lưu trữ media. Tự động làm mới mỗi phút.
-            </Typography>
-          </Box>
-
-          <Stack direction="row" spacing={1.25} sx={{ flexWrap: "wrap", rowGap: 1 }}>
-            {(Object.keys(STATUS_META) as SystemStatusLevel[]).map((s) => (
-              <Stack key={s} direction="row" spacing={0.6} alignItems="center">
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    backgroundColor: STATUS_META[s].color,
-                  }}
-                />
-                <Typography sx={{ fontSize: "0.75rem", color: "text.secondary", fontWeight: 600 }}>
-                  {STATUS_META[s].label}
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-        </Stack>
-
-        {loading && !data ? (
+      <Container maxWidth="lg" sx={{ py: { xs: 5, md: 8 } }}>
+        <Stack spacing={3}>
+          <Typography
+            component="h2"
+            sx={{
+              fontSize: { xs: "1.6rem", md: "2.4rem" },
+              fontWeight: 950,
+              letterSpacing: "-0.04em",
+            }}
+          >
+            Tình trạng các chức năng chính
+          </Typography>
           <Box
             sx={{
               display: "grid",
-              placeItems: "center",
-              py: 8,
-              border: `1px dashed ${theme.palette.divider}`,
-              borderRadius: 2,
+              gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" },
+              gap: 2,
             }}
           >
-            <Stack spacing={1.5} alignItems="center">
-              <CircularProgress size={28} thickness={4.5} />
-              <Typography sx={{ color: "text.secondary", fontSize: "0.9rem" }}>
-                Đang đo đạc các dịch vụ...
-              </Typography>
-            </Stack>
-          </Box>
-        ) : (
-          <Stack spacing={2}>
-            {components.map((service) => {
-              const meta = STATUS_META[service.status];
-              const Icon = COMPONENT_ICONS[service.id] ?? Cpu;
+            {PUBLIC_SERVICES.map((service) => {
+              const status = mergeStatus(components, service.componentIds);
+              const serviceMeta = STATUS_META[status];
+              const Icon = service.icon;
               return (
                 <Box
                   key={service.id}
                   sx={{
-                    p: { xs: 2.25, md: 2.75 },
-                    borderRadius: 2,
+                    p: 3,
+                    borderRadius: 3,
                     border: `1px solid ${theme.palette.divider}`,
-                    backgroundColor: isDark
-                      ? alpha(theme.palette.background.paper, 0.55)
-                      : theme.palette.background.paper,
-                    transition: "border-color 0.2s",
-                    "&:hover": { borderColor: alpha(meta.color, 0.4) },
+                    bgcolor: "background.paper",
+                    transition: "0.2s",
+                    "&:hover": {
+                      borderColor: alpha(serviceMeta.color, 0.55),
+                      transform: "translateY(-2px)",
+                    },
                   }}
                 >
-                  <Stack
-                    direction={{ xs: "column", md: "row" }}
-                    justifyContent="space-between"
-                    alignItems={{ md: "center" }}
-                    spacing={1.5}
-                  >
-                    <Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
-                      <Box
-                        sx={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 1.25,
-                          display: "grid",
-                          placeItems: "center",
-                          color: meta.color,
-                          backgroundColor: alpha(meta.color, 0.14),
-                          border: `1px solid ${alpha(meta.color, 0.3)}`,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Icon size={18} />
-                      </Box>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 800, color: "text.primary" }}>
-                          {service.name}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            fontSize: "0.85rem",
-                            color: "text.secondary",
-                            mt: 0.25,
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          {service.description}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                    <Stack
-                      direction="row"
-                      spacing={3}
-                      alignItems="center"
-                      sx={{ flexShrink: 0, flexWrap: "wrap", rowGap: 1 }}
-                    >
-                      {service.latencyMs !== null ? (
-                        <Box>
-                          <Typography
-                            sx={{
-                              fontSize: "0.7rem",
-                              color: "text.secondary",
-                              fontWeight: 700,
-                              letterSpacing: "0.08em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Độ trễ
-                          </Typography>
-                          <Typography sx={{ fontWeight: 800, color: "text.primary" }}>
-                            {service.latencyMs} ms
-                          </Typography>
-                        </Box>
-                      ) : null}
-                      <StatusPill status={service.status} />
-                    </Stack>
-                  </Stack>
-                  {service.detail ? (
-                    <Typography
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                    <Box
                       sx={{
-                        mt: 1.5,
-                        fontSize: "0.82rem",
-                        color: "text.secondary",
-                        fontFamily: "monospace",
-                        backgroundColor: alpha(theme.palette.text.primary, isDark ? 0.04 : 0.03),
-                        px: 1.25,
-                        py: 1,
-                        borderRadius: 1,
-                        border: `1px dashed ${theme.palette.divider}`,
+                        width: 46,
+                        height: 46,
+                        borderRadius: 2,
+                        display: "grid",
+                        placeItems: "center",
+                        color: serviceMeta.color,
+                        bgcolor: alpha(serviceMeta.color, 0.13),
                       }}
                     >
-                      {service.detail}
-                    </Typography>
-                  ) : null}
+                      <Icon size={22} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        gap={1}
+                        alignItems="center"
+                      >
+                        <Typography sx={{ fontWeight: 900 }}>{service.title}</Typography>
+                        <Typography
+                          sx={{
+                            px: 1.2,
+                            py: 0.45,
+                            borderRadius: 99,
+                            bgcolor: alpha(serviceMeta.color, 0.12),
+                            color: serviceMeta.color,
+                            fontSize: "0.72rem",
+                            fontWeight: 900,
+                          }}
+                        >
+                          {serviceMeta.label}
+                        </Typography>
+                      </Stack>
+                      <Typography sx={{ mt: 0.75, color: "text.secondary", lineHeight: 1.65 }}>
+                        {service.description}
+                      </Typography>
+                    </Box>
+                  </Stack>
                 </Box>
               );
             })}
-          </Stack>
-        )}
+          </Box>
 
-        <Box
-          sx={{
-            mt: { xs: 5, md: 7 },
-            p: { xs: 2.5, md: 3 },
-            borderRadius: 2,
-            border: `1px solid ${theme.palette.divider}`,
-            backgroundColor: isDark
-              ? alpha(theme.palette.background.paper, 0.55)
-              : theme.palette.background.paper,
-          }}
-        >
-          <Typography
+          <Box
             sx={{
-              fontSize: "0.72rem",
-              fontWeight: 800,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              color: "primary.main",
-              mb: 0.5,
+              mt: 3,
+              p: { xs: 3, md: 4 },
+              borderRadius: 4,
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.24)}`,
             }}
           >
-            Cách đọc thông số
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: { xs: "1.1rem", md: "1.25rem" },
-              fontWeight: 800,
-              color: "text.primary",
-              mb: 1.5,
-            }}
-          >
-            Mỗi thành phần được đo trực tiếp khi bạn mở trang
-          </Typography>
-          <Typography sx={{ color: "text.secondary", lineHeight: 1.75, fontSize: "0.92rem" }}>
-            • Cơ sở dữ liệu kiểm tra qua{" "}
-            <Box component="span" sx={{ fontFamily: "monospace" }}>
-              Connection.isValid
-            </Box>
-            . • Redis kiểm tra qua lệnh{" "}
-            <Box component="span" sx={{ fontFamily: "monospace" }}>
-              PING
-            </Box>
-            . • Cổng PayOS xác nhận theo cấu hình{" "}
-            <Box component="span" sx={{ fontFamily: "monospace" }}>
-              client-id
-            </Box>
-            ,{" "}
-            <Box component="span" sx={{ fontFamily: "monospace" }}>
-              api-key
-            </Box>{" "}
-            và{" "}
-            <Box component="span" sx={{ fontFamily: "monospace" }}>
-              checksum-key
-            </Box>
-            . • Email kiểm tra cấu hình SMTP trên domain{" "}
-            <Box component="span" sx={{ fontFamily: "monospace" }}>
-              giophim.libsys.me
-            </Box>
-            . • Lưu trữ media kiểm tra thư mục phim, HLS và keys cùng đường dẫn FFmpeg. Khi cần báo
-            sự cố, gửi mô tả tới{" "}
-            <MuiLink
-              component={NextLink}
-              href="/support/contact"
-              sx={{ color: "primary.main", fontWeight: 700 }}
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              justifyContent="space-between"
+              alignItems={{ md: "center" }}
             >
-              trang Liên hệ
-            </MuiLink>{" "}
-            để chuyển trực tiếp vào hộp thư quản trị viên.
-          </Typography>
-        </Box>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    display: "grid",
+                    placeItems: "center",
+                    bgcolor: alpha(theme.palette.primary.main, 0.16),
+                    color: "primary.main",
+                  }}
+                >
+                  <ShieldCheck size={24} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontWeight: 950, fontSize: "1.2rem" }}>
+                    Không có sự cố lớn đang được ghi nhận
+                  </Typography>
+                  <Typography sx={{ color: "text.secondary" }}>
+                    Nếu bạn gặp lỗi riêng lẻ, gửi mô tả để đội ngũ Gió Phim kiểm tra.
+                  </Typography>
+                </Box>
+              </Stack>
+              <Button
+                component={NextLink}
+                href="/support/contact"
+                variant="contained"
+                startIcon={<HelpCircle size={18} />}
+              >
+                Liên hệ hỗ trợ
+              </Button>
+            </Stack>
+          </Box>
+        </Stack>
       </Container>
-
       <Footer />
     </Box>
   );

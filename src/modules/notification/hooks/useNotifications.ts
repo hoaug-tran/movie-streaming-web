@@ -28,9 +28,9 @@ export function useUnreadCount(enabled = true) {
     queryKey: NOTIFICATION_KEYS.unreadCount(),
     queryFn: notificationService.getUnreadCount,
     enabled: isAuthenticated && enabled,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
