@@ -302,6 +302,11 @@ export default function AdminNotificationsPage() {
     payload: AdminNotificationPayload | AdminBroadcastPayload,
     broadcast: boolean
   ) => {
+    if (createSubmitting) {
+      console.warn("[AdminNotif] Submission already in progress, ignoring duplicate request");
+      return;
+    }
+
     setCreateSubmitting(true);
     setCreateError(null);
     try {

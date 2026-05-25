@@ -133,9 +133,49 @@ const persistAuthSession = (_response: LoginResponse) => {
   clearAuthTokens();
 };
 
+const cacheOfflineAuth = (user: UserInfo) => {
+  try {
+    localStorage.setItem("gp_offline_auth", JSON.stringify({ user, timestamp: Date.now() }));
+    if (typeof document !== "undefined") {
+      document.cookie = "gp_offline_auth=1; path=/; max-age=2592000";
+    }
+  } catch (e) {
+    console.warn("Failed to cache offline auth", e);
+  }
+};
+
+const clearOfflineAuth = () => {
+  try {
+    localStorage.removeItem("gp_offline_auth");
+    if (typeof document !== "undefined") {
+      document.cookie = "gp_offline_auth=; path=/; max-age=0";
+    }
+  } catch (e) {
+    console.warn("Failed to clear offline auth", e);
+  }
+};
+
+const getOfflineAuth = (): { user: UserInfo; timestamp: number } | null => {
+  try {
+    const cached = localStorage.getItem("gp_offline_auth");
+    if (!cached) return null;
+    const parsed = JSON.parse(cached);
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    if (Date.now() - parsed.timestamp > thirtyDaysMs) {
+      clearOfflineAuth();
+      return null;
+    }
+    return parsed;
+  } catch (e) {
+    console.warn("Failed to get offline auth", e);
+    return null;
+  }
+};
+
 const clearAuthSession = () => {
   removeFromLocalStorage("user");
   clearAuthTokens();
+  clearOfflineAuth();
 
   removeFromLocalStorage("cached-subscription-plans");
   removeFromLocalStorage("cached-my-subscription");
@@ -170,6 +210,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       .getCurrentUser()
       .then((user) => {
         dispatch({ type: "SET_USER", payload: user });
+        cacheOfflineAuth(user);
+        if (typeof window !== "undefined" && !window.localStorage.getItem("accessToken")) {
+          authService.refreshToken().catch(() => {});
+        }
       })
       .catch(async (error) => {
         if (isAuthFailure(error)) {
@@ -177,12 +221,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const restored = await restoreWithRefreshToken();
             if (restored) {
               dispatch({ type: "RESTORE_AUTH", payload: restored });
+              cacheOfflineAuth(restored.user);
               return;
             }
           } catch {}
 
+          const offlineAuth = getOfflineAuth();
+          const isNetworkError = !("status" in error);
+          if (offlineAuth && (navigator.onLine === false || isNetworkError)) {
+            cacheOfflineAuth(offlineAuth.user);
+            dispatch({
+              type: "RESTORE_AUTH",
+              payload: {
+                user: offlineAuth.user,
+                accessToken: "offline",
+                refreshToken: "offline",
+              },
+            });
+            return;
+          }
+
           clearAuthSession();
           dispatch({ type: "LOGOUT" });
+          return;
+        }
+
+        const offlineAuth = getOfflineAuth();
+        const isNetworkError = !("status" in error) || error.status === undefined;
+        if (offlineAuth && (navigator.onLine === false || isNetworkError)) {
+          cacheOfflineAuth(offlineAuth.user);
+          dispatch({
+            type: "RESTORE_AUTH",
+            payload: {
+              user: offlineAuth.user,
+              accessToken: "offline",
+              refreshToken: "offline",
+            },
+          });
           return;
         }
 
@@ -231,6 +306,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const fullUser = await authService.getCurrentUser();
         const loginData = { ...response, user: fullUser };
         persistAuthSession(loginData);
+        cacheOfflineAuth(fullUser);
         dispatch({ type: "AUTH_SUCCESS", payload: loginData });
         return;
       }
@@ -251,6 +327,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const fullUser = await authService.getCurrentUser();
         const loginData = { ...response, user: fullUser };
         persistAuthSession(loginData);
+        cacheOfflineAuth(fullUser);
         dispatch({ type: "AUTH_SUCCESS", payload: loginData });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Xác nhận OTP thất bại";
@@ -289,6 +366,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const fullUser = await authService.getCurrentUser();
       const registerData = { ...response, user: fullUser };
       persistAuthSession(registerData);
+      cacheOfflineAuth(fullUser);
       dispatch({ type: "AUTH_SUCCESS", payload: registerData });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Xác nhận OTP thất bại";
@@ -371,6 +449,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.exchangeOAuthCode(code, "google");
       persistAuthSession(response);
+      cacheOfflineAuth(response.user);
       dispatch({ type: "AUTH_SUCCESS", payload: response });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Đăng nhập Google thất bại";

@@ -76,11 +76,11 @@ export default function AdminReportsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Pagination states
+  
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Reset page on search or filter update
+  
   useEffect(() => {
     setPage(1);
   }, [status, target, search]);
@@ -139,14 +139,11 @@ export default function AdminReportsPage() {
   };
 
   const handleHideComment = () => {
-    if (!selectedReport?.commentId) return;
+    const commentId = selectedReport?.commentId;
+    if (!commentId) return;
+
     runAction("hide-comment", async () => {
-      await adminService.updateComment(selectedReport.commentId!, {
-        content: "",
-        userId: 0,
-        movieId: 0,
-        status: "HIDDEN",
-      });
+      await adminService.updateCommentStatus(commentId, "HIDDEN");
       await adminService.resolveReport(selectedReport.id, { status: "RESOLVED" });
     });
   };
@@ -194,7 +191,7 @@ export default function AdminReportsPage() {
     <AdminPermissionGate permission="reports:manage">
       <Box sx={{ p: { xs: 2, md: 4 }, color: theme.palette.text.primary }}>
         <Stack spacing={3}>
-          {/* Header */}
+          {}
           <Box>
             <Typography
               component="h1"
@@ -208,7 +205,7 @@ export default function AdminReportsPage() {
             </Typography>
           </Box>
 
-          {/* Stats */}
+          {}
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             {statCards.map((item) => (
               <Box key={item.label} sx={{ flex: "1 1 calc(33.333% - 16px)", minWidth: 200 }}>
@@ -233,7 +230,7 @@ export default function AdminReportsPage() {
             ))}
           </Box>
 
-          {/* Filters */}
+          {}
           <Paper
             sx={{
               p: 2,
@@ -327,7 +324,7 @@ export default function AdminReportsPage() {
             </Box>
           ) : (
             <Grid container spacing={2.5}>
-              {/* Report list */}
+              {}
               <Grid item xs={12} lg={7}>
                 <Stack spacing={1.5}>
                   {paginatedReports.map((report) => {
@@ -399,7 +396,7 @@ export default function AdminReportsPage() {
                   })}
                 </Stack>
 
-                {/* Pagination Footer */}
+                {}
                 {filteredReports.length > 0 && (
                   <Stack
                     direction="column"
@@ -506,7 +503,7 @@ export default function AdminReportsPage() {
                 )}
               </Grid>
 
-              {/* Detail panel */}
+              {}
               <Grid item xs={12} lg={5}>
                 <Paper
                   sx={{
@@ -521,7 +518,7 @@ export default function AdminReportsPage() {
                 >
                   {selectedReport ? (
                     <Stack spacing={2}>
-                      {/* Title row */}
+                      {}
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="h5" sx={{ fontWeight: 850 }}>
                           Report #{selectedReport.id}
@@ -539,7 +536,7 @@ export default function AdminReportsPage() {
                         />
                       </Stack>
 
-                      {/* Target info + view link */}
+                      {}
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Box>
                           <Typography variant="caption" color="text.secondary" fontWeight={700}>
@@ -562,7 +559,7 @@ export default function AdminReportsPage() {
 
                       <Divider />
 
-                      {/* Reason */}
+                      {}
                       <Box>
                         <Typography variant="overline" color="text.secondary" fontWeight={800}>
                           Lý do
@@ -580,7 +577,7 @@ export default function AdminReportsPage() {
 
                       <Divider />
 
-                      {/* Time */}
+                      {}
                       <Box>
                         <Typography variant="overline" color="text.secondary" fontWeight={800}>
                           Thời gian
@@ -595,7 +592,7 @@ export default function AdminReportsPage() {
                         )}
                       </Box>
 
-                      {/* Actions — only for PENDING */}
+                      {}
                       {selectedReport.status === "PENDING" && (
                         <>
                           <Divider />
@@ -635,30 +632,32 @@ export default function AdminReportsPage() {
                                     Ẩn bình luận
                                   </Button>
                                 </Tooltip>
-                                <Tooltip title="Xóa vĩnh viễn bình luận và đánh dấu báo cáo là đã xử lý">
-                                  <Button
-                                    id="admin-report-delete-comment"
-                                    fullWidth
-                                    variant="contained"
-                                    color="error"
-                                    startIcon={
-                                      isActing && actionLoading === "delete-comment" ? (
-                                        <CircularProgress size={16} color="inherit" />
-                                      ) : (
-                                        <DeleteForeverRoundedIcon />
-                                      )
-                                    }
-                                    onClick={handleDeleteComment}
-                                    disabled={isActing}
-                                    sx={{
-                                      borderRadius: 1.5,
-                                      fontWeight: 800,
-                                      justifyContent: "flex-start",
-                                    }}
-                                  >
-                                    Xóa bình luận
-                                  </Button>
-                                </Tooltip>
+                                {isAdmin && (
+                                  <Tooltip title="Xóa vĩnh viễn bình luận và đánh dấu báo cáo là đã xử lý">
+                                    <Button
+                                      id="admin-report-delete-comment"
+                                      fullWidth
+                                      variant="contained"
+                                      color="error"
+                                      startIcon={
+                                        isActing && actionLoading === "delete-comment" ? (
+                                          <CircularProgress size={16} color="inherit" />
+                                        ) : (
+                                          <DeleteForeverRoundedIcon />
+                                        )
+                                      }
+                                      onClick={handleDeleteComment}
+                                      disabled={isActing}
+                                      sx={{
+                                        borderRadius: 1.5,
+                                        fontWeight: 800,
+                                        justifyContent: "flex-start",
+                                      }}
+                                    >
+                                      Xóa bình luận
+                                    </Button>
+                                  </Tooltip>
+                                )}
                                 <Tooltip title="Báo cáo không hợp lệ, không thực hiện hành động nào">
                                   <Button
                                     id="admin-report-reject"
@@ -764,31 +763,6 @@ export default function AdminReportsPage() {
                                 </Tooltip>
                               </Stack>
                             )}
-                          </Box>
-
-                          {/* Moderator note */}
-                          <Box
-                            sx={{
-                              p: 1.5,
-                              borderRadius: 1.5,
-                              bgcolor: alpha(theme.palette.info.main, 0.08),
-                              border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-                            }}
-                          >
-                            <Typography variant="caption" color="info.main" fontWeight={700}>
-                              {isAdmin ? "Quản trị viên" : "Điều hành viên"} · Quyền hạn
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ display: "block", mt: 0.5 }}
-                            >
-                              {targetType === "COMMENT"
-                                ? "Moderator và Admin có thể ẩn hoặc xóa bình luận."
-                                : isAdmin
-                                  ? "Admin có thể ẩn hoặc xóa đánh giá."
-                                  : "Moderator chỉ có thể ẩn đánh giá. Xóa yêu cầu quyền Admin."}
-                            </Typography>
                           </Box>
                         </>
                       )}

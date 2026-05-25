@@ -12,9 +12,11 @@ import {
 } from "@mui/material";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { usePwa } from "@/hooks/use-pwa";
 
 const ChatPanel = dynamic(() => import("./ChatPanel"), { ssr: false });
 
@@ -28,6 +30,7 @@ export default function GioPhimBot() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const pathname = usePathname();
+  const { isOnline } = usePwa();
   const [open, setOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -95,7 +98,7 @@ export default function GioPhimBot() {
           transition: "bottom 220ms ease",
         }}
       >
-        {showWelcome && !open && (
+        {showWelcome && !open && isOnline && (
           <Box
             role="status"
             sx={{
@@ -220,10 +223,22 @@ export default function GioPhimBot() {
                 boxShadow: `0 12px 24px ${alpha(theme.palette.common.black, isDark ? 0.65 : 0.32)}`,
                 borderColor: accent,
               },
-              "& svg": { color: accent, fontSize: 24 },
+              "&.Mui-disabled": {
+                backgroundColor: isDark ? "#1a1d24" : "#1f2937",
+                opacity: 0.6,
+                borderColor: alpha(theme.palette.text.disabled, 0.2),
+              },
+              "& svg": { color: !isOnline ? theme.palette.text.disabled : accent, fontSize: 24 },
             }}
+            disabled={!isOnline}
           >
-            {open ? <CloseRoundedIcon /> : <AutoAwesomeRoundedIcon />}
+            {open ? (
+              <CloseRoundedIcon />
+            ) : !isOnline ? (
+              <WifiOffRoundedIcon />
+            ) : (
+              <AutoAwesomeRoundedIcon />
+            )}
           </Fab>
         </Box>
       </Box>

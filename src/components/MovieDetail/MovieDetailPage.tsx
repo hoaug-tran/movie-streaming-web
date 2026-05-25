@@ -274,55 +274,79 @@ function MovieHero({ movie }: { movie: MovieDetail }) {
                 alignItems="center"
                 justifyContent={{ xs: "space-between", sm: "flex-start" }}
               >
-                <DetailAction
-                  onClick={() =>
-                    navigateToWatch({
-                      movieSlug: movie.slug,
-                      movieId: movie.id,
-                      isPremiumOnly: movie.isPremiumOnly,
-                      episodeId: firstEpisode?.id,
-                      isFreePreview: firstEpisode?.isFreePreview,
-                    })
-                  }
-                  label="Phát phim"
-                />
+                {movie.movieStatus === "UPCOMING" ? (
+                  <Button
+                    variant="contained"
+                    disabled
+                    sx={{
+                      width: { xs: "auto", sm: "auto" },
+                      minWidth: { xs: 118, sm: 176 },
+                      height: { xs: 46, md: 58 },
+                      px: { xs: 1.8, md: 2.8 },
+                      borderRadius: 1,
+                      fontSize: "1rem",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      "&.Mui-disabled": {
+                        color: "rgba(255,255,255,0.4)",
+                        background: "rgba(255,255,255,0.1)",
+                      },
+                    }}
+                  >
+                    Sắp chiếu
+                  </Button>
+                ) : (
+                  <DetailAction
+                    onClick={() =>
+                      navigateToWatch({
+                        movieSlug: movie.slug,
+                        movieId: movie.id,
+                        isPremiumOnly: movie.isPremiumOnly,
+                        episodeId: firstEpisode?.id,
+                        isFreePreview: firstEpisode?.isFreePreview,
+                      })
+                    }
+                    label="Phát phim"
+                  />
+                )}
                 <Stack direction="row" spacing={1.25} justifyContent="flex-end" alignItems="center">
                   <WatchlistToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
                   <FavoriteToggleButton movieId={movie.id} movieTitle={movie.title} size="large" />
 
-                  {movie.movieType === "SERIES" && movie.episodes && movie.episodes.length > 0 ? (
-                    <Button
-                      onClick={() => setShowSeriesDownload(true)}
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Download size={15} />}
-                      sx={{
-                        height: 36,
-                        px: 2,
-                        textTransform: "none",
-                        fontWeight: 700,
-                        borderRadius: 1.5,
-                        fontSize: "0.78rem",
-                        borderColor: "rgba(255,255,255,0.18)",
-                        color: "#F0F0F0",
-                        bgcolor: "rgba(255,255,255,0.04)",
-                        "&:hover": {
-                          borderColor: "rgba(255,255,255,0.35)",
-                          bgcolor: "rgba(255,255,255,0.08)",
-                        },
-                      }}
-                    >
-                      Tải phim
-                    </Button>
-                  ) : firstEpisode ? (
-                    <OfflineDownloadButton
-                      episodeId={firstEpisode.id}
-                      availableQualities={firstEpisode.availableQualities}
-                      durationSeconds={firstEpisode.durationSeconds}
-                      variant="pill"
-                      size="small"
-                    />
-                  ) : null}
+                  {movie.movieStatus !== "UPCOMING" &&
+                    (movie.movieType === "SERIES" && movie.episodes && movie.episodes.length > 0 ? (
+                      <Button
+                        onClick={() => setShowSeriesDownload(true)}
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Download size={15} />}
+                        sx={{
+                          height: 36,
+                          px: 2,
+                          textTransform: "none",
+                          fontWeight: 700,
+                          borderRadius: 1.5,
+                          fontSize: "0.78rem",
+                          borderColor: "rgba(255,255,255,0.18)",
+                          color: "#F0F0F0",
+                          bgcolor: "rgba(255,255,255,0.04)",
+                          "&:hover": {
+                            borderColor: "rgba(255,255,255,0.35)",
+                            bgcolor: "rgba(255,255,255,0.08)",
+                          },
+                        }}
+                      >
+                        Tải phim
+                      </Button>
+                    ) : firstEpisode ? (
+                      <OfflineDownloadButton
+                        episodeId={firstEpisode.id}
+                        availableQualities={firstEpisode.availableQualities}
+                        durationSeconds={firstEpisode.durationSeconds}
+                        variant="pill"
+                        size="small"
+                      />
+                    ) : null)}
                 </Stack>
                 <Typography
                   color="text.secondary"
@@ -418,8 +442,25 @@ interface StudioInfo {
   website?: string;
 }
 
-const formatPersonRole = (item: PersonRoleInfo) =>
-  item.characterName ? `${item.role} • vai ${item.characterName}` : item.role;
+const translatePersonRole = (role: string) => {
+  switch (role.toUpperCase()) {
+    case "DIRECTOR":
+      return "Đạo diễn";
+    case "ACTOR":
+      return "Diễn viên";
+    case "PRODUCER":
+      return "Nhà sản xuất";
+    case "WRITER":
+      return "Biên kịch";
+    default:
+      return role;
+  }
+};
+
+const formatPersonRole = (item: PersonRoleInfo) => {
+  const tRole = translatePersonRole(item.role);
+  return item.characterName ? `${tRole} • vai ${item.characterName}` : tRole;
+};
 
 function PersonCard({ person }: { person: GroupedPerson }) {
   const theme = useTheme();
@@ -677,12 +718,34 @@ function StudioChip({ studio }: { studio: StudioInfo }) {
   );
 }
 
+const translateMovieStatus = (status?: string) => {
+  if (!status) return "Đang cập nhật";
+  switch (status.toUpperCase()) {
+    case "DRAFT":
+      return "Bản nháp";
+    case "PUBLISHED":
+      return "Đang phát sóng";
+    case "UPCOMING":
+      return "Sắp chiếu";
+    case "ARCHIVED":
+      return "Đã lưu trữ";
+    case "COMPLETED":
+      return "Đã hoàn thành";
+    case "ONGOING":
+      return "Đang chiếu";
+    case "TRAILER":
+      return "Trailer";
+    default:
+      return status;
+  }
+};
+
 function InfoSection({ movie }: { movie: MovieDetail }) {
   const theme = useTheme();
   const facts = [
     ["Quốc gia", movie.country || "Đang cập nhật"],
     ["Ngôn ngữ", movie.language || "Đang cập nhật"],
-    ["Trạng thái", movie.movieStatus || "Đang cập nhật"],
+    ["Trạng thái", translateMovieStatus(movie.movieStatus)],
     ["Số tập", `${movie.episodes?.length || 1}`],
     [
       "Ngày phát hành",
@@ -849,6 +912,7 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
 
   const visibleEpisodes = showAll ? episodes : episodes.slice(0, EPISODES_PER_PAGE);
   const hasMore = episodes.length > EPISODES_PER_PAGE;
+  const isUpcoming = movie.movieStatus === "UPCOMING";
 
   const handleJump = () => {
     const num = parseInt(jumpInput, 10);
@@ -915,15 +979,16 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
             placeholder="Tới tập số..."
             value={jumpInput}
             onChange={(e) => setJumpInput(e.target.value.replace(/\D/g, ""))}
-            onKeyDown={(e) => e.key === "Enter" && handleJump()}
+            onKeyDown={(e) => e.key === "Enter" && !isUpcoming && handleJump()}
             inputProps={{ inputMode: "numeric" }}
+            disabled={isUpcoming}
             sx={{ width: 130, "& .MuiInputBase-root": { borderRadius: 1.5, height: 32 } }}
           />
           <Button
             variant="contained"
             size="small"
             onClick={handleJump}
-            disabled={!jumpInput}
+            disabled={!jumpInput || isUpcoming}
             sx={{ borderRadius: 1.5, minWidth: 72, height: 32, fontSize: "0.8rem" }}
           >
             Xem ngayyy
@@ -932,6 +997,7 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
             variant={showPicker ? "contained" : "outlined"}
             size="small"
             onClick={() => setShowPicker((v) => !v)}
+            disabled={isUpcoming}
             sx={{ borderRadius: 1.5, height: 32, fontSize: "0.8rem" }}
           >
             {showPicker ? "Ẩn" : "Chọn tập"}
@@ -1030,6 +1096,7 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
             <Paper
               elevation={0}
               onClick={() => {
+                if (isUpcoming) return;
                 navigateToWatch({
                   movieSlug: movie.slug,
                   movieId: movie.id,
@@ -1090,15 +1157,17 @@ function EpisodeSection({ episodes, movie }: { episodes: Episode[]; movie: Movie
                   <Typography variant="caption" color="text.secondary">
                     {formatRuntime(episode.durationSeconds)}
                   </Typography>
-                  <Box onClick={(e) => e.stopPropagation()}>
-                    <OfflineDownloadButton
-                      episodeId={episode.id}
-                      availableQualities={episode.availableQualities}
-                      durationSeconds={episode.durationSeconds}
-                      variant="pill"
-                      size="small"
-                    />
-                  </Box>
+                  {!isUpcoming && (
+                    <Box onClick={(e) => e.stopPropagation()}>
+                      <OfflineDownloadButton
+                        episodeId={episode.id}
+                        availableQualities={episode.availableQualities}
+                        durationSeconds={episode.durationSeconds}
+                        variant="pill"
+                        size="small"
+                      />
+                    </Box>
+                  )}
                 </Stack>
               </Stack>
             </Paper>

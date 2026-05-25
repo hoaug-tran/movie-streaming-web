@@ -141,7 +141,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
       }}
     >
       <Container maxWidth="xl">
-        {/* Header */}
+        {}
         {(results.length > 0 || initialLoading) && !error && (
           <Box sx={{ mb: 4 }}>
             <Typography
@@ -159,7 +159,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
           </Box>
         )}
 
-        {/* Results Grid */}
+        {}
         <Box
           sx={{
             display: "grid",
@@ -178,7 +178,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
             },
           }}
         >
-          {/* Initial Loading - Show skeletons */}
+          {}
           {initialLoading && (
             <>
               {Array.from({ length: 12 }).map((_, i) => (
@@ -189,7 +189,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
             </>
           )}
 
-          {/* No Results */}
+          {}
           {results.length === 0 && !initialLoading && initialLoadingDone && query && !error && (
             <Box sx={{ gridColumn: "1 / -1", textAlign: "center", py: 8 }}>
               <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "1rem" }}>
@@ -198,7 +198,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
             </Box>
           )}
 
-          {/* Error */}
+          {}
           {error && (
             <Box sx={{ gridColumn: "1 / -1", textAlign: "center", py: 4 }}>
               <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.9rem" }}>
@@ -207,7 +207,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({ query, onClose })
             </Box>
           )}
 
-          {/* Results */}
+          {}
           {results.map((movie) => (
             <Box
               key={movie.id}

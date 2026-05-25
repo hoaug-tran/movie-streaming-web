@@ -285,6 +285,7 @@ export default function AdminMoviesPage() {
         if (movie?.id) router.push(`/admin/movies/${movie.id}`);
       }}
       onEdit={(movie, payload) => adminService.updateMovie(movie.id, payload as AdminMoviePayload)}
+      getEditItem={(movie) => adminService.getMovieDetail(movie.id)}
       renderForm={({ mode, item, open, submitting, error, onClose, onSubmit }) => (
         <AdminFormDrawer<MovieFormValues>
           open={open}
@@ -297,6 +298,13 @@ export default function AdminMoviesPage() {
           error={error}
           onClose={onClose}
           onSubmit={onSubmit}
+          onUploadTrailer={
+            mode === "edit" && item?.id
+              ? (file) => adminService.uploadMovieTrailerSmart(item.id, file)
+              : mode === "create"
+                ? (file) => adminService.uploadMovieTrailerTemp(file)
+                : undefined
+          }
         />
       )}
     />

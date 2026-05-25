@@ -25,7 +25,7 @@ export function RegionalDiscovery() {
   const { data: movies = [], isLoading, isError } = useRegionalMovies(REGIONS[activeTab].value);
 
   return (
-    <Box sx={{ width: "100%", px: { xs: 2, md: 4 } }}>
+    <Box sx={{ width: "100%", maxWidth: "100%", overflow: "hidden", px: { xs: 2, md: 4 } }}>
       <Box
         sx={{
           display: "flex",
@@ -34,6 +34,9 @@ export function RegionalDiscovery() {
           justifyContent: "space-between",
           mb: 3,
           gap: 2,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
         }}
       >
         <SectionHeader
@@ -46,14 +49,22 @@ export function RegionalDiscovery() {
           value={activeTab}
           onChange={(_, val) => setActiveTab(val)}
           variant="scrollable"
-          scrollButtons="auto"
+          scrollButtons={false}
+          allowScrollButtonsMobile
           sx={{
             minHeight: "auto",
-            "& .MuiTabs-indicator": {
-              display: "none",
+            width: { xs: "100%", md: "auto" },
+            maxWidth: "100%",
+            overflow: "hidden",
+            "& .MuiTabs-indicator": { display: "none" },
+            "& .MuiTabs-scroller": {
+              overflowX: "auto !important",
+              scrollbarWidth: "none",
+              "&::-webkit-scrollbar": { display: "none" },
             },
             "& .MuiTabs-flexContainer": {
               gap: 1,
+              width: "max-content",
             },
           }}
         >
@@ -63,11 +74,16 @@ export function RegionalDiscovery() {
               label={region.label}
               sx={{
                 minHeight: "auto",
+                minWidth: { xs: "auto", md: 0 },
+                flexShrink: 0,
                 py: 0.75,
-                px: 1.75,
+                px: { xs: 1.35, sm: 1.75 },
                 borderRadius: 1,
-                fontSize: "0.8rem",
-                fontWeight: 500,
+                fontSize: { xs: "0.74rem", sm: "0.8rem" },
+                fontWeight: 600,
+                lineHeight: 1.2,
+                textAlign: "center",
+                whiteSpace: "nowrap",
                 color: alpha(theme.palette.text.primary, 0.5),
                 backgroundColor: alpha(theme.palette.text.primary, 0.04),
                 transition: "all 0.2s ease",

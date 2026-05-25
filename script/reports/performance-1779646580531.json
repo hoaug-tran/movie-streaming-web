@@ -1,0 +1,988 @@
+{
+  "generatedAt": "2026-05-24T18:15:26.842Z",
+  "config": {
+    "api": "http://localhost:8080",
+    "web": "http://localhost:3000",
+    "runs": 5,
+    "concurrency": 4,
+    "lighthouse": true,
+    "redis": "redis://localhost:6379",
+    "actuator": "",
+    "timeout": 15000
+  },
+  "api": [
+    {
+      "name": "Health - Actuator",
+      "method": "GET",
+      "path": "/actuator/health",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 0,
+      "successRate": 0,
+      "statuses": {
+        "503": 5
+      },
+      "avgMs": 2725.04,
+      "p50Ms": 2824.43,
+      "p95Ms": 2910.19,
+      "p99Ms": 2910.19,
+      "minMs": 2269.57,
+      "maxMs": 2910.19,
+      "avgBytes": 51,
+      "errors": []
+    },
+    {
+      "name": "System status",
+      "method": "GET",
+      "path": "/api/v1/system/status",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 4.42,
+      "p50Ms": 4.24,
+      "p95Ms": 6.44,
+      "p99Ms": 6.44,
+      "minMs": 3.12,
+      "maxMs": 6.44,
+      "avgBytes": 1642,
+      "errors": []
+    },
+    {
+      "name": "Movies list",
+      "method": "GET",
+      "path": "/api/v1/movies",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 4.54,
+      "p50Ms": 4.51,
+      "p95Ms": 4.98,
+      "p99Ms": 4.98,
+      "minMs": 4.15,
+      "maxMs": 4.98,
+      "avgBytes": 35166,
+      "errors": []
+    },
+    {
+      "name": "Movie categories",
+      "method": "GET",
+      "path": "/api/v1/movies/categories",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 2.49,
+      "p50Ms": 2.31,
+      "p95Ms": 3.05,
+      "p99Ms": 3.05,
+      "minMs": 2.18,
+      "maxMs": 3.05,
+      "avgBytes": 2376,
+      "errors": []
+    },
+    {
+      "name": "Movie persons",
+      "method": "GET",
+      "path": "/api/v1/movies/persons",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 7.21,
+      "p50Ms": 7.18,
+      "p95Ms": 7.74,
+      "p99Ms": 7.74,
+      "minMs": 6.58,
+      "maxMs": 7.74,
+      "avgBytes": 6130,
+      "errors": []
+    },
+    {
+      "name": "Movie studios",
+      "method": "GET",
+      "path": "/api/v1/movies/studios",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 7.05,
+      "p50Ms": 7.16,
+      "p95Ms": 7.93,
+      "p99Ms": 7.93,
+      "minMs": 5.81,
+      "maxMs": 7.93,
+      "avgBytes": 3367,
+      "errors": []
+    },
+    {
+      "name": "Movie by id",
+      "method": "GET",
+      "path": "/api/v1/movies/1",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 3.08,
+      "p50Ms": 2.95,
+      "p95Ms": 3.62,
+      "p99Ms": 3.62,
+      "minMs": 2.47,
+      "maxMs": 3.62,
+      "avgBytes": 2326,
+      "errors": []
+    },
+    {
+      "name": "Movie episodes",
+      "method": "GET",
+      "path": "/api/v1/movies/1/episodes",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 3.63,
+      "p50Ms": 3.13,
+      "p95Ms": 4.81,
+      "p99Ms": 4.81,
+      "minMs": 2.94,
+      "maxMs": 4.81,
+      "avgBytes": 294,
+      "errors": []
+    },
+    {
+      "name": "Movie tags",
+      "method": "GET",
+      "path": "/api/v1/movies/1/tags",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 9.41,
+      "p50Ms": 8.97,
+      "p95Ms": 10.4,
+      "p99Ms": 10.4,
+      "minMs": 8.58,
+      "maxMs": 10.4,
+      "avgBytes": 198,
+      "errors": []
+    },
+    {
+      "name": "Movie categories by movie",
+      "method": "GET",
+      "path": "/api/v1/movies/1/categories",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 9.42,
+      "p50Ms": 9.07,
+      "p95Ms": 10.83,
+      "p99Ms": 10.83,
+      "minMs": 8.75,
+      "maxMs": 10.83,
+      "avgBytes": 378,
+      "errors": []
+    },
+    {
+      "name": "Movie detail aggregate by slug",
+      "method": "GET",
+      "path": "/api/v1/movies/slug/test/detail",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "404": 5
+      },
+      "avgMs": 4.71,
+      "p50Ms": 4.27,
+      "p95Ms": 7.16,
+      "p99Ms": 7.16,
+      "minMs": 3.53,
+      "maxMs": 7.16,
+      "avgBytes": 147,
+      "errors": []
+    },
+    {
+      "name": "Movies search",
+      "method": "POST",
+      "path": "/api/v1/movies/search",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 4.86,
+      "p50Ms": 4.61,
+      "p95Ms": 5.99,
+      "p99Ms": 5.99,
+      "minMs": 4.49,
+      "maxMs": 5.99,
+      "avgBytes": 17296,
+      "errors": []
+    },
+    {
+      "name": "Movies advanced search",
+      "method": "POST",
+      "path": "/api/v1/movies/search/advanced",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 4.98,
+      "p50Ms": 5.06,
+      "p95Ms": 5.32,
+      "p99Ms": 5.32,
+      "minMs": 4.55,
+      "maxMs": 5.32,
+      "avgBytes": 17556,
+      "errors": []
+    },
+    {
+      "name": "Subscriptions plans",
+      "method": "GET",
+      "path": "/api/v1/subscriptions/plans",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 2.86,
+      "p50Ms": 2.77,
+      "p95Ms": 3.56,
+      "p99Ms": 3.56,
+      "minMs": 2.51,
+      "maxMs": 3.56,
+      "avgBytes": 830,
+      "errors": []
+    },
+    {
+      "name": "Advertisements active",
+      "method": "GET",
+      "path": "/api/v1/advertisements/active",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 3.21,
+      "p50Ms": 3.22,
+      "p95Ms": 3.97,
+      "p99Ms": 3.97,
+      "minMs": 2.23,
+      "maxMs": 3.97,
+      "avgBytes": 2758,
+      "errors": []
+    },
+    {
+      "name": "Ads public",
+      "method": "GET",
+      "path": "/api/v1/ads",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "404": 5
+      },
+      "avgMs": 2.66,
+      "p50Ms": 2.64,
+      "p95Ms": 3.27,
+      "p99Ms": 3.27,
+      "minMs": 2.25,
+      "maxMs": 3.27,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Discovery weekly trending",
+      "method": "GET",
+      "path": "/api/v1/discovery/weekly-trending",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 3.25,
+      "p50Ms": 3.22,
+      "p95Ms": 3.89,
+      "p99Ms": 3.89,
+      "minMs": 2.79,
+      "maxMs": 3.89,
+      "avgBytes": 7549,
+      "errors": []
+    },
+    {
+      "name": "Discovery popular",
+      "method": "GET",
+      "path": "/api/v1/discovery/popular",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "404": 5
+      },
+      "avgMs": 2.64,
+      "p50Ms": 2.61,
+      "p95Ms": 3.53,
+      "p99Ms": 3.53,
+      "minMs": 1.86,
+      "maxMs": 3.53,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Discovery latest",
+      "method": "GET",
+      "path": "/api/v1/discovery/latest",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "404": 5
+      },
+      "avgMs": 4.15,
+      "p50Ms": 4.26,
+      "p95Ms": 5.85,
+      "p99Ms": 5.85,
+      "minMs": 2.29,
+      "maxMs": 5.85,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Comments by movie",
+      "method": "GET",
+      "path": "/api/v1/comments/movie/1",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 4.03,
+      "p50Ms": 3.83,
+      "p95Ms": 5.02,
+      "p99Ms": 5.02,
+      "minMs": 3.37,
+      "maxMs": 5.02,
+      "avgBytes": 2,
+      "errors": []
+    },
+    {
+      "name": "Reviews by movie",
+      "method": "GET",
+      "path": "/api/v1/reviews/movie/1",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 3.41,
+      "p50Ms": 3.53,
+      "p95Ms": 3.96,
+      "p99Ms": 3.96,
+      "minMs": 2.4,
+      "maxMs": 3.96,
+      "avgBytes": 2,
+      "errors": []
+    },
+    {
+      "name": "Reviews by movie page",
+      "method": "GET",
+      "path": "/api/v1/reviews/movie/1/page",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "200": 5
+      },
+      "avgMs": 3.39,
+      "p50Ms": 3.38,
+      "p95Ms": 3.98,
+      "p99Ms": 3.98,
+      "minMs": 2.77,
+      "maxMs": 3.98,
+      "avgBytes": 93,
+      "errors": []
+    },
+    {
+      "name": "Search history public search",
+      "method": "GET",
+      "path": "/api/v1/search-histories/search?keyword=a",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 5,
+      "success": 0,
+      "successRate": 0,
+      "statuses": {
+        "500": 5
+      },
+      "avgMs": 5.51,
+      "p50Ms": 5.91,
+      "p95Ms": 6.55,
+      "p99Ms": 6.55,
+      "minMs": 3.45,
+      "maxMs": 6.55,
+      "avgBytes": 217,
+      "errors": []
+    },
+    {
+      "name": "Stream ad key",
+      "method": "GET",
+      "path": "/api/v1/stream/keys/ads/1",
+      "expectedStatuses": [
+        200,
+        403,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "404": 5
+      },
+      "avgMs": 4.09,
+      "p50Ms": 3.97,
+      "p95Ms": 4.69,
+      "p99Ms": 4.69,
+      "minMs": 3.69,
+      "maxMs": 4.69,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Stream key",
+      "method": "GET",
+      "path": "/api/v1/stream/keys/series/episodes/1/720p",
+      "expectedStatuses": [
+        200,
+        403,
+        404
+      ],
+      "runs": 5,
+      "success": 5,
+      "successRate": 100,
+      "statuses": {
+        "403": 5
+      },
+      "avgMs": 5.99,
+      "p50Ms": 6.2,
+      "p95Ms": 6.26,
+      "p99Ms": 6.26,
+      "minMs": 5.53,
+      "maxMs": 6.26,
+      "avgBytes": 161,
+      "errors": []
+    },
+    {
+      "name": "Offline key",
+      "method": "GET",
+      "path": "/api/v1/stream/offline/key/1/720p",
+      "expectedStatuses": [
+        200,
+        403,
+        404
+      ],
+      "runs": 5,
+      "success": 0,
+      "successRate": 0,
+      "statuses": {
+        "500": 5
+      },
+      "avgMs": 5.2,
+      "p50Ms": 6.14,
+      "p95Ms": 6.25,
+      "p99Ms": 6.25,
+      "minMs": 3.66,
+      "maxMs": 6.25,
+      "avgBytes": 217,
+      "errors": []
+    }
+  ],
+  "frontend": [
+    {
+      "route": "Home SSR shell",
+      "path": "/",
+      "ssrDocument": {
+        "name": "Home SSR shell document",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200": 5
+        },
+        "avgMs": 111.9,
+        "p50Ms": 18.14,
+        "p95Ms": 482.75,
+        "p99Ms": 482.75,
+        "minMs": 17.09,
+        "maxMs": 482.75,
+        "avgBytes": 74207,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/discovery/weekly-trending",
+        "/api/v1/movies"
+      ],
+      "csrDataFetch": {
+        "name": "Home SSR shell CSR APIs",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200,200": 5
+        },
+        "avgMs": 6.74,
+        "p50Ms": 5.38,
+        "p95Ms": 11.72,
+        "p99Ms": 11.72,
+        "minMs": 5.06,
+        "maxMs": 11.72,
+        "avgBytes": 42715,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -105.16,
+      "seo": {
+        "url": "http://localhost:3000/",
+        "title": "Cổng truy cập – Gió Phim",
+        "titleLength": 24,
+        "description": "Cổng truy cập đồ án học tập Gió Phim.",
+        "descriptionLength": 37,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": "noindex, nofollow",
+        "ok": true
+      }
+    },
+    {
+      "route": "Movies SSR shell",
+      "path": "/movies",
+      "ssrDocument": {
+        "name": "Movies SSR shell document",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200": 5
+        },
+        "avgMs": 18.02,
+        "p50Ms": 17.96,
+        "p95Ms": 19.59,
+        "p99Ms": 19.59,
+        "minMs": 16.98,
+        "maxMs": 19.59,
+        "avgBytes": 74219,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/movies",
+        "/api/v1/movies/categories"
+      ],
+      "csrDataFetch": {
+        "name": "Movies SSR shell CSR APIs",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200,200": 5
+        },
+        "avgMs": 5.21,
+        "p50Ms": 5.24,
+        "p95Ms": 5.56,
+        "p99Ms": 5.56,
+        "minMs": 4.8,
+        "maxMs": 5.56,
+        "avgBytes": 37542,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -12.82,
+      "seo": {
+        "url": "http://localhost:3000/movies",
+        "title": "Cổng truy cập – Gió Phim",
+        "titleLength": 24,
+        "description": "Cổng truy cập đồ án học tập Gió Phim.",
+        "descriptionLength": 37,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": "noindex, nofollow",
+        "ok": true
+      }
+    },
+    {
+      "route": "Discovery SSR shell",
+      "path": "/discovery",
+      "ssrDocument": {
+        "name": "Discovery SSR shell document",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200": 5
+        },
+        "avgMs": 20.56,
+        "p50Ms": 19.05,
+        "p95Ms": 27.79,
+        "p99Ms": 27.79,
+        "minMs": 16.84,
+        "maxMs": 27.79,
+        "avgBytes": 74225,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/discovery/weekly-trending"
+      ],
+      "csrDataFetch": {
+        "name": "Discovery SSR shell CSR APIs",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200": 5
+        },
+        "avgMs": 3.86,
+        "p50Ms": 3.8,
+        "p95Ms": 4.32,
+        "p99Ms": 4.32,
+        "minMs": 3.64,
+        "maxMs": 4.32,
+        "avgBytes": 7549,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -16.7,
+      "seo": {
+        "url": "http://localhost:3000/discovery",
+        "title": "Cổng truy cập – Gió Phim",
+        "titleLength": 24,
+        "description": "Cổng truy cập đồ án học tập Gió Phim.",
+        "descriptionLength": 37,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": "noindex, nofollow",
+        "ok": true
+      }
+    },
+    {
+      "route": "Pricing SSR shell",
+      "path": "/pricing",
+      "ssrDocument": {
+        "name": "Pricing SSR shell document",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200": 5
+        },
+        "avgMs": 17.02,
+        "p50Ms": 16.3,
+        "p95Ms": 19.37,
+        "p99Ms": 19.37,
+        "minMs": 16.13,
+        "maxMs": 19.37,
+        "avgBytes": 74221,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/subscriptions/plans"
+      ],
+      "csrDataFetch": {
+        "name": "Pricing SSR shell CSR APIs",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200": 5
+        },
+        "avgMs": 2.8,
+        "p50Ms": 2.77,
+        "p95Ms": 2.95,
+        "p99Ms": 2.95,
+        "minMs": 2.7,
+        "maxMs": 2.95,
+        "avgBytes": 830,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -14.22,
+      "seo": {
+        "url": "http://localhost:3000/pricing",
+        "title": "Cổng truy cập – Gió Phim",
+        "titleLength": 24,
+        "description": "Cổng truy cập đồ án học tập Gió Phim.",
+        "descriptionLength": 37,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": "noindex, nofollow",
+        "ok": true
+      }
+    },
+    {
+      "route": "Watch CSR page",
+      "path": "/watch/test",
+      "ssrDocument": {
+        "name": "Watch CSR page document",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "200": 5
+        },
+        "avgMs": 16.25,
+        "p50Ms": 15.81,
+        "p95Ms": 17.15,
+        "p99Ms": 17.15,
+        "minMs": 15.72,
+        "maxMs": 17.15,
+        "avgBytes": 74229,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/movies/slug/test/detail"
+      ],
+      "csrDataFetch": {
+        "name": "Watch CSR page CSR APIs",
+        "runs": 5,
+        "success": 5,
+        "successRate": 100,
+        "statuses": {
+          "404": 5
+        },
+        "avgMs": 4.96,
+        "p50Ms": 4.98,
+        "p95Ms": 5.23,
+        "p99Ms": 5.23,
+        "minMs": 4.57,
+        "maxMs": 5.23,
+        "avgBytes": 147,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -11.29,
+      "seo": {
+        "url": "http://localhost:3000/watch/test",
+        "title": "Cổng truy cập – Gió Phim",
+        "titleLength": 24,
+        "description": "Cổng truy cập đồ án học tập Gió Phim.",
+        "descriptionLength": 37,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": "noindex, nofollow",
+        "ok": true
+      }
+    }
+  ],
+  "lighthouse": [
+    {
+      "route": "Home SSR shell",
+      "path": "/",
+      "url": "http://localhost:3000/",
+      "categories": {
+        "performance": 69,
+        "accessibility": 100,
+        "best-practices": 96,
+        "seo": 58
+      },
+      "metrics": {
+        "fcpMs": 4100.27,
+        "lcpMs": 5532.4,
+        "tbtMs": 0,
+        "cls": 0.05,
+        "speedIndexMs": 4100.27,
+        "ttiMs": 5532.4
+      }
+    },
+    {
+      "route": "Movies SSR shell",
+      "path": "/movies",
+      "url": "http://localhost:3000/movies",
+      "categories": {
+        "performance": 69,
+        "accessibility": 100,
+        "best-practices": 96,
+        "seo": 58
+      },
+      "metrics": {
+        "fcpMs": 3894.43,
+        "lcpMs": 5919.66,
+        "tbtMs": 0,
+        "cls": 0.05,
+        "speedIndexMs": 3894.43,
+        "ttiMs": 5919.66
+      }
+    },
+    {
+      "route": "Discovery SSR shell",
+      "path": "/discovery",
+      "url": "http://localhost:3000/discovery",
+      "categories": {
+        "performance": 69,
+        "accessibility": 100,
+        "best-practices": 96,
+        "seo": 58
+      },
+      "metrics": {
+        "fcpMs": 3969.24,
+        "lcpMs": 5694.4,
+        "tbtMs": 0,
+        "cls": 0.05,
+        "speedIndexMs": 3969.24,
+        "ttiMs": 5701.9
+      }
+    },
+    {
+      "route": "Pricing SSR shell",
+      "path": "/pricing",
+      "url": "http://localhost:3000/pricing",
+      "categories": {
+        "performance": 70,
+        "accessibility": 100,
+        "best-practices": 96,
+        "seo": 58
+      },
+      "metrics": {
+        "fcpMs": 3817.79,
+        "lcpMs": 5843.02,
+        "tbtMs": 0,
+        "cls": 0.05,
+        "speedIndexMs": 3817.79,
+        "ttiMs": 5850.52
+      }
+    },
+    {
+      "route": "Watch CSR page",
+      "path": "/watch/test",
+      "url": "http://localhost:3000/watch/test",
+      "categories": {
+        "performance": 69,
+        "accessibility": 100,
+        "best-practices": 96,
+        "seo": 58
+      },
+      "metrics": {
+        "fcpMs": 3967.76,
+        "lcpMs": 5917.86,
+        "tbtMs": 0,
+        "cls": 0.05,
+        "speedIndexMs": 3967.76,
+        "ttiMs": 5917.86
+      }
+    }
+  ],
+  "redis": {
+    "source": "redis-info",
+    "hits": 1058,
+    "misses": 308,
+    "total": 1366,
+    "hitRatio": 77.45,
+    "missRatio": 22.55
+  },
+  "thresholds": {
+    "apiP95GoodMs": 300,
+    "apiP95NeedsImprovementMs": 800,
+    "lighthouseSeoTarget": 90,
+    "fcpGoodMs": 1800,
+    "lcpGoodMs": 2500,
+    "tbtGoodMs": 200,
+    "redisHitRatioTargetPercent": 80
+  }
+}

@@ -12,9 +12,6 @@ import { getFromLocalStorage, setInLocalStorage } from "@/utils/helpers";
 
 export type VideoQuality = "720p" | "1080p" | "4K";
 
-// Cache vào localStorage để hook hoạt động khi offline.
-// Khi không có mạng, react-query fail nhưng initialData từ cache giúp UI vẫn
-// hiển thị đúng gói Premium Plus (border avatar, quyền canDownloadOffline...).
 const PLANS_CACHE_KEY = "cached-subscription-plans";
 const SUB_CACHE_KEY = "cached-my-subscription";
 
@@ -22,7 +19,7 @@ export function useSubscription(): ActiveSubscriptionInfo & {
   isLoading: boolean;
   maxQuality: VideoQuality;
 } {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const { data: plans } = useQuery({
     queryKey: ["subscription-plans"],
@@ -54,7 +51,9 @@ export function useSubscription(): ActiveSubscriptionInfo & {
         : undefined,
   });
 
-  if (!isAuthenticated || !activeSub) {
+  const isAdminOrMod = user?.role === "ROLE_ADMIN" || user?.role === "ROLE_MODERATOR";
+
+  if (!isAuthenticated || (!activeSub && !isAdminOrMod)) {
     return {
       hasActiveSubscription: false,
       hasAdsFree: false,
@@ -66,19 +65,21 @@ export function useSubscription(): ActiveSubscriptionInfo & {
     };
   }
 
-  // Resolve plan: ưu tiên plans list, fallback sang plan kèm trong subscription
-  // (để khi offline plans null thì vẫn lấy được plan.code từ snapshot trong sub).
-  const plan = plans?.find((p) => p.id === activeSub.planId) ?? activeSub.plan ?? null;
-  const canWatchPremium = plan?.code === "PREMIUM_PLUS" || plan?.code === "PREMIUM";
+  const plan = plans?.find((p) => p.id === activeSub?.planId) ?? activeSub?.plan ?? null;
+  const canWatchPremium = isAdminOrMod || plan?.code === "PREMIUM_PLUS" || plan?.code === "PREMIUM";
   const maxQuality: VideoQuality =
-    plan?.code === "PREMIUM_PLUS" ? "4K" : plan?.code === "PREMIUM" ? "1080p" : "720p";
+    isAdminOrMod || plan?.code === "PREMIUM_PLUS"
+      ? "4K"
+      : plan?.code === "PREMIUM"
+        ? "1080p"
+        : "720p";
 
   return {
     hasActiveSubscription: true,
     hasAdsFree: plan?.hasAdsFree ?? false,
     canWatchPremium,
     currentPlan: plan ?? null,
-    subscription: activeSub,
+    subscription: activeSub ?? null,
     isLoading,
     maxQuality,
   };

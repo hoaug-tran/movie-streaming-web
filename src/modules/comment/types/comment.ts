@@ -1,4 +1,4 @@
-/* Comment Domain Types */
+
 export interface Comment {
   id: number;
   userId: number;

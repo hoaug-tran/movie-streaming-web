@@ -1,0 +1,904 @@
+{
+  "generatedAt": "2026-05-24T18:46:51.179Z",
+  "config": {
+    "api": "http://localhost:8080",
+    "web": "http://localhost:3000",
+    "runs": 1,
+    "concurrency": 2,
+    "lighthouse": false,
+    "redis": "",
+    "actuator": "",
+    "timeout": 10000,
+    "gatePassword": "[configured]",
+    "gateCookie": "[configured]",
+    "useGate": true
+  },
+  "gate": {
+    "enabled": true,
+    "passed": true,
+    "mode": "after-access-gate"
+  },
+  "api": [
+    {
+      "name": "Health - Actuator",
+      "method": "GET",
+      "path": "/actuator/health",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 0,
+      "successRate": 0,
+      "statuses": {
+        "503": 1
+      },
+      "avgMs": 2234.28,
+      "p50Ms": 2234.28,
+      "p95Ms": 2234.28,
+      "p99Ms": 2234.28,
+      "minMs": 2234.28,
+      "maxMs": 2234.28,
+      "avgBytes": 51,
+      "errors": []
+    },
+    {
+      "name": "System status",
+      "method": "GET",
+      "path": "/api/v1/system/status",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 7.92,
+      "p50Ms": 7.92,
+      "p95Ms": 7.92,
+      "p99Ms": 7.92,
+      "minMs": 7.92,
+      "maxMs": 7.92,
+      "avgBytes": 1642,
+      "errors": []
+    },
+    {
+      "name": "Movies list",
+      "method": "GET",
+      "path": "/api/v1/movies",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 9.14,
+      "p50Ms": 9.14,
+      "p95Ms": 9.14,
+      "p99Ms": 9.14,
+      "minMs": 9.14,
+      "maxMs": 9.14,
+      "avgBytes": 35166,
+      "errors": []
+    },
+    {
+      "name": "Movie categories",
+      "method": "GET",
+      "path": "/api/v1/movies/categories",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 5.59,
+      "p50Ms": 5.59,
+      "p95Ms": 5.59,
+      "p99Ms": 5.59,
+      "minMs": 5.59,
+      "maxMs": 5.59,
+      "avgBytes": 2376,
+      "errors": []
+    },
+    {
+      "name": "Movie persons",
+      "method": "GET",
+      "path": "/api/v1/movies/persons",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 17.39,
+      "p50Ms": 17.39,
+      "p95Ms": 17.39,
+      "p99Ms": 17.39,
+      "minMs": 17.39,
+      "maxMs": 17.39,
+      "avgBytes": 6130,
+      "errors": []
+    },
+    {
+      "name": "Movie studios",
+      "method": "GET",
+      "path": "/api/v1/movies/studios",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 10.31,
+      "p50Ms": 10.31,
+      "p95Ms": 10.31,
+      "p99Ms": 10.31,
+      "minMs": 10.31,
+      "maxMs": 10.31,
+      "avgBytes": 3367,
+      "errors": []
+    },
+    {
+      "name": "Movie by id",
+      "method": "GET",
+      "path": "/api/v1/movies/1",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 7.22,
+      "p50Ms": 7.22,
+      "p95Ms": 7.22,
+      "p99Ms": 7.22,
+      "minMs": 7.22,
+      "maxMs": 7.22,
+      "avgBytes": 2326,
+      "errors": []
+    },
+    {
+      "name": "Movie episodes",
+      "method": "GET",
+      "path": "/api/v1/movies/1/episodes",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 5.48,
+      "p50Ms": 5.48,
+      "p95Ms": 5.48,
+      "p99Ms": 5.48,
+      "minMs": 5.48,
+      "maxMs": 5.48,
+      "avgBytes": 294,
+      "errors": []
+    },
+    {
+      "name": "Movie tags",
+      "method": "GET",
+      "path": "/api/v1/movies/1/tags",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 11.48,
+      "p50Ms": 11.48,
+      "p95Ms": 11.48,
+      "p99Ms": 11.48,
+      "minMs": 11.48,
+      "maxMs": 11.48,
+      "avgBytes": 198,
+      "errors": []
+    },
+    {
+      "name": "Movie categories by movie",
+      "method": "GET",
+      "path": "/api/v1/movies/1/categories",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 11.02,
+      "p50Ms": 11.02,
+      "p95Ms": 11.02,
+      "p99Ms": 11.02,
+      "minMs": 11.02,
+      "maxMs": 11.02,
+      "avgBytes": 378,
+      "errors": []
+    },
+    {
+      "name": "Movie detail aggregate by slug",
+      "method": "GET",
+      "path": "/api/v1/movies/slug/test/detail",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "404": 1
+      },
+      "avgMs": 5.45,
+      "p50Ms": 5.45,
+      "p95Ms": 5.45,
+      "p99Ms": 5.45,
+      "minMs": 5.45,
+      "maxMs": 5.45,
+      "avgBytes": 147,
+      "errors": []
+    },
+    {
+      "name": "Movies search",
+      "method": "POST",
+      "path": "/api/v1/movies/search",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 181.07,
+      "p50Ms": 181.07,
+      "p95Ms": 181.07,
+      "p99Ms": 181.07,
+      "minMs": 181.07,
+      "maxMs": 181.07,
+      "avgBytes": 17296,
+      "errors": []
+    },
+    {
+      "name": "Movies advanced search",
+      "method": "POST",
+      "path": "/api/v1/movies/search/advanced",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 170.81,
+      "p50Ms": 170.81,
+      "p95Ms": 170.81,
+      "p99Ms": 170.81,
+      "minMs": 170.81,
+      "maxMs": 170.81,
+      "avgBytes": 17556,
+      "errors": []
+    },
+    {
+      "name": "Subscriptions plans",
+      "method": "GET",
+      "path": "/api/v1/subscriptions/plans",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 2.91,
+      "p50Ms": 2.91,
+      "p95Ms": 2.91,
+      "p99Ms": 2.91,
+      "minMs": 2.91,
+      "maxMs": 2.91,
+      "avgBytes": 830,
+      "errors": []
+    },
+    {
+      "name": "Advertisements active",
+      "method": "GET",
+      "path": "/api/v1/advertisements/active",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 6.71,
+      "p50Ms": 6.71,
+      "p95Ms": 6.71,
+      "p99Ms": 6.71,
+      "minMs": 6.71,
+      "maxMs": 6.71,
+      "avgBytes": 2758,
+      "errors": []
+    },
+    {
+      "name": "Ads public",
+      "method": "GET",
+      "path": "/api/v1/ads",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "404": 1
+      },
+      "avgMs": 4.24,
+      "p50Ms": 4.24,
+      "p95Ms": 4.24,
+      "p99Ms": 4.24,
+      "minMs": 4.24,
+      "maxMs": 4.24,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Discovery weekly trending",
+      "method": "GET",
+      "path": "/api/v1/discovery/weekly-trending",
+      "expectedStatuses": [
+        200
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 3.83,
+      "p50Ms": 3.83,
+      "p95Ms": 3.83,
+      "p99Ms": 3.83,
+      "minMs": 3.83,
+      "maxMs": 3.83,
+      "avgBytes": 7549,
+      "errors": []
+    },
+    {
+      "name": "Discovery popular",
+      "method": "GET",
+      "path": "/api/v1/discovery/popular",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "404": 1
+      },
+      "avgMs": 3.77,
+      "p50Ms": 3.77,
+      "p95Ms": 3.77,
+      "p99Ms": 3.77,
+      "minMs": 3.77,
+      "maxMs": 3.77,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Discovery latest",
+      "method": "GET",
+      "path": "/api/v1/discovery/latest",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "404": 1
+      },
+      "avgMs": 3.64,
+      "p50Ms": 3.64,
+      "p95Ms": 3.64,
+      "p99Ms": 3.64,
+      "minMs": 3.64,
+      "maxMs": 3.64,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Comments by movie",
+      "method": "GET",
+      "path": "/api/v1/comments/movie/1",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 4.04,
+      "p50Ms": 4.04,
+      "p95Ms": 4.04,
+      "p99Ms": 4.04,
+      "minMs": 4.04,
+      "maxMs": 4.04,
+      "avgBytes": 2,
+      "errors": []
+    },
+    {
+      "name": "Reviews by movie",
+      "method": "GET",
+      "path": "/api/v1/reviews/movie/1",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 4.13,
+      "p50Ms": 4.13,
+      "p95Ms": 4.13,
+      "p99Ms": 4.13,
+      "minMs": 4.13,
+      "maxMs": 4.13,
+      "avgBytes": 2,
+      "errors": []
+    },
+    {
+      "name": "Reviews by movie page",
+      "method": "GET",
+      "path": "/api/v1/reviews/movie/1/page",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "200": 1
+      },
+      "avgMs": 3.73,
+      "p50Ms": 3.73,
+      "p95Ms": 3.73,
+      "p99Ms": 3.73,
+      "minMs": 3.73,
+      "maxMs": 3.73,
+      "avgBytes": 93,
+      "errors": []
+    },
+    {
+      "name": "Search history public search",
+      "method": "GET",
+      "path": "/api/v1/search-histories/search?keyword=a",
+      "expectedStatuses": [
+        200,
+        404
+      ],
+      "runs": 1,
+      "success": 0,
+      "successRate": 0,
+      "statuses": {
+        "500": 1
+      },
+      "avgMs": 5.59,
+      "p50Ms": 5.59,
+      "p95Ms": 5.59,
+      "p99Ms": 5.59,
+      "minMs": 5.59,
+      "maxMs": 5.59,
+      "avgBytes": 217,
+      "errors": []
+    },
+    {
+      "name": "Stream ad key",
+      "method": "GET",
+      "path": "/api/v1/stream/keys/ads/1",
+      "expectedStatuses": [
+        200,
+        403,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "404": 1
+      },
+      "avgMs": 3.69,
+      "p50Ms": 3.69,
+      "p95Ms": 3.69,
+      "p99Ms": 3.69,
+      "minMs": 3.69,
+      "maxMs": 3.69,
+      "avgBytes": 126,
+      "errors": []
+    },
+    {
+      "name": "Stream key",
+      "method": "GET",
+      "path": "/api/v1/stream/keys/series/episodes/1/720p",
+      "expectedStatuses": [
+        200,
+        403,
+        404
+      ],
+      "runs": 1,
+      "success": 1,
+      "successRate": 100,
+      "statuses": {
+        "403": 1
+      },
+      "avgMs": 8.31,
+      "p50Ms": 8.31,
+      "p95Ms": 8.31,
+      "p99Ms": 8.31,
+      "minMs": 8.31,
+      "maxMs": 8.31,
+      "avgBytes": 161,
+      "errors": []
+    },
+    {
+      "name": "Offline key",
+      "method": "GET",
+      "path": "/api/v1/stream/offline/key/1/720p",
+      "expectedStatuses": [
+        200,
+        403,
+        404
+      ],
+      "runs": 1,
+      "success": 0,
+      "successRate": 0,
+      "statuses": {
+        "500": 1
+      },
+      "avgMs": 4.96,
+      "p50Ms": 4.96,
+      "p95Ms": 4.96,
+      "p99Ms": 4.96,
+      "minMs": 4.96,
+      "maxMs": 4.96,
+      "avgBytes": 217,
+      "errors": []
+    }
+  ],
+  "frontend": [
+    {
+      "route": "Home SSR shell",
+      "path": "/",
+      "gateMode": "after-access-gate",
+      "ssrDocument": {
+        "name": "Home SSR shell document",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200": 1
+        },
+        "avgMs": 25.6,
+        "p50Ms": 25.6,
+        "p95Ms": 25.6,
+        "p99Ms": 25.6,
+        "minMs": 25.6,
+        "maxMs": 25.6,
+        "avgBytes": 110789,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/discovery/weekly-trending",
+        "/api/v1/movies"
+      ],
+      "csrDataFetch": {
+        "name": "Home SSR shell CSR APIs",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200,200": 1
+        },
+        "avgMs": 9.8,
+        "p50Ms": 9.8,
+        "p95Ms": 9.8,
+        "p99Ms": 9.8,
+        "minMs": 9.8,
+        "maxMs": 9.8,
+        "avgBytes": 42715,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -15.8,
+      "seo": {
+        "url": "http://localhost:3000/",
+        "title": "Gió phim - Gió đưa, phim tới",
+        "titleLength": 28,
+        "description": "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
+        "descriptionLength": 81,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 0,
+        "robots": null,
+        "ok": true
+      }
+    },
+    {
+      "route": "Movies SSR shell",
+      "path": "/movies",
+      "gateMode": "after-access-gate",
+      "ssrDocument": {
+        "name": "Movies SSR shell document",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200": 1
+        },
+        "avgMs": 12.3,
+        "p50Ms": 12.3,
+        "p95Ms": 12.3,
+        "p99Ms": 12.3,
+        "minMs": 12.3,
+        "maxMs": 12.3,
+        "avgBytes": 64299,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/movies",
+        "/api/v1/movies/categories"
+      ],
+      "csrDataFetch": {
+        "name": "Movies SSR shell CSR APIs",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200,200": 1
+        },
+        "avgMs": 5.96,
+        "p50Ms": 5.96,
+        "p95Ms": 5.96,
+        "p99Ms": 5.96,
+        "minMs": 5.96,
+        "maxMs": 5.96,
+        "avgBytes": 37542,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -6.34,
+      "seo": {
+        "url": "http://localhost:3000/movies",
+        "title": "Phim Lẻ | Gió Phim",
+        "titleLength": 18,
+        "description": "Khám phá bộ sưu tập phim lẻ quy mô lớn với các bộ phim hay nhất.",
+        "descriptionLength": 64,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": null,
+        "ok": true
+      }
+    },
+    {
+      "route": "Discovery SSR shell",
+      "path": "/discovery",
+      "gateMode": "after-access-gate",
+      "ssrDocument": {
+        "name": "Discovery SSR shell document",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200": 1
+        },
+        "avgMs": 12.12,
+        "p50Ms": 12.12,
+        "p95Ms": 12.12,
+        "p99Ms": 12.12,
+        "minMs": 12.12,
+        "maxMs": 12.12,
+        "avgBytes": 114504,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/discovery/weekly-trending"
+      ],
+      "csrDataFetch": {
+        "name": "Discovery SSR shell CSR APIs",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200": 1
+        },
+        "avgMs": 3.72,
+        "p50Ms": 3.72,
+        "p95Ms": 3.72,
+        "p99Ms": 3.72,
+        "minMs": 3.72,
+        "maxMs": 3.72,
+        "avgBytes": 7549,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -8.41,
+      "seo": {
+        "url": "http://localhost:3000/discovery",
+        "title": "Khám Phá | Gió Phim",
+        "titleLength": 19,
+        "description": "Khám phá kho phim khổng lồ theo thể loại, thập niên và xếp hạng.",
+        "descriptionLength": 64,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": null,
+        "ok": true
+      }
+    },
+    {
+      "route": "Pricing SSR shell",
+      "path": "/pricing",
+      "gateMode": "after-access-gate",
+      "ssrDocument": {
+        "name": "Pricing SSR shell document",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200": 1
+        },
+        "avgMs": 9.49,
+        "p50Ms": 9.49,
+        "p95Ms": 9.49,
+        "p99Ms": 9.49,
+        "minMs": 9.49,
+        "maxMs": 9.49,
+        "avgBytes": 79243,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/subscriptions/plans"
+      ],
+      "csrDataFetch": {
+        "name": "Pricing SSR shell CSR APIs",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200": 1
+        },
+        "avgMs": 3.22,
+        "p50Ms": 3.22,
+        "p95Ms": 3.22,
+        "p99Ms": 3.22,
+        "minMs": 3.22,
+        "maxMs": 3.22,
+        "avgBytes": 830,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -6.27,
+      "seo": {
+        "url": "http://localhost:3000/pricing",
+        "title": "Gió phim - Gió đưa, phim tới",
+        "titleLength": 28,
+        "description": "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
+        "descriptionLength": 81,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 1,
+        "robots": null,
+        "ok": true
+      }
+    },
+    {
+      "route": "Watch CSR page",
+      "path": "/watch/test",
+      "gateMode": "after-access-gate",
+      "ssrDocument": {
+        "name": "Watch CSR page document",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "200": 1
+        },
+        "avgMs": 89.04,
+        "p50Ms": 89.04,
+        "p95Ms": 89.04,
+        "p99Ms": 89.04,
+        "minMs": 89.04,
+        "maxMs": 89.04,
+        "avgBytes": 44432,
+        "errors": []
+      },
+      "csrApis": [
+        "/api/v1/movies/slug/test/detail"
+      ],
+      "csrDataFetch": {
+        "name": "Watch CSR page CSR APIs",
+        "runs": 1,
+        "success": 1,
+        "successRate": 100,
+        "statuses": {
+          "404": 1
+        },
+        "avgMs": 5.3,
+        "p50Ms": 5.3,
+        "p95Ms": 5.3,
+        "p99Ms": 5.3,
+        "minMs": 5.3,
+        "maxMs": 5.3,
+        "avgBytes": 147,
+        "errors": []
+      },
+      "ssrVsCsrDeltaMs": -83.74,
+      "seo": {
+        "url": "http://localhost:3000/watch/test",
+        "title": "Gió phim - Gió đưa, phim tới",
+        "titleLength": 28,
+        "description": "Khám phá hàng nghìn bộ phim và series hấp dẫn. Xem phim HD miễn phí tại Gió Phim.",
+        "descriptionLength": 81,
+        "canonical": "https://giophim.libsys.me",
+        "h1Count": 0,
+        "robots": null,
+        "ok": true
+      }
+    }
+  ],
+  "lighthouse": {
+    "skipped": true,
+    "reason": "Pass --lighthouse to run Lighthouse. Install: npm i -D lighthouse chrome-launcher"
+  },
+  "redis": {
+    "skipped": true,
+    "reason": "No Redis source configured. Use --redis redis://host:6379 or --actuator http://host:8080/actuator/metrics"
+  },
+  "thresholds": {
+    "apiP95GoodMs": 300,
+    "apiP95NeedsImprovementMs": 800,
+    "lighthouseSeoTarget": 90,
+    "fcpGoodMs": 1800,
+    "lcpGoodMs": 2500,
+    "tbtGoodMs": 200,
+    "redisHitRatioTargetPercent": 80
+  }
+}

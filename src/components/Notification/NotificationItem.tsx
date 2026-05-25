@@ -50,7 +50,7 @@ function resolveActionUrl(notification: Notification): string | null {
   const url = notification.actionUrl;
   if (!url) return null;
   if (SOCIAL_TYPES.includes(notification.type) && url.startsWith("/watch/")) {
-    return url.replace(/^\/watch\//, "/movies/");
+    return url.replace(/^\/watch\
   }
   return url;
 }

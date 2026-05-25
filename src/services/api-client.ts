@@ -12,7 +12,7 @@ const PUBLIC_ROUTES = [
   "/about",
   "/policy",
   "/terms",
-  "/help",
+  "/support",
 ];
 
 interface ApiClientConfig extends RequestInit {

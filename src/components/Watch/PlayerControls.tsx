@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -394,10 +394,11 @@ export default function PlayerControls({
                 fontFamily: "Inter, sans-serif",
                 fontWeight: 600,
                 fontSize: { xs: "0.9rem", md: "1.1rem" },
-                lineHeight: 1.2,
+                lineHeight: 1.5,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                pb: 0.5,
               }}
             >
               {movie.title}

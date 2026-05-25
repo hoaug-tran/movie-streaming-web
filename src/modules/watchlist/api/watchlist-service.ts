@@ -3,7 +3,7 @@ import { MovieInWatchlistResponse, Watchlist } from "@/modules/watchlist/types/w
 
 class WatchlistService {
   async getMyWatchlist(): Promise<Watchlist[]> {
-    return apiClient.get<Watchlist[]>("/watchlists/me");
+    return apiClient.get<Watchlist[]>("/watchlists/me", { cache: "no-store" });
   }
 
   async add(movieId: number): Promise<Watchlist> {

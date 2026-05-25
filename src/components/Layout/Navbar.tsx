@@ -82,6 +82,9 @@ const Navbar: React.FC = () => {
 
   if (pathname.startsWith("/auth")) return null;
 
+  const canAccessAdmin = user?.role === "ROLE_ADMIN" || user?.role === "ROLE_MODERATOR";
+  const adminHref = user?.role === "ROLE_MODERATOR" ? "/admin/moderation" : "/admin";
+
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
   const handleOfflineClick = (e: React.MouseEvent) => {
@@ -118,8 +121,8 @@ const Navbar: React.FC = () => {
   const mobileNavLinks = [
     { label: "Trang chủ", href: "/", icon: <Film size={20} /> },
     ...desktopNavLinks,
-    ...(user?.role === "ROLE_ADMIN"
-      ? [{ label: "Trang quản trị", href: "/admin", icon: <ShieldCheck size={20} /> }]
+    ...(canAccessAdmin
+      ? [{ label: "Trang quản trị", href: adminHref, icon: <ShieldCheck size={20} /> }]
       : []),
   ];
 
@@ -370,6 +373,8 @@ const Navbar: React.FC = () => {
             "background-color 0.35s ease, border-color 0.35s ease, backdrop-filter 0.35s ease",
           zIndex: 1000,
           paddingTop: "env(safe-area-inset-top, 0px)",
+          width: "100%",
+          maxWidth: "100%",
         }}
       >
         <Toolbar
@@ -377,10 +382,17 @@ const Navbar: React.FC = () => {
             display: "flex",
             justifyContent: "space-between",
             minHeight: { xs: 60, md: 68 },
-            px: { xs: 2, md: 4 },
+            px: { xs: 1.5, md: 4 },
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, md: 0 }, flexShrink: 0 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: { xs: 0.5, md: 0 },
+              flexShrink: 0,
+            }}
+          >
             <IconButton
               color="inherit"
               aria-label="open drawer"
@@ -389,20 +401,25 @@ const Navbar: React.FC = () => {
               sx={{
                 display: { md: "none" },
                 color: isScrolled ? "text.primary" : "#ffffff",
+                width: 42,
+                height: 42,
+                mr: 0,
+                p: 0.75,
                 transition: "transform 0.2s",
                 "&:active": { transform: "scale(0.9)" },
               }}
             >
-              <MenuRoundedIcon />
+              <MenuRoundedIcon sx={{ fontSize: 27 }} />
             </IconButton>
 
-            <Link href="/" style={{ textDecoration: "none" }}>
+            <Link href="/" style={{ textDecoration: "none", display: "inline-flex" }}>
               <Typography
                 sx={{
                   display: searchOpen ? { xs: "none", sm: "block" } : "block",
                   fontFamily: "'Inter', sans-serif",
                   fontWeight: 900,
                   fontSize: { xs: "1.2rem", md: "1.5rem" },
+                  lineHeight: 1,
                   letterSpacing: "-0.05em",
                   color: isScrolled ? "text.primary" : "#ffffff",
                   cursor: "pointer",
@@ -439,7 +456,15 @@ const Navbar: React.FC = () => {
             </Box>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexShrink: 0 }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: { xs: 0.5, sm: 1 },
+              alignItems: "center",
+              flexShrink: 0,
+              minWidth: "max-content",
+            }}
+          >
             <SearchBar
               isOpen={searchOpen}
               onOpenChange={handleSearchOpen}
@@ -448,20 +473,40 @@ const Navbar: React.FC = () => {
             />
 
             {isAuthenticated && !loading ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                {user?.role === "ROLE_ADMIN" && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: { xs: 0.5, sm: 1 },
+                  flexShrink: 0,
+                }}
+              >
+                {canAccessAdmin && (
                   <Box sx={{ display: { xs: "none", md: "block" } }}>
-                    <Link href="/admin" style={{ textDecoration: "none" }}>
+                    <Link href={adminHref} style={{ textDecoration: "none" }}>
                       <Button sx={navButtonSx} startIcon={<ShieldCheck size={18} />}>
                         Trang quản trị
                       </Button>
                     </Link>
                   </Box>
                 )}
-                <Box sx={{ display: { xs: "none", sm: "flex" } }}>
+
+                <Box
+                  sx={{
+                    display: searchOpen ? { xs: "none", md: "flex" } : { xs: "none", sm: "flex" },
+                  }}
+                >
                   <NotificationBell isScrolled={isScrolled} />
                 </Box>
-                <UserProfileDropdown onLogout={logout} />
+
+                <Box
+                  sx={{
+                    display: searchOpen ? { xs: "none", md: "block" } : "block",
+                    flexShrink: 0,
+                  }}
+                >
+                  <UserProfileDropdown onLogout={logout} />
+                </Box>
               </Box>
             ) : !loading ? (
               <Box sx={{ ml: 1, display: { xs: "none", md: "block" } }}>

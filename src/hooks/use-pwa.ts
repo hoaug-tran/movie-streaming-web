@@ -17,6 +17,7 @@ interface UsePwaReturn {
   isSafari: boolean;
   needsManualInstall: boolean;
   isInstalled: boolean;
+  hasOfflineAuth: boolean;
   promptInstall: () => Promise<boolean>;
 }
 
@@ -50,6 +51,7 @@ export function usePwa(): UsePwaReturn {
   const [isIOS, setIsIOS] = useState(false);
   const [isSafari, setIsSafari] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [hasOfflineAuth, setHasOfflineAuth] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -57,6 +59,7 @@ export function usePwa(): UsePwaReturn {
     setIsSafari(isSafariBrowser());
     try {
       setIsInstalled(localStorage.getItem("pwa-installed") === "1" || isStandaloneDisplay());
+      setHasOfflineAuth(!!localStorage.getItem("gp_offline_auth"));
     } catch {
       setIsInstalled(isStandaloneDisplay());
     }
@@ -108,6 +111,7 @@ export function usePwa(): UsePwaReturn {
     isSafari,
     needsManualInstall,
     isInstalled,
+    hasOfflineAuth,
     promptInstall,
   };
 }

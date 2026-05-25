@@ -1,4 +1,4 @@
-/* Review Domain Types */
+
 export interface Review {
   id: string;
   userId: string;

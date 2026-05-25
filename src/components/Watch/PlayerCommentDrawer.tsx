@@ -212,7 +212,7 @@ export default function PlayerCommentDrawer({
           zIndex: 30,
         }}
       >
-        {/* Header */}
+        {}
         <Box
           sx={{
             display: "flex",
@@ -237,7 +237,7 @@ export default function PlayerCommentDrawer({
           </IconButton>
         </Box>
 
-        {/* Comments list */}
+        {}
         <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 1.5 }}>
           {commentsQuery.isLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
@@ -275,7 +275,7 @@ export default function PlayerCommentDrawer({
                     }}
                   />
 
-                  {/* Replies */}
+                  {}
                   {(repliesByParent[comment.id] || []).length > 0 && (
                     <Stack spacing={1} sx={{ mt: 1, ml: 4.5 }}>
                       {(repliesByParent[comment.id] || []).map((reply) => (
@@ -295,7 +295,7 @@ export default function PlayerCommentDrawer({
                     </Stack>
                   )}
 
-                  {/* Reply form */}
+                  {}
                   <Collapse in={replyingTo === comment.id} unmountOnExit>
                     <Box
                       component="form"
@@ -375,7 +375,7 @@ export default function PlayerCommentDrawer({
           )}
         </Box>
 
-        {/* Input area */}
+        {}
         <Box
           sx={{
             px: 2,
@@ -455,7 +455,7 @@ export default function PlayerCommentDrawer({
         </Box>
       </Box>
 
-      {/* Report dialog */}
+      {}
       <ReportContentDialog
         open={Boolean(reportComment)}
         targetType="comment"
@@ -538,7 +538,7 @@ function CommentItem({
           {comment.content}
         </Typography>
         <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5 }}>
-          {/* Like */}
+          {}
           <IconButton
             size="small"
             onClick={onLike}
@@ -561,7 +561,7 @@ function CommentItem({
             </Typography>
           )}
 
-          {/* Reply */}
+          {}
           {onReply && (
             <IconButton
               size="small"
@@ -589,7 +589,7 @@ function CommentItem({
             </IconButton>
           )}
 
-          {/* More menu */}
+          {}
           <IconButton
             size="small"
             onClick={(e) => {

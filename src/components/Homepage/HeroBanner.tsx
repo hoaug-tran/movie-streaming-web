@@ -53,7 +53,7 @@ export function HeroBanner() {
   }
 
   return (
-    <Box sx={{ position: "relative", overflow: "hidden" }}>
+    <Box sx={{ position: "relative", overflow: "hidden", mt: { xs: -7.5, md: -8.5 } }}>
       <Box
         sx={{
           position: "relative",

@@ -16,12 +16,14 @@ import {
   Pagination,
   PaginationItem,
   Paper,
+  Snackbar,
   Stack,
   TextField,
   Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
+import type { AlertColor } from "@mui/material";
 import type { Theme } from "@mui/material/styles";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -96,6 +98,7 @@ interface AdminManagementPageProps<T extends { id: number }> {
   headerExtra?: ReactNode;
   hideCreateButton?: boolean;
   onRowClick?: (item: T) => void;
+  getEditItem?: (item: T) => Promise<T>;
 }
 
 const getToneColor = (tone: Tone, theme: Theme) => {
@@ -160,6 +163,7 @@ export default function AdminManagementPage<T extends { id: number }>({
   headerExtra,
   hideCreateButton = false,
   onRowClick,
+  getEditItem,
 }: AdminManagementPageProps<T>) {
   const theme = useTheme();
   const queryClient = useQueryClient();
@@ -168,16 +172,21 @@ export default function AdminManagementPage<T extends { id: number }>({
   const [extraFilterValues, setExtraFilterValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(extraFilters.map((f) => [f.key, "ALL"]))
   );
-  const [notice, setNotice] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    open: boolean;
+    severity: AlertColor;
+    message: string;
+  }>({ open: false, severity: "info", message: "" });
   const [formState, setFormState] = useState<{ mode: "create" | "edit"; item: T | null } | null>(
     null
   );
+  const [hydratingEditId, setHydratingEditId] = useState<number | null>(null);
 
-  // Pagination states
+  
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Reset page to 1 when any filters change
+  
   useEffect(() => {
     setPage(1);
   }, [search, status, extraFilterValues]);
@@ -198,8 +207,15 @@ export default function AdminManagementPage<T extends { id: number }>({
         typeof variables.action.label === "function"
           ? variables.action.label(variables.item)
           : variables.action.label;
-      setNotice(`Thao tác "${lbl}" thành công.`);
+      setToast({ open: true, severity: "success", message: `Thao tác "${lbl}" thành công.` });
       queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      setToast({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(error, "Thao tác thất bại. Vui lòng kiểm tra lại dữ liệu."),
+      });
     },
   });
 
@@ -218,14 +234,24 @@ export default function AdminManagementPage<T extends { id: number }>({
       return Promise.reject(new Error("Form action is not configured"));
     },
     onSuccess: (data, variables) => {
-      setNotice(
-        variables.mode === "create"
-          ? `Tạo ${entityLabel} thành công.`
-          : `Cập nhật ${entityLabel} thành công.`
-      );
+      setToast({
+        open: true,
+        severity: "success",
+        message:
+          variables.mode === "create"
+            ? `Tạo ${entityLabel} thành công.`
+            : `Cập nhật ${entityLabel} thành công.`,
+      });
       setFormState(null);
       queryClient.invalidateQueries({ queryKey });
       if (variables.mode === "create" && onCreateSuccess) onCreateSuccess(data);
+    },
+    onError: (error) => {
+      setToast({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(error, "Không thể lưu thay đổi. Vui lòng kiểm tra lại."),
+      });
     },
   });
 
@@ -285,7 +311,7 @@ export default function AdminManagementPage<T extends { id: number }>({
                   } else if (renderForm && onCreate) {
                     setFormState({ mode: "create", item: null });
                   } else {
-                    setNotice(createHint);
+                    setToast({ open: true, severity: "info", message: createHint });
                   }
                 }}
                 sx={{
@@ -418,12 +444,6 @@ export default function AdminManagementPage<T extends { id: number }>({
             </Alert>
           )}
 
-          {notice && (
-            <Alert severity="info" onClose={() => setNotice(null)}>
-              {notice}
-            </Alert>
-          )}
-
           <Paper
             sx={{
               overflow: "hidden",
@@ -521,10 +541,33 @@ export default function AdminManagementPage<T extends { id: number }>({
                                   id={`${queryKey.join("-")}-edit-${item.id}`}
                                   size="small"
                                   color="primary"
-                                  disabled={actionMutation.isPending || formMutation.isPending}
-                                  onClick={(event) => {
+                                  disabled={
+                                    actionMutation.isPending ||
+                                    formMutation.isPending ||
+                                    hydratingEditId === item.id
+                                  }
+                                  onClick={async (event) => {
                                     event.stopPropagation();
-                                    setFormState({ mode: "edit", item });
+                                    if (!getEditItem) {
+                                      setFormState({ mode: "edit", item });
+                                      return;
+                                    }
+                                    setHydratingEditId(item.id);
+                                    try {
+                                      const freshItem = await getEditItem(item);
+                                      setFormState({ mode: "edit", item: freshItem });
+                                    } catch (error) {
+                                      setToast({
+                                        open: true,
+                                        severity: "error",
+                                        message: getAdminErrorMessage(
+                                          error,
+                                          "Không tải được dữ liệu mới nhất để chỉnh sửa."
+                                        ),
+                                      });
+                                    } finally {
+                                      setHydratingEditId(null);
+                                    }
                                   }}
                                   aria-label="Sửa"
                                   sx={{
@@ -815,6 +858,32 @@ export default function AdminManagementPage<T extends { id: number }>({
             onSubmit: (payload) =>
               formMutation.mutate({ mode: formState.mode, item: formState.item, payload }),
           })}
+        <Snackbar
+          open={toast.open}
+          autoHideDuration={4500}
+          onClose={() => setToast((current) => ({ ...current, open: false }))}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          sx={{
+            top: {
+              xs: "calc(env(safe-area-inset-top, 0px) + 76px)",
+              md: "calc(env(safe-area-inset-top, 0px) + 84px)",
+            },
+            right: { xs: "10vw", sm: 24 },
+            left: { xs: "10vw", sm: "auto" },
+            width: { xs: "80vw", sm: "auto" },
+            maxWidth: { xs: "80vw", sm: 520 },
+            zIndex: theme.zIndex.snackbar,
+          }}
+        >
+          <Alert
+            onClose={() => setToast((current) => ({ ...current, open: false }))}
+            severity={toast.severity}
+            variant="filled"
+            sx={{ width: "100%", borderRadius: 1.5, boxShadow: "none" }}
+          >
+            {toast.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </AdminPermissionGate>
   );

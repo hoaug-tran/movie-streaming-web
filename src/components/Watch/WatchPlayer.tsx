@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Box,
@@ -119,6 +119,7 @@ export default function WatchPlayer({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   const isMobileDevice =
     typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent);
@@ -399,14 +400,7 @@ export default function WatchPlayer({
       return;
     }
 
-    if (currentIdx < allowedMaxIdx) {
-      const best = selectBestQuality(available, maxQuality);
-      if (QUALITY_ORDER.indexOf(best) > currentIdx) {
-        setSelectedQuality(best);
-        setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", best));
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [
     selectedEpisode.id,
     selectedEpisode.videoUrl,
@@ -434,32 +428,12 @@ export default function WatchPlayer({
         return;
       }
 
-      const sortedUrls = [...record.segmentUrls].sort((a, b) => {
-        const matchA = a.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
-        const matchB = b.match(/(\d+)(?:\.\w+)?(?:$|\?)/);
-        if (matchA && matchB) {
-          return parseInt(matchA[1]) - parseInt(matchB[1]);
-        }
-        return 0;
-      });
-
-      const firstSegmentData = await offlineStorage.getSegment(sortedUrls[0]);
-      if (!firstSegmentData) {
-        setOfflineSrc(undefined);
-        return;
-      }
-
-      const isReordered = sortedUrls.some((u, i) => u !== record.segmentUrls[i]);
-      if (isReordered) {
-        await offlineStorage.saveMovie({
-          ...record,
-          segmentUrls: sortedUrls,
-        });
-      }
+      console.log("[WatchPlayer] Loaded offline record:", record);
+      const segmentUrls = record.segmentUrls;
 
       const eid = selectedEpisode.id;
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const segPaths = sortedUrls.map((_, idx) => `${origin}/__offline__/seg/${eid}/${idx}.ts`);
+      const segPaths = segmentUrls.map((_, idx) => `${origin}/__offline__/seg/${eid}/${idx}.ts`);
 
       let keyLine = "";
 
@@ -502,8 +476,8 @@ export default function WatchPlayer({
       blobUrls.forEach((u) => URL.revokeObjectURL(u));
       setOfflineSrc(undefined);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEpisode.id, isOnline]);
+    
+  }, [selectedEpisode.id]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1104,7 +1078,7 @@ export default function WatchPlayer({
     >
       <HlsPlayer
         videoRef={videoRef}
-        src={currentVideoUrl}
+        src={currentVideoUrl.includes("/__offline__/playlist/") ? "" : currentVideoUrl}
         offlineSrc={offlineSrc}
         startTime={resumeStartTime}
         shouldPlay={!currentAd && !preRollPending}
@@ -1122,7 +1096,16 @@ export default function WatchPlayer({
         onMutedChange={(muted) => setIsMuted(muted)}
       />
 
-      {offlineSrc && <OfflineBadge sx={{ position: "absolute", top: 16, right: 16, zIndex: 10 }} />}
+      {offlineSrc && pathname === "/watch/offline" && (
+        <OfflineBadge
+          sx={{
+            position: "absolute",
+            top: { xs: "max(16px, env(safe-area-inset-top))", md: 16 },
+            right: 16,
+            zIndex: 10,
+          }}
+        />
+      )}
 
       {currentAd && (
         <AdOverlay
@@ -1174,7 +1157,9 @@ export default function WatchPlayer({
               setCurrentVideoUrl(getQualityUrl(selectedEpisode.videoUrl ?? "", q));
             }}
             commentOpen={showComments}
-            onCommentToggle={() => setShowComments((prev) => !prev)}
+            onCommentToggle={
+              !offlineSrc && isOnline ? () => setShowComments((prev) => !prev) : undefined
+            }
             fullscreenContainer={isFullscreen ? containerRef.current : null}
           />
         </Box>
@@ -1222,7 +1207,8 @@ export default function WatchPlayer({
                   color: "#fff",
                   fontWeight: 800,
                   fontSize: "0.95rem",
-                  lineHeight: 1.12,
+                  lineHeight: 1.4,
+                  pb: "2px",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -1398,13 +1384,15 @@ export default function WatchPlayer({
                     <ListAltIcon sx={{ fontSize: 22 }} />
                   </IconButton>
                 )}
-                <IconButton
-                  onClick={() => setShowComments((prev) => !prev)}
-                  sx={{ color: showComments ? "#ff4963" : "#fff" }}
-                  aria-label="Bình luận"
-                >
-                  <ForumIcon sx={{ fontSize: 22 }} />
-                </IconButton>
+                {!offlineSrc && isOnline && (
+                  <IconButton
+                    onClick={() => setShowComments((prev) => !prev)}
+                    sx={{ color: showComments ? "#ff4963" : "#fff" }}
+                    aria-label="Bình luận"
+                  >
+                    <ForumIcon sx={{ fontSize: 22 }} />
+                  </IconButton>
+                )}
                 <IconButton
                   onClick={handleFullscreen}
                   sx={{ color: "#fff" }}

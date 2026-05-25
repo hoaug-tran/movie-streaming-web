@@ -112,11 +112,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     .catch(function(err) {
                       console.error('[SW] Registration FAILED:', err);
                     });
-                  var refreshing = false;
                   navigator.serviceWorker.addEventListener('controllerchange', function() {
-                    if (refreshing) return;
-                    refreshing = true;
-                    window.location.reload();
+                    console.log('[SW] Controller changed. Page will use new SW on next navigation.');
                   });
                 });
               } else {

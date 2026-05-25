@@ -26,7 +26,9 @@ import {
   Typography,
   useTheme,
   Alert,
+  Snackbar,
 } from "@mui/material";
+import type { AlertColor } from "@mui/material";
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -52,12 +54,14 @@ import AvatarCropUpload from "@/components/Common/AvatarCropUpload";
 import { getAdminErrorMessage } from "@/modules/admin/utils/admin-errors";
 
 type SortKey = "name-asc" | "name-desc" | "created-desc" | "login-desc";
-type RoleFilter = "ALL" | "ROLE_ADMIN" | "ROLE_USER";
+type RoleFilter = "ALL" | "ROLE_ADMIN" | "ROLE_MODERATOR" | "ROLE_USER";
 type StatusFilter = "ALL" | "ACTIVE" | "BLOCKED" | "PENDING" | "DELETED";
 type PlanFilter = "ALL" | "BASIC" | "PREMIUM" | "PREMIUM_PLUS" | "NONE";
+type PlanSelectValue = "" | "CANCEL" | number;
 
 const ROLE_LABEL: Record<string, string> = {
   ROLE_ADMIN: "Admin",
+  ROLE_MODERATOR: "Moderator",
   ROLE_USER: "User",
 };
 
@@ -114,7 +118,7 @@ function UserFormDialog({
   onSubmit: (data: {
     userPayload?: AdminUserPayload;
     createPayload?: AdminCreateUserPayload;
-    planId?: number | null;
+    planId?: PlanSelectValue | null;
   }) => void;
   submitting: boolean;
   error?: string | null;
@@ -127,7 +131,13 @@ function UserFormDialog({
   const [accountStatus, setAccountStatus] = useState<AdminUser["accountStatus"]>(
     user?.accountStatus ?? "ACTIVE"
   );
-  const [selectedPlanId, setSelectedPlanId] = useState<number | "">("");
+  const [selectedPlanId, setSelectedPlanId] = useState<PlanSelectValue>(() => {
+    if (mode === "edit" && user?.currentPlanCode) {
+      const matchingPlan = plans.find((p) => p.code === user.currentPlanCode);
+      return matchingPlan?.id ?? "";
+    }
+    return "";
+  });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl ?? null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
@@ -150,12 +160,12 @@ function UserFormDialog({
     if (mode === "create") {
       onSubmit({
         createPayload: { username, email, password, fullName, role, avatarUrl: finalAvatarUrl },
-        planId: selectedPlanId !== "" ? Number(selectedPlanId) : null,
+        planId: selectedPlanId === "" ? null : selectedPlanId,
       });
     } else {
       onSubmit({
         userPayload: { email, fullName, role, accountStatus, avatarUrl: finalAvatarUrl },
-        planId: selectedPlanId !== "" ? Number(selectedPlanId) : null,
+        planId: selectedPlanId === "" ? null : selectedPlanId,
       });
     }
   };
@@ -226,6 +236,7 @@ function UserFormDialog({
             size="small"
           >
             <MenuItem value="ROLE_USER">User</MenuItem>
+            <MenuItem value="ROLE_MODERATOR">Moderator</MenuItem>
             <MenuItem value="ROLE_ADMIN">Admin</MenuItem>
           </TextField>
           {mode === "edit" && (
@@ -247,7 +258,10 @@ function UserFormDialog({
             select
             label="Gán gói thuê bao"
             value={selectedPlanId}
-            onChange={(e) => setSelectedPlanId(e.target.value === "" ? "" : Number(e.target.value))}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedPlanId(value === "" || value === "CANCEL" ? value : Number(value));
+            }}
             fullWidth
             size="small"
             helperText={
@@ -257,6 +271,7 @@ function UserFormDialog({
             }
           >
             <MenuItem value="">Không thay đổi</MenuItem>
+            {mode === "edit" && <MenuItem value="CANCEL">Hủy gói</MenuItem>}
             {plans
               .filter((p) => p.isActive !== false)
               .map((p) => (
@@ -298,12 +313,15 @@ export default function AdminUsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    severity: AlertColor;
+    message: string;
+  }>({ open: false, severity: "success", message: "" });
 
-  // Pagination states
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Reset page on search or filter update
   useEffect(() => {
     setPage(1);
   }, [search, roleFilter, statusFilter, planFilter]);
@@ -327,7 +345,21 @@ export default function AdminUsersPage() {
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: AdminUser["accountStatus"] }) =>
       adminService.updateUserStatus(id, status),
-    onSuccess: invalidate,
+    onSuccess: (_data, variables) => {
+      invalidate();
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: variables.status === "BLOCKED" ? "Đã khóa tài khoản." : "Đã mở khóa tài khoản.",
+      });
+    },
+    onError: (err) => {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể cập nhật trạng thái tài khoản."),
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -335,13 +367,21 @@ export default function AdminUsersPage() {
     onSuccess: () => {
       invalidate();
       setDeleteTarget(null);
+      setSnackbar({ open: true, severity: "success", message: "Đã xóa tài khoản." });
+    },
+    onError: (err) => {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể xóa tài khoản."),
+      });
     },
   });
 
   const handleFormSubmit = async (data: {
     userPayload?: AdminUserPayload;
     createPayload?: AdminCreateUserPayload;
-    planId?: number | null;
+    planId?: PlanSelectValue | null;
   }) => {
     setFormSubmitting(true);
     setFormError(null);
@@ -351,16 +391,34 @@ export default function AdminUsersPage() {
         const created = await adminService.createUser(data.createPayload);
         userId = created.id;
       } else if (formState?.mode === "edit" && formState.user && data.userPayload) {
-        await adminService.updateUser(formState.user.id, data.userPayload);
         userId = formState.user.id;
-      }
-      if (userId && data.planId) {
-        await adminService.assignSubscription(userId, data.planId);
+
+        await adminService.updateUser(formState.user.id, data.userPayload);
+
+        if (data.planId === "CANCEL") {
+          await adminService.cancelSubscription(userId);
+        } else if (typeof data.planId === "number") {
+          await adminService.assignSubscription(userId, data.planId);
+        }
       }
       invalidate();
       setFormState(null);
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message:
+          formState?.mode === "create"
+            ? data.planId
+              ? "Đã tạo người dùng và gán gói thuê bao."
+              : "Đã tạo người dùng."
+            : data.planId
+              ? "Đã cập nhật người dùng và gán gói thuê bao."
+              : "Đã cập nhật người dùng.",
+      });
     } catch (err) {
-      setFormError(getAdminErrorMessage(err, "Thao tác thất bại. Kiểm tra lại dữ liệu."));
+      const message = getAdminErrorMessage(err, "Thao tác thất bại. Kiểm tra lại dữ liệu.");
+      setFormError(message);
+      setSnackbar({ open: true, severity: "error", message });
     } finally {
       setFormSubmitting(false);
     }
@@ -408,8 +466,8 @@ export default function AdminUsersPage() {
       tone: theme.palette.error.main,
     },
     {
-      label: "Bị khóa",
-      value: users.filter((u) => u.accountStatus === "BLOCKED").length,
+      label: "Moderator",
+      value: users.filter((u) => u.role === "ROLE_MODERATOR").length,
       tone: theme.palette.warning.main,
     },
     {
@@ -532,6 +590,7 @@ export default function AdminUsersPage() {
                 >
                   <MenuItem value="ALL">Tất cả</MenuItem>
                   <MenuItem value="ROLE_ADMIN">Admin</MenuItem>
+                  <MenuItem value="ROLE_MODERATOR">Moderator</MenuItem>
                   <MenuItem value="ROLE_USER">User</MenuItem>
                 </TextField>
               </Grid>
@@ -956,6 +1015,31 @@ export default function AdminUsersPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3600}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{
+          top: {
+            xs: "calc(env(safe-area-inset-top, 0px) + 76px)",
+            md: "calc(env(safe-area-inset-top, 0px) + 84px)",
+          },
+          right: { xs: "10vw", sm: 24 },
+          left: { xs: "10vw", sm: "auto" },
+          width: { xs: "80vw", sm: "auto" },
+          maxWidth: { xs: "80vw", sm: 520 },
+        }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%", borderRadius: 1.5, boxShadow: "0 18px 50px rgba(0,0,0,0.24)" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </AdminPermissionGate>
   );
 }

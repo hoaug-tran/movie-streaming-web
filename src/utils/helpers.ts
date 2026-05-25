@@ -1,4 +1,4 @@
-/* String Utils */
+
 export const capitalizeFirstLetter = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
@@ -13,7 +13,7 @@ export const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
-/* Number Utils */
+
 export const formatNumber = (num: number): string => {
   return new Intl.NumberFormat("vi-VN").format(num);
 };
@@ -29,7 +29,7 @@ export const roundToDecimal = (num: number, decimals: number = 2): number => {
   return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals);
 };
 
-/* Array Utils */
+
 export const removeFromArray = <T>(array: T[], index: number): T[] => {
   return array.filter((_, i) => i !== index);
 };
@@ -43,7 +43,7 @@ export const uniqueBy = <T>(array: T[], key: keyof T): T[] => {
   }, []);
 };
 
-/* Object Utils */
+
 export const isDefined = <T>(value: T | undefined | null): value is T => {
   return value !== undefined && value !== null;
 };
@@ -52,7 +52,7 @@ export const deepClone = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
 };
 
-/* Date Utils */
+
 export const formatDate = (date: Date | string, format: string = "DD/MM/YYYY"): string => {
   const d = new Date(date);
   const map: { [key: string]: number } = {
@@ -77,7 +77,7 @@ export const getTimeAgo = (date: Date | string): string => {
   return `${Math.floor(seconds / 31536000)} năm trước`;
 };
 
-/* Local Storage Utils */
+
 export const getFromLocalStorage = <T>(key: string): T | null => {
   if (typeof window === "undefined") return null;
   const item = localStorage.getItem(key);
@@ -100,12 +100,12 @@ export const removeFromLocalStorage = (key: string): void => {
   localStorage.removeItem(key);
 };
 
-/* Cookie Utils */
+
 export const setCookie = (name: string, value: string, maxAgeSeconds: number = 60 * 60): void => {
   if (typeof window === "undefined") return;
 
-  // Do NOT encode value — JWT tokens contain only base64url-safe chars (A-Za-z0-9-_.)
-  // Encoding dots as %2E breaks Next.js middleware's server-side JWT parsing.
+  
+  
   const encodedName = encodeURIComponent(name);
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
 
@@ -129,7 +129,7 @@ export const getCookie = (name: string): string | null => {
 
   for (const cookie of cookies) {
     if (cookie.startsWith(encodedName)) {
-      // Value is stored as-is (not encoded), return directly
+      
       return cookie.slice(encodedName.length);
     }
   }
@@ -137,7 +137,7 @@ export const getCookie = (name: string): string | null => {
   return null;
 };
 
-/* URL Utils */
+
 export const buildQueryParams = (params: Record<string, any>): string => {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {

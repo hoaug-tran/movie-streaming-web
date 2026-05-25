@@ -289,7 +289,7 @@ export default function AdminEpisodesPage() {
         const updated = await adminService.updateEpisode(currentMovieId, item.id, {
           ...episodeData,
           movieId: targetMovieId,
-          // Giữ nguyên videoUrl cũ trong DB (BE update không đổi video_url, chỉ update qua upload).
+          
           thumbnailUrl: _thumbnailPreview || item.thumbnailUrl || undefined,
         } as AdminEpisodePayload);
         if (_videoFile) {
@@ -410,7 +410,7 @@ function EpisodeFormDialog({
   useEffect(() => {
     if (!open) return;
     setVideoFile(null);
-    // Luôn preload danh sách phim để người dùng có thể đổi phim cha cả khi edit.
+    
     adminService.getMovies().then(setMovies).catch(console.error);
 
     if (isEdit && item) {
@@ -441,8 +441,12 @@ function EpisodeFormDialog({
       setFormData((f) => ({ ...f, movieId: "" }));
       return;
     }
-    setFormData((f) => ({ ...f, movieId: String(movie.id) }));
-    // Khi tạo mới và user chọn phim, tự set số tập = (số tập hiện có) + 1
+    const isSingleMovie = movie.movieType === "SINGLE";
+    setFormData((f) => ({
+      ...f,
+      movieId: String(movie.id),
+      isFreePreview: isSingleMovie ? true : f.isFreePreview,
+    }));
     if (!isEdit) {
       try {
         const detail = await adminService.getMovieDetail(movie.id);

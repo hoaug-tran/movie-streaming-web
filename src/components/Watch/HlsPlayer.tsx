@@ -151,8 +151,8 @@ export default function HlsPlayer({
         abrBandWidthUpFactor: 0.7,
         startLevel: -1,
         xhrSetup: (xhr, url) => {
-          if (url.startsWith("blob:")) return;
-          if (isOurBackend(url)) {
+          if (url.startsWith("blob:") || url.includes("/__offline__/")) return;
+          if (url.includes("/stream/keys/")) {
             xhr.withCredentials = true;
           }
         },

@@ -324,27 +324,26 @@ export const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ onLogo
           </MenuItem>
         </Link>
 
-        <MenuItem
-          onClick={() => {
-            window.open("/help", "_blank");
-            handleClose();
-          }}
-          sx={{
-            py: 1.5,
-            px: 2,
-            color: "text.primary",
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            fontSize: "0.95rem",
-            transition: "all 0.2s ease",
-            "&:hover": {
-              backgroundColor: "action.hover",
-            },
-          }}
-        >
-          Trung tâm trợ giúp
-        </MenuItem>
+        <Link href="/support" style={{ textDecoration: "none" }}>
+          <MenuItem
+            onClick={handleClose}
+            sx={{
+              py: 1.5,
+              px: 2,
+              color: "text.primary",
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              fontSize: "0.95rem",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                backgroundColor: "action.hover",
+              },
+            }}
+          >
+            Trung tâm trợ giúp
+          </MenuItem>
+        </Link>
 
         <Divider
           sx={{

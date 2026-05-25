@@ -29,8 +29,8 @@ export interface ChatStreamOptions {
 }
 
 const SSE_BUFFER_DELIMITER = "\n\n";
-// Watchdog: nếu không nhận được chunk nào trong khoảng thời gian này thì coi như
-// connection đã chết (Safari iOS PWA hay bị suspend ngầm khi app vào background).
+
+
 const CHAT_STREAM_INACTIVITY_MS = 60_000;
 
 function getAuthHeader(): Record<string, string> {
@@ -86,7 +86,7 @@ export async function streamChat(options: ChatStreamOptions): Promise<void> {
   };
 
   const flushBuffer = () => {
-    // Sau khi stream đóng, flush nốt TextDecoder để không mất ký tự multi-byte cuối.
+    
     buffer += decoder.decode();
     const segments: string[] = [];
     let working = buffer.replace(/\r\n/g, "\n");
@@ -125,7 +125,7 @@ export async function streamChat(options: ChatStreamOptions): Promise<void> {
       }
       armWatchdog();
       buffer += decoder.decode(value, { stream: true });
-      // Chuẩn hóa CRLF trước để logic dưới chỉ cần xử lý \n\n.
+      
       let normalized = buffer.replace(/\r\n/g, "\n");
       let separatorIndex = normalized.indexOf(SSE_BUFFER_DELIMITER);
       while (separatorIndex !== -1) {
@@ -165,8 +165,8 @@ export async function streamChat(options: ChatStreamOptions): Promise<void> {
           "Kết nối với trợ lý bị gián đoạn. Ứng dụng có thể đang chạy ở chế độ tiết kiệm pin trên iOS. Vui lòng thử lại.",
       });
     } else if (!receivedDone) {
-      // Stream đóng bình thường nhưng không nhận được done event => gửi done
-      // để UI thoát khỏi loading state.
+      
+      
       onEvent({ type: "done", content: "" });
     }
   }

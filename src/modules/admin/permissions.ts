@@ -32,11 +32,7 @@ const ADMIN_PERMISSIONS: AdminPermission[] = [
   "settings:manage",
 ];
 
-const MODERATOR_PERMISSIONS: AdminPermission[] = [
-  "dashboard:read",
-  "reports:manage",
-  "comments:manage",
-];
+const MODERATOR_PERMISSIONS: AdminPermission[] = ["reports:manage", "comments:manage"];
 
 export const getAdminPermissions = (role?: AppRole | null): AdminPermission[] => {
   if (role === "ROLE_ADMIN") {

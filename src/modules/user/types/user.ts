@@ -1,4 +1,4 @@
-/* User Domain Types */
+
 export interface User {
   id: string | number;
   username?: string;

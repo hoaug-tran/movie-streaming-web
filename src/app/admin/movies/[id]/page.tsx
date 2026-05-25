@@ -267,7 +267,10 @@ export default function AdminMovieDetailPage() {
 
   const addCat = useMutation({
     mutationFn: (cid: number) => adminService.addMovieCategory(movieId, cid),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã gắn thể loại cho phim." });
+    },
     onError: (err: unknown) =>
       setSnackbar({
         open: true,
@@ -277,12 +280,22 @@ export default function AdminMovieDetailPage() {
   });
   const removeCat = useMutation({
     mutationFn: (cid: number) => adminService.removeMovieCategory(movieId, cid),
-    onSuccess: invalidate,
-    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể gỡ thể loại.")),
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã gỡ thể loại khỏi phim." });
+    },
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể gỡ thể loại.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const addTag = useMutation({
     mutationFn: (tid: number) => adminService.addMovieTag(movieId, tid),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã gắn tag cho phim." });
+    },
     onError: (err: unknown) =>
       setSnackbar({
         open: true,
@@ -292,12 +305,22 @@ export default function AdminMovieDetailPage() {
   });
   const removeTag = useMutation({
     mutationFn: (tid: number) => adminService.removeMovieTag(movieId, tid),
-    onSuccess: invalidate,
-    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể gỡ tag.")),
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã gỡ tag khỏi phim." });
+    },
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể gỡ tag.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const addPerson = useMutation({
     mutationFn: (p: AdminMoviePersonPayload) => adminService.addMoviePerson(movieId, p),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã gắn nhân sự cho phim." });
+    },
     onError: (err: unknown) =>
       setSnackbar({
         open: true,
@@ -307,9 +330,15 @@ export default function AdminMovieDetailPage() {
   });
   const removePerson = useMutation({
     mutationFn: (mpid: number) => adminService.removeMoviePerson(movieId, mpid),
-    onSuccess: invalidate,
-    onError: (err: unknown) =>
-      setDialogError(getAdminErrorMessage(err, "Không thể xóa gắn kết diễn viên / đạo diễn.")),
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã xóa nhân sự khỏi phim." });
+    },
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể xóa gắn kết diễn viên / đạo diễn.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const updatePerson = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Partial<AdminMoviePersonPayload> }) =>
@@ -317,13 +346,20 @@ export default function AdminMovieDetailPage() {
     onSuccess: () => {
       invalidate();
       setEditPersonDialog(false);
+      setSnackbar({ open: true, severity: "success", message: "Đã cập nhật vai trò." });
     },
-    onError: (err: unknown) =>
-      setDialogError(getAdminErrorMessage(err, "Không thể cập nhật vai trò.")),
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể cập nhật vai trò.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const addStudio = useMutation({
     mutationFn: (p: AdminMovieStudioPayload) => adminService.addMovieStudio(movieId, p),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã gắn studio / nhà sản xuất." });
+    },
     onError: (err: unknown) =>
       setSnackbar({
         open: true,
@@ -333,9 +369,15 @@ export default function AdminMovieDetailPage() {
   });
   const removeStudio = useMutation({
     mutationFn: (msid: number) => adminService.removeMovieStudio(movieId, msid),
-    onSuccess: invalidate,
-    onError: (err: unknown) =>
-      setDialogError(getAdminErrorMessage(err, "Không thể xóa studio / nhà sản xuất.")),
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã xóa studio / nhà sản xuất." });
+    },
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể xóa studio / nhà sản xuất.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const updateStudio = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Partial<AdminMovieStudioPayload> }) =>
@@ -343,15 +385,20 @@ export default function AdminMovieDetailPage() {
     onSuccess: () => {
       invalidate();
       setEditStudioDialog(false);
+      setSnackbar({ open: true, severity: "success", message: "Đã cập nhật vai trò studio." });
     },
-    onError: (err: unknown) =>
-      setDialogError(getAdminErrorMessage(err, "Không thể cập nhật studio.")),
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể cập nhật studio.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const createCategory = useMutation({
     mutationFn: (p: { name: string; slug: string }) => adminService.createCategory(p),
     onSuccess: (cat) => {
       addCat.mutate(cat.id);
       setNewCatName("");
+      setSnackbar({ open: true, severity: "success", message: "Đã tạo thể loại mới." });
     },
     onError: (err: unknown) =>
       setSnackbar({
@@ -362,8 +409,15 @@ export default function AdminMovieDetailPage() {
   });
   const addEpisode = useMutation({
     mutationFn: (p: AdminEpisodePayload) => adminService.createEpisode(movieId, p),
-    onSuccess: invalidate,
-    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể tạo tập phim.")),
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã tạo tập phim." });
+    },
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể tạo tập phim.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const updateEpisodeMutation = useMutation({
     mutationFn: ({ episodeId, p }: { episodeId: number; p: AdminEpisodePayload }) =>
@@ -371,14 +425,25 @@ export default function AdminMovieDetailPage() {
     onSuccess: () => {
       invalidate();
       setEditEpisodeDialog(false);
+      setSnackbar({ open: true, severity: "success", message: "Đã cập nhật tập phim." });
     },
-    onError: (err: unknown) =>
-      setDialogError(getAdminErrorMessage(err, "Không thể cập nhật tập phim.")),
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể cập nhật tập phim.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const deleteEpisode = useMutation({
     mutationFn: (episodeId: number) => adminService.deleteEpisode(movieId, episodeId),
-    onSuccess: invalidate,
-    onError: (err: unknown) => setDialogError(getAdminErrorMessage(err, "Không thể xóa tập phim.")),
+    onSuccess: () => {
+      invalidate();
+      setSnackbar({ open: true, severity: "success", message: "Đã xóa tập phim." });
+    },
+    onError: (err: unknown) => {
+      const message = getAdminErrorMessage(err, "Không thể xóa tập phim.");
+      setDialogError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    },
   });
   const retranscodeEpisode = useMutation({
     mutationFn: (episodeId: number) => adminService.retranscodeEpisode(episodeId),
@@ -461,6 +526,7 @@ export default function AdminMovieDetailPage() {
     onSuccess: (tag) => {
       addTag.mutate(tag.id);
       setNewTagName("");
+      setSnackbar({ open: true, severity: "success", message: "Đã tạo tag mới." });
     },
     onError: (err: unknown) =>
       setSnackbar({
@@ -474,6 +540,7 @@ export default function AdminMovieDetailPage() {
     onSuccess: (person) => {
       setPersonForm((prev) => ({ ...prev, personId: person.id }));
       qc.invalidateQueries({ queryKey: ["admin", "persons"] });
+      setSnackbar({ open: true, severity: "success", message: "Đã tạo nhân sự mới." });
     },
     onError: (err: unknown) =>
       setSnackbar({
@@ -487,6 +554,7 @@ export default function AdminMovieDetailPage() {
     onSuccess: (studio) => {
       setStudioForm((prev) => ({ ...prev, studioId: studio.id }));
       qc.invalidateQueries({ queryKey: ["admin", "studios"] });
+      setSnackbar({ open: true, severity: "success", message: "Đã tạo studio mới." });
     },
     onError: (err: unknown) =>
       setSnackbar({
@@ -543,7 +611,7 @@ export default function AdminMovieDetailPage() {
       cancelled = true;
       clearInterval(interval);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [transcodeJobs]);
   const [addTagId, setAddTagId] = useState<number | "">("");
   const [newTagName, setNewTagName] = useState("");
@@ -665,6 +733,11 @@ export default function AdminMovieDetailPage() {
             true,
             "Upload xong, server đang transcode 720p/1080p/4K (chạy ngầm vài phút)..."
           );
+          setSnackbar({
+            open: true,
+            severity: "success",
+            message: "Upload video phim xong, server đang transcode 720p/1080p/4K.",
+          });
           invalidate();
         })
         .catch((err) => {
@@ -676,24 +749,98 @@ export default function AdminMovieDetailPage() {
             false,
             err instanceof Error ? err.message : String(err)
           );
+          setSnackbar({
+            open: true,
+            severity: "error",
+            message: getAdminErrorMessage(err, "Upload video phim thất bại."),
+          });
         });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
     [movieId]
   );
+
+  const startMovieTrailerUpload = useCallback(
+    (file: File, onSuccess?: (videoUrl: string) => void) => {
+      setMovieUploading(true);
+      setMovieUploadProgress(0);
+      const taskId = uploadProgress.startTask({
+        label: `Trailer phim single`,
+        fileName: file.name,
+        totalBytes: file.size,
+      });
+
+      adminService
+        .uploadMovieTrailerSmart(
+          movieId,
+          file,
+          (s) => {
+            setMovieUploadProgress(s.percent);
+            uploadProgress.updateTask(taskId, {
+              percent: s.percent,
+              phase: s.phase,
+              bytesUploaded: s.bytesUploaded,
+              totalBytes: s.totalBytes,
+              speedKBps: s.speedKBps,
+              etaSeconds: s.etaSeconds,
+              message: s.message,
+            });
+          },
+          API_BASE
+        )
+        .then((res) => {
+          setMovieUploading(false);
+          setMovieUploadProgress(0);
+          if (res?.videoUrl) onSuccess?.(res.videoUrl);
+          uploadProgress.finishTask(taskId, true, "Upload trailer xong!");
+          setSnackbar({
+            open: true,
+            severity: "success",
+            message: "Upload trailer phim xong.",
+          });
+          invalidate();
+        })
+        .catch((err) => {
+          console.error("[Upload movie trailer]", err);
+          setMovieUploading(false);
+          setMovieUploadProgress(0);
+          uploadProgress.finishTask(
+            taskId,
+            false,
+            err instanceof Error ? err.message : String(err)
+          );
+          setSnackbar({
+            open: true,
+            severity: "error",
+            message: getAdminErrorMessage(err, "Upload trailer phim thất bại."),
+          });
+        });
+    },
+    
+    [movieId]
+  );
+
   const updateMovie = useMutation({
     mutationFn: (p: AdminMoviePayload) => adminService.updateMovie(movieId, p),
     onSuccess: () => {
       invalidate();
       setEditInfoOpen(false);
+      setSnackbar({ open: true, severity: "success", message: "Đã cập nhật thông tin phim." });
+    },
+    onError: (err: unknown) => {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: getAdminErrorMessage(err, "Không thể cập nhật thông tin phim."),
+      });
     },
   });
 
-  // const updateLocks = useMutation({
-  //   mutationFn: (payload: { commentsLocked: boolean; reviewsLocked: boolean }) =>
-  //     adminService.updateMovieInteractionLocks(movieId, payload),
-  //   onSuccess: invalidate,
-  // });
+  
+  
+  
+  
+  
 
   const [episodeForm, setEpisodeForm] = useState<AdminEpisodePayload>({
     title: "",
@@ -2514,7 +2661,7 @@ export default function AdminMovieDetailPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Edit Person Dialog */}
+      {}
       <Dialog
         open={editPersonDialog}
         onClose={() => {
@@ -2584,7 +2731,7 @@ export default function AdminMovieDetailPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Edit Studio Dialog */}
+      {}
       <Dialog
         open={editStudioDialog}
         onClose={() => {
@@ -2987,7 +3134,7 @@ export default function AdminMovieDetailPage() {
                   const file = e.target.files?.[0];
                   e.target.value = "";
                   if (!file) return;
-                  startMovieSourceUpload(file, (videoUrl) => {
+                  startMovieTrailerUpload(file, (videoUrl) => {
                     setInfoForm((f) => f && { ...f, trailerUrl: videoUrl });
                   });
                 }}
@@ -3082,7 +3229,17 @@ export default function AdminMovieDetailPage() {
         open={snackbar.open}
         autoHideDuration={5000}
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{
+          top: {
+            xs: "calc(env(safe-area-inset-top, 0px) + 76px)",
+            md: "calc(env(safe-area-inset-top, 0px) + 84px)",
+          },
+          right: { xs: "10vw", sm: 24 },
+          left: { xs: "10vw", sm: "auto" },
+          width: { xs: "80vw", sm: "auto" },
+          maxWidth: { xs: "80vw", sm: 520 },
+        }}
       >
         <Alert
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}

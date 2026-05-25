@@ -1,4 +1,4 @@
-/* Watchlist Domain Types */
+
 
 import { MovieSummary } from "@/modules/movie/types/movie";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, Snackbar } from "@mui/material";
+import { Alert, Button, Snackbar } from "@mui/material";
 import { useRouter } from "next/navigation";
 
 const CHANNEL = "giophim-pwa-recovery";
@@ -17,6 +17,7 @@ function canReloadNow() {
 async function probeServer() {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 3500);
+
   try {
     const res = await fetch("/api/v1/health", {
       method: "GET",
@@ -24,6 +25,7 @@ async function probeServer() {
       credentials: "include",
       signal: controller.signal,
     });
+
     return res.ok || res.status === 404;
   } catch {
     try {
@@ -32,6 +34,7 @@ async function probeServer() {
         cache: "no-store",
         signal: controller.signal,
       });
+
       return res.ok;
     } catch {
       return false;
@@ -52,36 +55,44 @@ export default function PwaRecoveryManager() {
     if (typeof window === "undefined") return;
 
     let channel: BroadcastChannel | null = null;
-    if ("BroadcastChannel" in window) channel = new BroadcastChannel(CHANNEL);
+    if ("BroadcastChannel" in window) {
+      channel = new BroadcastChannel(CHANNEL);
+    }
 
     const broadcast = (type: string) => {
-      channel?.postMessage({ type, at: Date.now() });
-      window.localStorage.setItem(CHANNEL, JSON.stringify({ type, at: Date.now() }));
+      const payload = { type, at: Date.now() };
+      channel?.postMessage(payload);
+      window.localStorage.setItem(CHANNEL, JSON.stringify(payload));
     };
 
-    const recover = async (source: "online" | "probe" | "broadcast") => {
-      if (probingRef.current) return;
+    const recover = async () => {
+      if (probingRef.current || !wasOfflineRef.current) return;
+
       probingRef.current = true;
       setRecovering(true);
+
       const ok = await probeServer();
+
       probingRef.current = false;
       setRecovering(false);
+
       if (!ok) return;
 
       setOffline(false);
-      const shouldReload = wasOfflineRef.current && canReloadNow();
+
+      const shouldReload = canReloadNow();
       wasOfflineRef.current = false;
+
       broadcast("RECOVERED");
 
-      if (shouldReload || source === "broadcast") {
+      if (shouldReload) {
         window.sessionStorage.setItem(LAST_RELOAD_KEY, String(Date.now()));
+
         if (document.visibilityState === "visible") {
           window.location.reload();
         } else {
           router.refresh();
         }
-      } else {
-        router.refresh();
       }
     };
 
@@ -91,27 +102,48 @@ export default function PwaRecoveryManager() {
       broadcast("OFFLINE");
     };
 
-    const handleOnline = () => recover("online");
-    const handleOffline = () => markOffline();
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && wasOfflineRef.current) recover("probe");
+    const handleOnline = () => {
+      if (wasOfflineRef.current) {
+        recover();
+      }
     };
+    const handleOffline = () => markOffline();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && wasOfflineRef.current) {
+        recover();
+      }
+    };
+
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "OFFLINE") {
         wasOfflineRef.current = true;
         setOffline(true);
       }
-      if (event.data?.type === "RECOVERED") recover("broadcast");
+
+      if (event.data?.type === "RECOVERED" && wasOfflineRef.current) {
+        wasOfflineRef.current = false;
+        setOffline(false);
+        router.refresh();
+      }
     };
+
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== CHANNEL || !event.newValue) return;
+
       try {
         const data = JSON.parse(event.newValue);
+
         if (data.type === "OFFLINE") {
           wasOfflineRef.current = true;
           setOffline(true);
         }
-        if (data.type === "RECOVERED") recover("broadcast");
+
+        if (data.type === "RECOVERED" && wasOfflineRef.current) {
+          wasOfflineRef.current = false;
+          setOffline(false);
+          router.refresh();
+        }
       } catch {}
     };
 
@@ -121,9 +153,19 @@ export default function PwaRecoveryManager() {
     document.addEventListener("visibilitychange", handleVisibility);
     channel?.addEventListener("message", handleMessage);
 
-    if (!navigator.onLine) markOffline();
+    let initialOfflineTimer: number | undefined;
+    if (!navigator.onLine) {
+      initialOfflineTimer = window.setTimeout(() => {
+        if (!navigator.onLine) {
+          markOffline();
+        }
+      }, 3000);
+    }
+
     const interval = window.setInterval(() => {
-      if (wasOfflineRef.current || !navigator.onLine) recover("probe");
+      if (wasOfflineRef.current) {
+        recover();
+      }
     }, PROBE_INTERVAL_MS);
 
     return () => {
@@ -134,6 +176,7 @@ export default function PwaRecoveryManager() {
       channel?.removeEventListener("message", handleMessage);
       channel?.close();
       window.clearInterval(interval);
+      if (initialOfflineTimer) window.clearTimeout(initialOfflineTimer);
     };
   }, [router]);
 
@@ -141,23 +184,60 @@ export default function PwaRecoveryManager() {
     <Snackbar
       open={offline || recovering}
       anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      sx={{ zIndex: 1600 }}
+      sx={{
+        zIndex: 1600,
+        bottom: {
+          xs: "calc(env(safe-area-inset-bottom, 0px) + 28px)",
+          md: 32,
+        },
+        left: "50% !important",
+        right: "auto !important",
+        transform: "translateX(-50%)",
+        width: {
+          xs: "80vw",
+          sm: "min(80vw, 520px)",
+        },
+        maxWidth: "calc(100vw - 32px)",
+      }}
     >
-      <Box>
-        <Alert
-          severity={offline ? "warning" : "info"}
-          variant="filled"
-          action={
-            <Button color="inherit" size="small" onClick={() => window.location.reload()}>
-              Tải lại
-            </Button>
-          }
-        >
-          {offline
-            ? "Bạn đang offline hoặc máy chủ chưa phản hồi. Gió Phim sẽ tự đồng bộ khi kết nối trở lại."
-            : "Kết nối đã khôi phục, đang đồng bộ ứng dụng..."}
-        </Alert>
-      </Box>
+      <Alert
+        severity={offline ? "warning" : "info"}
+        variant="filled"
+        action={
+          <Button
+            color="inherit"
+            size="small"
+            onClick={() => window.location.reload()}
+            sx={{
+              alignSelf: "center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Tải lại
+          </Button>
+        }
+        sx={{
+          width: "100%",
+          borderRadius: 2,
+          boxShadow: "0 18px 60px rgba(0,0,0,0.38)",
+          alignItems: "center",
+          "& .MuiAlert-icon": {
+            alignItems: "center",
+            pt: 0,
+          },
+          "& .MuiAlert-message": {
+            width: "100%",
+            lineHeight: 1.35,
+          },
+          "& .MuiAlert-action": {
+            alignItems: "center",
+            pt: 0,
+            pl: 1,
+          },
+        }}
+      >
+        {offline ? "Mất kết nối. Sẽ tự đồng bộ lại." : "Đang đồng bộ lại ứng dụng..."}
+      </Alert>
     </Snackbar>
   );
 }

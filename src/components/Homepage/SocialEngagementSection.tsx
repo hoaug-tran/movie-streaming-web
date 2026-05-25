@@ -256,8 +256,8 @@ export function SocialEngagementSection() {
 
           <Box
             sx={{
-              flexShrink: 0,
-              width: { xs: "100%", md: 360, lg: 400 },
+              flex: { md: 1 },
+              minWidth: 0,
               display: "flex",
               flexDirection: "column",
               gap: 0,

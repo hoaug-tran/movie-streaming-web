@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Box, Typography, Skeleton } from "@mui/material";
 import { adminService } from "@/modules/admin/api";
@@ -18,6 +18,9 @@ import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import AssignmentRoundedIcon from "@mui/icons-material/AssignmentRounded";
+import AdminPermissionGate from "@/modules/admin/components/AdminPermissionGate";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 const workloadConfig: Record<string, { href: string; icon: any; actionLabel: string }> = {
   "Báo cáo chờ xử lý": {
@@ -47,11 +50,12 @@ const workloadConfig: Record<string, { href: string; icon: any; actionLabel: str
   },
 };
 
-export default function AdminPage() {
-  const { data, isLoading } = useQuery({
+function AdminDashboardContent() {
+  const { data, isLoading, error } = useQuery({
     queryKey: ["admin-dashboard-summary"],
     queryFn: adminService.getDashboardSummary,
     refetchInterval: 5000,
+    retry: 1,
   });
 
   const metrics = data?.metrics ?? [];
@@ -68,6 +72,72 @@ export default function AdminPage() {
     () => Math.max(1, ...(data?.distributions ?? []).map((item) => item.value)),
     [data?.distributions]
   );
+
+  if (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Không thể tải dữ liệu bảng điều khiển";
+    const isAuthError = (error as any)?.status === 403;
+
+    return (
+      <Box
+        sx={{
+          p: { xs: 1.5, sm: 2, md: 3 },
+          pt: { xs: 2, md: 3 },
+          pb: { xs: 6, md: 8 },
+          maxWidth: 1600,
+          mx: "auto",
+          width: "100%",
+          overflowX: "hidden",
+        }}
+      >
+        <Box sx={{ mb: { xs: 2, md: 3 } }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 950,
+              letterSpacing: "-0.02em",
+              fontSize: { xs: "1.55rem", sm: "1.9rem", md: "2.125rem" },
+              lineHeight: { xs: 1.15, md: 1.2 },
+            }}
+          >
+            Trang quản trị Gió Phim
+          </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            p: 3,
+            borderRadius: 2,
+            bgcolor: "rgba(239, 68, 68, 0.1)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Typography
+            sx={{
+              color: "#ef4444",
+              fontWeight: 600,
+              fontSize: "1.1rem",
+            }}
+          >
+            {isAuthError ? "Lỗi Quyền Truy Cập" : "Lỗi Tải Dữ Liệu"}
+          </Typography>
+          <Typography sx={{ color: "rgba(255, 255, 255, 0.7)" }}>
+            {isAuthError
+              ? "Tài khoản của bạn không có quyền truy cập bảng điều khiển quản trị."
+              : errorMessage}
+          </Typography>
+          {isAuthError && (
+            <Typography sx={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "0.9rem" }}>
+              Bạn cần có vai trò ADMIN hoặc MODERATOR để truy cập trang này.
+            </Typography>
+          )}
+        </Box>
+      </Box>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -92,7 +162,7 @@ export default function AdminPage() {
               lineHeight: { xs: 1.15, md: 1.2 },
             }}
           >
-            Trang quản trị Gió Phim / Tổng quan
+            Trang quản trị Gió Phim
           </Typography>
         </Box>
 
@@ -247,7 +317,7 @@ export default function AdminPage() {
             lineHeight: { xs: 1.15, md: 1.2 },
           }}
         >
-          Trang quản trị Gió Phim / Tổng quan
+          Trang quản trị Gió Phim
         </Typography>
       </Box>
 
@@ -654,5 +724,24 @@ export default function AdminPage() {
         </Box>
       </Box>
     </Box>
+  );
+}
+
+export default function AdminPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user?.role === "ROLE_MODERATOR") {
+      router.replace("/admin/moderation");
+    }
+  }, [loading, router, user?.role]);
+
+  if (!loading && user?.role === "ROLE_MODERATOR") return null;
+
+  return (
+    <AdminPermissionGate permission="dashboard:read">
+      <AdminDashboardContent />
+    </AdminPermissionGate>
   );
 }

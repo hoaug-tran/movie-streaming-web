@@ -1,12 +1,13 @@
-const VERSION = "v24";
+const VERSION = "v31";
 
 const CACHE_SHELL = `giophim-shell-${VERSION}`;
 const CACHE_PAGES = `giophim-pages-${VERSION}`;
 const CACHE_API = `giophim-api-${VERSION}`;
 const CACHE_STATIC = `giophim-static-${VERSION}`;
 const CACHE_ICONS = "giophim-icons-stable";
+const CACHE_IMAGES = `giophim-images-${VERSION}`;
 
-const KNOWN_CACHES = [CACHE_SHELL, CACHE_PAGES, CACHE_API, CACHE_STATIC, CACHE_ICONS];
+const KNOWN_CACHES = [CACHE_SHELL, CACHE_PAGES, CACHE_API, CACHE_STATIC, CACHE_ICONS, CACHE_IMAGES];
 
 const OFFLINE_URL = "/offline.html";
 const DB_VERSION = 4;
@@ -14,8 +15,9 @@ const DB_VERSION = 4;
 const NETWORK_TIMEOUT_MS = 4500;
 
 const PAGE_MAX_ENTRIES = 60;
-const API_MAX_ENTRIES = 80;
+const API_MAX_ENTRIES = 150;
 const STATIC_MAX_ENTRIES = 1000;
+const IMAGE_MAX_ENTRIES = 500;
 
 const CRITICAL_SHELL = ["/offline.html", "/manifest.json"];
 
@@ -138,6 +140,10 @@ function isStaticAsset(url) {
   return /\.(?:js|css|woff2?|ttf|eot|webp|png|jpg|jpeg|svg|ico|avif|gif|json)$/i.test(url.pathname);
 }
 
+function isImageAsset(url) {
+  return /\.(?:webp|png|jpg|jpeg|svg|avif|gif)$/i.test(url.pathname);
+}
+
 function isCacheableApi(url) {
   if (!url.pathname.startsWith("/api/")) return false;
 
@@ -145,6 +151,8 @@ function isCacheableApi(url) {
   if (url.pathname.startsWith("/api/v1/categories")) return true;
   if (url.pathname.startsWith("/api/v1/tags")) return true;
   if (url.pathname.startsWith("/api/v1/subscription-plans")) return true;
+  if (url.pathname.startsWith("/api/v1/discovery")) return true;
+  if (url.pathname.startsWith("/api/v1/episodes")) return true;
 
   return false;
 }
@@ -160,7 +168,6 @@ function shouldBypass(url) {
 
   if (url.pathname.startsWith("/data/")) return true;
   if (url.pathname.startsWith("/_next/webpack-hmr")) return true;
-  if (url.pathname.startsWith("/_next/image")) return true;
 
   if (url.pathname.startsWith("/api/access")) return true;
   if (url.pathname.startsWith("/api/v1/auth")) return true;
@@ -705,6 +712,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (url.pathname.startsWith("/_next/image")) {
+    event.respondWith(handleImage(request));
+    return;
+  }
+
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(handleApi(request, url));
     return;
@@ -715,11 +727,60 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (isImageAsset(url)) {
+    event.respondWith(handleImage(request));
+    return;
+  }
+
   if (isStaticAsset(url)) {
     event.respondWith(handleStatic(request));
     return;
   }
 });
+
+async function handleImage(request) {
+  const url = new URL(request.url);
+
+  const cached =
+    (await caches.match(request)) || (await caches.match(request, { ignoreSearch: true }));
+
+  if (cached) {
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          caches
+            .open(CACHE_IMAGES)
+            .then((cache) => cache.put(request, response.clone()))
+            .then(() => trimCache(CACHE_IMAGES, IMAGE_MAX_ENTRIES))
+            .catch(() => undefined);
+        }
+      })
+      .catch(() => undefined);
+
+    return cached;
+  }
+
+  try {
+    const fresh = await fetch(request);
+
+    if (fresh.ok) {
+      caches
+        .open(CACHE_IMAGES)
+        .then((cache) => cache.put(request, fresh.clone()))
+        .then(() => trimCache(CACHE_IMAGES, IMAGE_MAX_ENTRIES))
+        .catch(() => undefined);
+    }
+
+    return fresh;
+  } catch {
+    return new Response("", {
+      status: 204,
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+}
 
 async function serveOfflineSegment(url) {
   try {
@@ -749,11 +810,38 @@ async function serveOfflineSegment(url) {
       return new Response("Offline segment data missing", { status: 404 });
     }
 
+    const headers = {
+      "Content-Type": "video/mp2t",
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": "*",
+      "Accept-Ranges": "bytes",
+    };
+
+    const range = url.searchParams.get("range");
+    const requestRange = range || "";
+    if (requestRange) {
+      const match = requestRange.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        const start = Number(match[1]);
+        const end = match[2] ? Number(match[2]) : data.byteLength - 1;
+        if (Number.isFinite(start) && Number.isFinite(end) && start <= end) {
+          const chunk = data.slice(start, Math.min(end + 1, data.byteLength));
+          return new Response(chunk, {
+            status: 206,
+            headers: {
+              ...headers,
+              "Content-Length": String(chunk.byteLength),
+              "Content-Range": `bytes ${start}-${start + chunk.byteLength - 1}/${data.byteLength}`,
+            },
+          });
+        }
+      }
+    }
+
     return new Response(data, {
       headers: {
-        "Content-Type": "video/mp2t",
-        "Cache-Control": "no-store",
-        "Access-Control-Allow-Origin": "*",
+        ...headers,
+        "Content-Length": String(data.byteLength),
       },
     });
   } catch (error) {
@@ -778,6 +866,25 @@ function keyId(episodeId, quality) {
   return `${episodeId}:${normalizeQuality(quality)}`;
 }
 
+function normalizeKeyData(keyData) {
+  if (!keyData) return null;
+  if (keyData instanceof ArrayBuffer) return keyData;
+  if (ArrayBuffer.isView(keyData)) {
+    return keyData.buffer.slice(keyData.byteOffset, keyData.byteOffset + keyData.byteLength);
+  }
+  if (Object.prototype.toString.call(keyData) === "[object ArrayBuffer]") return keyData;
+  if (typeof keyData.byteLength === "number") {
+    if (keyData.buffer) {
+      return keyData.buffer.slice(
+        keyData.byteOffset || 0,
+        (keyData.byteOffset || 0) + keyData.byteLength
+      );
+    }
+    return keyData;
+  }
+  return null;
+}
+
 async function serveOfflineKey(url) {
   try {
     const parts = url.pathname.split("/");
@@ -789,14 +896,20 @@ async function serveOfflineKey(url) {
     }
 
     const key = await getKeyFromIDB(episodeId, quality);
+    const keyData = normalizeKeyData(key?.keyData);
 
-    if (!key?.keyData) {
+    if (!keyData) {
       return new Response("Offline key not found", { status: 404 });
     }
 
-    return new Response(key.keyData, {
+    if (keyData.byteLength !== 16) {
+      return new Response(`Invalid offline key length: ${keyData.byteLength}`, { status: 422 });
+    }
+
+    return new Response(keyData, {
       headers: {
         "Content-Type": "application/octet-stream",
+        "Content-Length": "16",
         "Cache-Control": "no-store",
         "Access-Control-Allow-Origin": "*",
       },

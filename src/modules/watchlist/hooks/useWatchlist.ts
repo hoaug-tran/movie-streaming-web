@@ -12,7 +12,7 @@ export function useMyWatchlist(enabled = true) {
     queryKey: watchlistQueryKeys.mine(),
     queryFn: () => watchlistService.getMyWatchlist(),
     enabled,
-    staleTime: 60 * 1000,
+    staleTime: 0,
     gcTime: 10 * 60 * 1000,
     retry: 1,
   });

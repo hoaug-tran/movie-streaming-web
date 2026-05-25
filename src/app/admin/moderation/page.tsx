@@ -151,7 +151,7 @@ export default function AdminModerationPage() {
 
   return (
     <Box>
-      {/* Comments tab */}
+      {}
       <Box
         role="tabpanel"
         id="moderation-panel-comments"
@@ -266,6 +266,15 @@ export default function AdminModerationPage() {
                   />
                 ),
               },
+              {
+                key: "createdAt",
+                label: "Thời gian tạo",
+                render: (c) => (
+                  <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {formatTime(c.createdAt)}
+                  </Typography>
+                ),
+              },
             ]}
             quickActions={[
               {
@@ -273,17 +282,21 @@ export default function AdminModerationPage() {
                 label: (c) => (c.status === "HIDDEN" ? "Hiện" : "Ẩn"),
                 tone: (c) => (c.status === "HIDDEN" ? "emerald" : "amber"),
                 run: (c) =>
-                  adminService.updateComment(c.id, {
-                    ...toCommentForm(c),
-                    status: c.status === "HIDDEN" ? "VISIBLE" : "HIDDEN",
-                  } as AdminCommentPayload),
+                  adminService.updateCommentStatus(
+                    c.id,
+                    c.status === "HIDDEN" ? "VISIBLE" : "HIDDEN"
+                  ),
               },
-              {
-                id: "delete",
-                label: "Xóa",
-                tone: "rose",
-                run: (c) => adminService.deleteComment(c.id),
-              },
+              ...(isAdmin
+                ? [
+                    {
+                      id: "delete",
+                      label: "Xóa",
+                      tone: "rose" as const,
+                      run: (c: AdminComment) => adminService.deleteComment(c.id),
+                    },
+                  ]
+                : []),
             ]}
             createLabel={isAdmin ? "Thêm bình luận" : undefined}
             onCreate={
@@ -335,7 +348,7 @@ export default function AdminModerationPage() {
         )}
       </Box>
 
-      {/* Reviews tab */}
+      {}
       <Box
         role="tabpanel"
         id="moderation-panel-reviews"
@@ -464,6 +477,15 @@ export default function AdminModerationPage() {
                   />
                 ),
               },
+              {
+                key: "createdAt",
+                label: "Thời gian tạo",
+                render: (r) => (
+                  <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {formatTime(r.createdAt)}
+                  </Typography>
+                ),
+              },
             ]}
             quickActions={[
               {
@@ -487,42 +509,51 @@ export default function AdminModerationPage() {
                   ]
                 : []),
             ]}
-            onEdit={(r, p) => adminService.updateReviewStatus(r.id, (p as ReviewFormValues).status)}
-            renderForm={({ mode, item, open, submitting, error, onClose, onSubmit }) => (
-              <AdminFormDrawer<ReviewFormValues>
-                open={open}
-                mode={mode}
-                title={`Sửa đánh giá #${item?.id ?? ""}`}
-                description="Chỉnh sửa trạng thái hoặc nội dung đánh giá."
-                fields={reviewFields}
-                initialValues={toReviewForm(item)}
-                meta={
-                  mode === "edit"
-                    ? [
-                        {
-                          label: "Người dùng",
-                          value: item?.authorFullName || item?.authorUsername || "Chưa có tên",
-                          helperText: `User ID: ${item?.userId ?? "-"}`,
-                        },
-                        {
-                          label: "Phim",
-                          value: item?.movieTitle || "Chưa có tên phim",
-                          helperText: `Movie ID: ${item?.movieId ?? "-"}`,
-                        },
-                      ]
-                    : []
-                }
-                submitting={submitting}
-                error={error}
-                onClose={onClose}
-                onSubmit={onSubmit}
-              />
-            )}
+            onEdit={
+              isAdmin
+                ? (r, p) => adminService.updateReviewStatus(r.id, (p as ReviewFormValues).status)
+                : undefined
+            }
+            renderForm={
+              isAdmin
+                ? ({ mode, item, open, submitting, error, onClose, onSubmit }) => (
+                    <AdminFormDrawer<ReviewFormValues>
+                      open={open}
+                      mode={mode}
+                      title={`Sửa đánh giá #${item?.id ?? ""}`}
+                      description="Chỉnh sửa trạng thái hoặc nội dung đánh giá."
+                      fields={reviewFields}
+                      initialValues={toReviewForm(item)}
+                      meta={
+                        mode === "edit"
+                          ? [
+                              {
+                                label: "Người dùng",
+                                value:
+                                  item?.authorFullName || item?.authorUsername || "Chưa có tên",
+                                helperText: `User ID: ${item?.userId ?? "-"}`,
+                              },
+                              {
+                                label: "Phim",
+                                value: item?.movieTitle || "Chưa có tên phim",
+                                helperText: `Movie ID: ${item?.movieId ?? "-"}`,
+                              },
+                            ]
+                          : []
+                      }
+                      submitting={submitting}
+                      error={error}
+                      onClose={onClose}
+                      onSubmit={onSubmit}
+                    />
+                  )
+                : undefined
+            }
           />
         )}
       </Box>
 
-      {/* Comment detail modal */}
+      {}
       <Dialog
         open={Boolean(selectedComment)}
         onClose={() => setSelectedComment(null)}
@@ -645,7 +676,7 @@ export default function AdminModerationPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Review detail modal */}
+      {}
       <Dialog
         open={Boolean(selectedReview)}
         onClose={() => setSelectedReview(null)}

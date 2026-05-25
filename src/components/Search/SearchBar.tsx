@@ -31,6 +31,7 @@ interface SearchBarProps {
 const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, value }) => {
   const [localValue, setLocalValue] = useState(value);
   const [showHistory, setShowHistory] = useState(false);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<NodeJS.Timeout>();
@@ -66,6 +67,22 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, v
       refetchHistory();
     }
   }, [isHistoryEnabled, refetchHistory]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+
+    if (isOpen && containerRef.current) {
+      timer = setTimeout(() => {
+        if (containerRef.current) {
+          setContainerWidth(containerRef.current.offsetWidth);
+        }
+      }, 260);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -125,18 +142,18 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, v
           gap: 0.5,
           width: isOpen
             ? {
-                xs: "calc(100vw - 180px)",
+                xs: "calc(100vw - 128px)",
                 sm: "240px",
                 md: "280px",
               }
-            : "40px",
-          transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease",
-          opacity: isOpen ? 1 : 0.8,
-          position: { xs: isOpen ? "absolute" : "relative", sm: "relative" },
-          right: { xs: isOpen ? 56 : "auto", sm: "auto" },
-          top: { xs: isOpen ? "50%" : "auto", sm: "auto" },
-          transform: { xs: isOpen ? "translateY(-50%)" : "none", sm: "none" },
+            : { xs: "42px", sm: "40px" },
+          transition: "width 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+          position: "relative",
           zIndex: isOpen ? 5 : 1,
+          willChange: "width",
+          transform: "translateZ(0)",
+          backfaceVisibility: "hidden",
+          perspective: 1000,
         }}
       >
         {isOpen && (
@@ -202,7 +219,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, v
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              p: 1,
+              p: { xs: 0.85, sm: 1 },
+              width: { xs: 42, sm: 40 },
+              height: { xs: 42, sm: 40 },
               borderRadius: "8px",
               cursor: "pointer",
               transition: "all 0.3s ease",
@@ -217,7 +236,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, v
               />
             ) : (
               <SearchOutlined
-                sx={{ fontSize: 24, color: "rgba(255,255,255,0.85)", transition: "all 0.2s ease" }}
+                sx={{ fontSize: 27, color: "rgba(255,255,255,0.85)", transition: "all 0.2s ease" }}
               />
             )}
           </Box>
@@ -239,6 +258,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onOpenChange, onSearch, v
               <Paper
                 elevation={0}
                 sx={{
+                  width: containerWidth || undefined,
                   minWidth: { xs: 240, sm: 320 },
                   maxWidth: 360,
                   bgcolor: "rgba(18,18,18,0.96)",

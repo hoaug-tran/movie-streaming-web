@@ -30,7 +30,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         overflow: "hidden",
       }}
     >
-      {/* Left Panel: Kinetic Aesthetic (60%) */}
+      {}
       <Box
         sx={{
           flex: { lg: 1.25 },
@@ -42,7 +42,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           background: "linear-gradient(135deg, #0a0a0a 0%, #000 100%)",
         }}
       >
-        {/* Cinematic Backdrop */}
+        {}
         <Box
           sx={{
             position: "absolute",
@@ -57,7 +57,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           }}
         />
 
-        {/* Glass Overlay with Accent Glow */}
+        {}
         <Box
           sx={{
             position: "absolute",
@@ -67,7 +67,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           }}
         />
 
-        {/* Kinetic Typography */}
+        {}
         <Box
           sx={{
             position: "absolute",
@@ -94,7 +94,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </Typography>
         </Box>
 
-        {/* Branding/Back Button */}
+        {}
         <Box sx={{ position: "absolute", top: 40, left: 40, zIndex: 10 }}>
           <Link href="/" style={{ textDecoration: "none" }}>
             <Stack
@@ -145,7 +145,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         </Box>
       </Box>
 
-      {/* Right Panel: Glassmorphic Form (40%) */}
+      {}
       <Box
         sx={{
           flex: { lg: 0.75 },
@@ -159,7 +159,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
         }}
       >
         <Box sx={{ width: "100%", maxWidth: 460 }}>
-          {/* Mobile Branding */}
+          {}
           <Box sx={{ display: { xs: "block", lg: "none" }, mb: 4 }}>
             <Typography variant="h4" sx={{ fontWeight: 950, color: "white" }}>
               Gió Phim{" "}

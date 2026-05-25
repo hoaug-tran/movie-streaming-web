@@ -22,22 +22,14 @@ import { useSubscription, VideoQuality } from "@/hooks/use-subscription";
 
 interface OfflineDownloadButtonProps {
   episodeId: number;
-  /**
-   * Override quality. Nếu truyền, không hiện picker — dùng luôn quality này.
-   * Bỏ trống để cho user chọn (mặc định = maxQuality theo gói).
-   */
   quality?: string;
-  /** Danh sách quality episode hỗ trợ — option ngoài list sẽ disable. */
   availableQualities?: string[];
-  /** Để ước tính dung lượng. Nếu không có sẽ ẩn size estimate. */
   durationSeconds?: number;
   size?: "small" | "medium";
   showLabel?: boolean;
   variant?: "icon" | "pill";
 }
 
-// Bitrate trung bình (kbps) để ước tính dung lượng. Khớp tương đối với
-// preset transcode HLS thường dùng (h264 main + AAC).
 const QUALITY_BITRATE_KBPS: Record<VideoQuality, number> = {
   "720p": 3000,
   "1080p": 5000,
@@ -88,8 +80,6 @@ export default function OfflineDownloadButton({
   const needsUpgrade = isInstalled && !canDownloadOffline;
 
   const maxRank = QUALITY_RANK[maxQuality];
-
-  // Episode hỗ trợ những quality nào (nếu prop truyền vào).
   const supportedSet = useMemo(() => {
     if (!availableQualities || availableQualities.length === 0) return null;
     return new Set(availableQualities.map((q) => q.toUpperCase()));
@@ -98,14 +88,12 @@ export default function OfflineDownloadButton({
   const isSupported = useCallback(
     (q: VideoQuality) => {
       if (!supportedSet) return true;
-      // BE có thể trả "4K" hoặc "2160P", normalize lại.
       return supportedSet.has(q.toUpperCase()) || (q === "4K" && supportedSet.has("2160P"));
     },
     [supportedSet]
   );
 
   const openPicker = useCallback(() => {
-    // Chọn default = quality cao nhất user vừa được phép vừa có sẵn trong episode.
     const best =
       [...ALL_QUALITIES].reverse().find((q) => QUALITY_RANK[q] <= maxRank && isSupported(q)) ??
       maxQuality;
@@ -127,7 +115,6 @@ export default function OfflineDownloadButton({
       return;
     }
     if (status === "idle" || status === "error") {
-      // Nếu caller đã chỉ định quality thì download luôn, không hỏi.
       if (quality) {
         notify({ severity: "info", message: `Bắt đầu tải phim ${quality}...` });
         await startDownload(quality);

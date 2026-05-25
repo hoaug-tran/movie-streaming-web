@@ -93,7 +93,7 @@ export function useOfflineDownload(episodeId: number): UseOfflineDownloadReturn 
         const rec = await offlineStorage.getMovie(episodeId);
         setRecord(rec ?? null);
 
-        // Quan trọng: cache app shell + /watch/offline + chunks trước khi báo downloaded
+        
         await precacheOfflineApp();
 
         setStatus("downloaded");

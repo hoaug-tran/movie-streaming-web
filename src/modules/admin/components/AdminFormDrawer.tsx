@@ -64,6 +64,7 @@ export interface AdminFormDrawerProps<TForm extends Record<string, unknown>> {
   onSubmit: (values: TForm) => void;
   meta?: Array<{ label: string; value: ReactNode; helperText?: ReactNode }>;
   extraHeader?: ReactNode;
+  onUploadTrailer?: (file: File) => Promise<{ videoUrl: string }>;
 }
 
 function coerceValue(value: unknown): string | number | boolean {
@@ -87,6 +88,7 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
   onSubmit,
   meta = EMPTY_META,
   extraHeader,
+  onUploadTrailer,
 }: AdminFormDrawerProps<TForm>) {
   const theme = useTheme();
   const [values, setValues] = useState<TForm>(initialValues);
@@ -442,7 +444,11 @@ export default function AdminFormDrawer<TForm extends Record<string, unknown>>({
                               event.target.value = "";
                               setUploadingField(field.name);
                               try {
-                                const res = await adminService.uploadVideo(file);
+                                const isTrailer = field.name.toLowerCase().includes("trailer");
+                                const res =
+                                  isTrailer && onUploadTrailer
+                                    ? await onUploadTrailer(file)
+                                    : await adminService.uploadVideo(file);
                                 setValues((current) => ({
                                   ...current,
                                   [field.name]: res.videoUrl,

@@ -20,8 +20,14 @@ export const clearClientAuthCache = (): void => {
   window.localStorage.removeItem("refreshToken");
 };
 
-const persistAuthTokens = (_authResponse: LoginResponse): void => {
-  clearClientAuthCache();
+const persistAuthTokens = (authResponse: LoginResponse): void => {
+  if (typeof window === "undefined") return;
+  if (authResponse.accessToken) {
+    window.localStorage.setItem("accessToken", authResponse.accessToken);
+  }
+  if (authResponse.refreshToken) {
+    window.localStorage.setItem("refreshToken", authResponse.refreshToken);
+  }
 };
 
 export const clearAuthTokens = clearClientAuthCache;
@@ -106,6 +112,13 @@ const fetchAPI = async <T>(
   }
 
   const { requireAuth, headers: _, ...fetchOptions } = options;
+
+  if (typeof window !== "undefined") {
+    const token = window.localStorage.getItem("accessToken");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...fetchOptions,
@@ -198,7 +211,10 @@ const refreshToken = async (): Promise<{ accessToken: string; refreshToken?: str
 
     const payload = response.data || response;
 
-    clearClientAuthCache();
+    if (typeof window !== "undefined") {
+      if (payload.accessToken) window.localStorage.setItem("accessToken", payload.accessToken);
+      if (payload.refreshToken) window.localStorage.setItem("refreshToken", payload.refreshToken);
+    }
 
     return {
       accessToken: payload.accessToken,

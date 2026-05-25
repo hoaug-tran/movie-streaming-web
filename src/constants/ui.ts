@@ -1,4 +1,4 @@
-/* UI Constants */
+
 export const UI = {
   DRAWER_WIDTH: 240,
   APPBAR_HEIGHT: 64,
@@ -7,7 +7,7 @@ export const UI = {
   DESKTOP_BREAKPOINT: "lg",
 } as const;
 
-/* Colors */
+
 export const COLORS = {
   PRIMARY: "#1976d2",
   SECONDARY: "#dc004e",
@@ -17,7 +17,7 @@ export const COLORS = {
   INFO: "#2196f3",
 } as const;
 
-/* Animations */
+
 export const ANIMATIONS = {
   TRANSITION_DURATION: 300,
   FADE_IN_DURATION: 200,

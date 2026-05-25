@@ -33,8 +33,8 @@ interface WatchPageProps {
   params: Promise<{ movieSlug: string }>;
 }
 
-// Build MovieDetail + Episode tối thiểu từ record IndexedDB để WatchPlayer
-// có thể chạy hoàn toàn offline mà không cần đụng tới API.
+
+
 async function buildOfflineMovie(episodeId: number): Promise<{
   movie: MovieDetail;
   episode: Episode;
@@ -46,8 +46,8 @@ async function buildOfflineMovie(episodeId: number): Promise<{
     id: record.episodeId,
     title: record.episodeTitle,
     episodeNumber: record.episodeNumber,
-    // videoUrl chỉ là placeholder để qua check `if (!currentEpisode?.videoUrl)`,
-    // luồng playback thực tế dùng offlineSrc dựng từ IDB trong WatchPlayer.
+    
+    
     videoUrl: `/__offline__/playlist/${record.episodeId}.m3u8`,
     durationSeconds: record.durationSeconds,
     availableQualities: [record.quality],

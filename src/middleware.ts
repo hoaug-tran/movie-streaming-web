@@ -80,8 +80,9 @@ export function middleware(request: NextRequest) {
   const skipGate = isBypass || hasFileExt;
 
   const gatePassed = request.cookies.get(GATE_COOKIE_NAME)?.value === "1";
+  const hasOfflineAuth = request.cookies.get("gp_offline_auth")?.value === "1";
 
-  if (!skipGate && !gatePassed) {
+  if (!skipGate && !gatePassed && !hasOfflineAuth) {
     const url = request.nextUrl.clone();
     url.pathname = "/access";
     url.searchParams.set("next", pathname + search);
@@ -111,7 +112,7 @@ export function middleware(request: NextRequest) {
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
 
-  if (isProtected && !tokenValid && !canAttemptRefresh) {
+  if (isProtected && !tokenValid && !canAttemptRefresh && !hasOfflineAuth) {
     return redirectToLogin(request, pathname, search);
   }
 

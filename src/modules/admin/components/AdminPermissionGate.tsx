@@ -39,16 +39,16 @@ export default function AdminPermissionGate({ permission, children }: AdminPermi
           Module bị khóa
         </Typography>
         <Typography color="text.secondary">
-          Tài khoản hiện tại không có quyền dùng module này. Moderator chỉ được thao tác khu vực báo
-          cáo.
+          Tài khoản hiện tại không có quyền dùng module này. Moderator chỉ được thao tác khu vực
+          Kiểm duyệt.
         </Typography>
         <Button
           id="admin-locked-back-button"
           variant="contained"
-          onClick={() => router.replace("/admin")}
+          onClick={() => router.replace("/admin/moderation")}
           sx={{ borderRadius: 1.5, fontWeight: 900 }}
         >
-          Về tổng quan
+          Về danh mục Kiểm duyệt
         </Button>
       </Stack>
     </Box>

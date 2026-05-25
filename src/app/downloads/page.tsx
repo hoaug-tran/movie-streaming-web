@@ -114,7 +114,7 @@ function GateScreen({
 
 export default function DownloadsPage() {
   const router = useRouter();
-  const { isPWA, canInstall, promptInstall, mounted } = usePwa();
+  const { isPWA, canInstall, promptInstall, mounted, isOnline, hasOfflineAuth } = usePwa();
   const { isAuthenticated } = useAuth();
   const { hasActiveSubscription, currentPlan, isLoading: subLoading } = useSubscription();
   const canDownload = hasActiveSubscription && currentPlan?.code === "PREMIUM_PLUS";
@@ -126,10 +126,15 @@ export default function DownloadsPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    if (!isPWA || !isAuthenticated || !canDownload) {
+
+    const isOfflineMode = !isOnline && hasOfflineAuth;
+    const canAccess = isPWA && (isAuthenticated || isOfflineMode) && (canDownload || isOfflineMode);
+
+    if (!canAccess) {
       setLoading(false);
       return;
     }
+
     offlineStorage.listMovies().then((list) => {
       setMovies(
         list.sort((a, b) => new Date(b.downloadedAt).getTime() - new Date(a.downloadedAt).getTime())
@@ -137,7 +142,7 @@ export default function DownloadsPage() {
       setLoading(false);
     });
     offlineStorage.getTotalSize().then(setTotalSize);
-  }, [mounted, isPWA, isAuthenticated, canDownload]);
+  }, [mounted, isPWA, isAuthenticated, canDownload, isOnline, hasOfflineAuth]);
 
   const handleDelete = async (episodeId: number) => {
     setDeleting(episodeId);
@@ -240,7 +245,7 @@ export default function DownloadsPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !hasOfflineAuth) {
     return (
       <GateScreen
         icon={<Shield size={40} color="#8EA7E9" />}
@@ -281,7 +286,8 @@ export default function DownloadsPage() {
     );
   }
 
-  if (!subLoading && !canDownload) {
+  const isOfflineMode = !isOnline && hasOfflineAuth;
+  if (!subLoading && !canDownload && !isOfflineMode) {
     return (
       <GateScreen
         icon={<Shield size={40} color="#F4B400" />}

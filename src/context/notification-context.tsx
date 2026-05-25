@@ -32,17 +32,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         onClose={() => setNotification(null)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         sx={{
-          top: { xs: 82, md: 88 },
-          left: { xs: "50%", md: "auto" },
-          right: { xs: "auto", md: 24 },
-          transform: { xs: "translateX(-50%)", md: "none" },
+          top: {
+            xs: "calc(env(safe-area-inset-top, 0px) + 76px)",
+            md: "calc(env(safe-area-inset-top, 0px) + 88px)",
+          },
+          left: "50%",
+          right: "auto",
+          transform: "translateX(-50%)",
+          width: { xs: "80vw", sm: "min(80vw, 520px)", md: 520 },
+          maxWidth: "calc(100vw - 32px)",
         }}
       >
         <Alert
           severity={notification?.severity ?? "info"}
           variant="filled"
           onClose={() => setNotification(null)}
-          sx={{ width: "100%", borderRadius: 2, boxShadow: "0 18px 60px rgba(0,0,0,0.38)" }}
+          sx={{
+            width: "100%",
+            borderRadius: 2,
+            boxShadow: "0 18px 60px rgba(0,0,0,0.38)",
+          }}
         >
           {notification?.message}
         </Alert>

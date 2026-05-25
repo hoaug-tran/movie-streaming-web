@@ -643,7 +643,7 @@ export default function EpisodeList({
         flexDirection: "column",
         zIndex: 30,
         overflow: "hidden",
-        // Né notch/status bar khi PWA iPhone standalone landscape & portrait
+        
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingRight: "env(safe-area-inset-right, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",

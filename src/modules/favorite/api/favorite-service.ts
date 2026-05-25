@@ -3,7 +3,7 @@ import { Favorite, MovieInFavoriteResponse } from "@/modules/favorite/types/favo
 
 class FavoriteService {
   async getMyFavorites(): Promise<Favorite[]> {
-    return apiClient.get<Favorite[]>("/favorites/me");
+    return apiClient.get<Favorite[]>("/favorites/me", { cache: "no-store" });
   }
 
   async add(movieId: number): Promise<Favorite> {

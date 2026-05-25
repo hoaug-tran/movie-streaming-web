@@ -1,6 +1,6 @@
 const path = require("path");
 
-/** @type {import('next').NextConfig} */
+
 const nextConfig = {
   reactStrictMode: true,
   allowedDevOrigins: ["localhost", "giophim.libsys.me", "api.libsys.me"],
@@ -114,6 +114,15 @@ const nextConfig = {
             value: "public, max-age=31536000, immutable",
           },
         ],
+      },
+    ];
+  },
+  async rewrites() {
+    const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN || "https://api.libsys.me";
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${apiOrigin}/api/:path*`,
       },
     ];
   },

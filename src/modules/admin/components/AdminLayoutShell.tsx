@@ -196,7 +196,9 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
       <Stack
         sx={{
           height: "100%",
-          p: collapsed ? 1 : 2,
+          px: collapsed ? 1 : 2,
+          pb: collapsed ? 1 : 2,
+          pt: { xs: "max(16px, env(safe-area-inset-top))", lg: collapsed ? 1 : 2 },
           color: theme.palette.text.primary,
           background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.default, 0.99)} 100%)`,
           borderRight: `1px solid ${theme.palette.divider}`,
@@ -451,9 +453,10 @@ export default function AdminLayoutShell({ children }: { children: ReactNode }) 
             position: "sticky",
             top: 0,
             zIndex: 20,
-            minHeight: { xs: 64, md: 72 },
+            minHeight: { xs: "calc(64px + env(safe-area-inset-top, 0px))", md: 72 },
             px: { xs: 1.5, sm: 2, md: 4 },
-            py: { xs: 1, md: 1.5 },
+            pt: { xs: "calc(16px + env(safe-area-inset-top, 0px))", md: 1.5 },
+            pb: { xs: 1, md: 1.5 },
             bgcolor: alpha(theme.palette.background.default, 0.86),
             borderBottom: { xs: 0, lg: `1px solid ${theme.palette.divider}` },
             backdropFilter: "blur(18px)",

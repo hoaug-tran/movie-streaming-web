@@ -274,7 +274,7 @@ export interface AdminUser {
   email: string;
   fullName?: string | null;
   avatarUrl?: string | null;
-  role: "ROLE_ADMIN" | "ROLE_USER";
+  role: "ROLE_ADMIN" | "ROLE_MODERATOR" | "ROLE_USER";
   accountStatus: "ACTIVE" | "PENDING" | "BLOCKED" | "DELETED";
   premiumExpiryDate?: string | null;
   currentPlanCode?: string | null;
@@ -684,6 +684,169 @@ async function uploadSourceSmart({
   return finalizeRes.json();
 }
 
+async function uploadTrailerSmart({
+  kind,
+  id,
+  file,
+  onProgress,
+  apiBase,
+}: {
+  kind: "episode" | "movie";
+  id: number;
+  file: File;
+  onProgress?: (status: UploadProgressStatus) => void;
+  apiBase?: string;
+}): Promise<{ id: number; videoUrl: string; status: string }> {
+  const SINGLE_THRESHOLD = 80 * 1024 * 1024;
+  const CHUNK_SIZE = 8 * 1024 * 1024;
+  const PARALLELISM = 3;
+  const base = apiBase || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
+  const startedAt = Date.now();
+
+  const reportProgress = (
+    bytesUploaded: number,
+    currentChunk: number,
+    totalChunks: number,
+    phase: UploadProgressStatus["phase"],
+    message: string
+  ) => {
+    if (!onProgress) return;
+    const elapsedSec = Math.max(0.001, (Date.now() - startedAt) / 1000);
+    const speedKBps = bytesUploaded / 1024 / elapsedSec;
+    const remainingBytes = file.size - bytesUploaded;
+    const etaSeconds =
+      speedKBps > 0 && phase === "uploading" ? Math.round(remainingBytes / 1024 / speedKBps) : null;
+    onProgress({
+      percent: Math.min(100, Math.round((bytesUploaded / file.size) * 100)),
+      phase,
+      bytesUploaded,
+      totalBytes: file.size,
+      currentChunk,
+      totalChunks,
+      speedKBps,
+      etaSeconds,
+      message,
+    });
+  };
+
+  if (file.size <= SINGLE_THRESHOLD) {
+    reportProgress(0, 0, 1, "uploading", "Đang upload file...");
+    return new Promise((resolve, reject) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      const segment = kind === "movie" ? "movies" : "episodes";
+      xhr.open("POST", `${base}/admin/media/${segment}/${id}/trailer`);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) reportProgress(ev.loaded, 1, 1, "uploading", "Đang upload...");
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          reportProgress(file.size, 1, 1, "done", "Upload trailer xong!");
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve({ id, videoUrl: "", status: "DONE" });
+          }
+        } else {
+          reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Upload network error"));
+      xhr.send(fd);
+    });
+  }
+
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  reportProgress(0, 0, totalChunks, "uploading", `Khởi tạo upload (${totalChunks} chunks)...`);
+
+  const initParams = new URLSearchParams({
+    fileName: file.name,
+    fileSize: String(file.size),
+    totalChunks: String(totalChunks),
+  });
+  const initRes = await fetch(`${base}/admin/media/chunked/init?${initParams.toString()}`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!initRes.ok) throw new Error(`Init chunked upload failed: ${initRes.status}`);
+  const { uploadId } = (await initRes.json()) as { uploadId: string };
+
+  const chunkBytes = new Array<number>(totalChunks).fill(0);
+  let chunksDone = 0;
+  const reportFromChunks = (msg: string) => {
+    const total = chunkBytes.reduce((a, b) => a + b, 0);
+    reportProgress(total, chunksDone, totalChunks, "uploading", msg);
+  };
+
+  const uploadChunk = (i: number): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const blob = file.slice(start, end);
+      const fd = new FormData();
+      fd.append("file", blob, file.name);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${base}/admin/media/chunked/${uploadId}/chunks/${i}`);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          chunkBytes[i] = ev.loaded;
+          reportFromChunks(
+            `Đang upload chunk ${chunksDone + 1}-${Math.min(chunksDone + PARALLELISM, totalChunks)}/${totalChunks}`
+          );
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          chunkBytes[i] = end - start;
+          chunksDone++;
+          reportFromChunks(`Đã xong ${chunksDone}/${totalChunks} chunks`);
+          resolve();
+        } else {
+          reject(new Error(`Chunk ${i} HTTP ${xhr.status}: ${xhr.responseText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error(`Chunk ${i} network error`));
+      xhr.send(fd);
+    });
+
+  let next = 0;
+  const workers: Promise<void>[] = [];
+  for (let w = 0; w < Math.min(PARALLELISM, totalChunks); w++) {
+    workers.push(
+      (async () => {
+        while (true) {
+          const myIndex = next++;
+          if (myIndex >= totalChunks) return;
+          await uploadChunk(myIndex);
+        }
+      })()
+    );
+  }
+  await Promise.all(workers);
+
+  reportProgress(
+    file.size,
+    totalChunks,
+    totalChunks,
+    "finalizing",
+    "Đang ghép file trên server..."
+  );
+
+  const finalizeRes = await fetch(
+    `${base}/admin/media/chunked/${uploadId}/finalize/trailer/${kind}/${id}`,
+    { method: "POST", credentials: "include" }
+  );
+  if (!finalizeRes.ok) {
+    const text = await finalizeRes.text().catch(() => "");
+    throw new Error(`Finalize failed: ${finalizeRes.status} ${text}`);
+  }
+  reportProgress(file.size, totalChunks, totalChunks, "done", "Upload trailer xong!");
+  return finalizeRes.json();
+}
+
 export const adminService = {
   getDashboardSummary(): Promise<AdminDashboardSummary> {
     return apiClient.get<AdminDashboardSummary>("/admin/dashboard/summary");
@@ -852,7 +1015,7 @@ export const adminService = {
   },
 
   updateAd(adId: number, payload: AdminAdPayload): Promise<AdminAd> {
-    return apiClient.put<AdminAd>(`/advertisements/${adId}`, payload);
+    return apiClient.patch<AdminAd>(`/advertisements/${adId}`, payload);
   },
 
   deleteAd(adId: number): Promise<void> {
@@ -917,6 +1080,10 @@ export const adminService = {
 
   updateComment(commentId: number, payload: AdminCommentPayload): Promise<AdminComment> {
     return apiClient.put<AdminComment>(`/admin/comments/${commentId}`, payload);
+  },
+
+  updateCommentStatus(commentId: number, status: string): Promise<AdminComment> {
+    return apiClient.put<AdminComment>(`/admin/comments/${commentId}/status?status=${status}`);
   },
 
   deleteComment(commentId: number): Promise<void> {
@@ -990,6 +1157,18 @@ export const adminService = {
     const fd = new FormData();
     fd.append("file", file);
     return apiClient.post<{ videoUrl: string }>(`/admin/media/movies/${movieId}/source`, fd);
+  },
+
+  uploadMovieTrailer(movieId: number, file: File): Promise<{ videoUrl: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiClient.post<{ videoUrl: string }>(`/admin/media/movies/${movieId}/trailer`, fd);
+  },
+
+  uploadSeriesTrailer(episodeId: number, file: File): Promise<{ videoUrl: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiClient.post<{ videoUrl: string }>(`/admin/media/episodes/${episodeId}/trailer`, fd);
   },
 
   retranscodeEpisode(episodeId: number): Promise<{ id: number; videoUrl: string; status: string }> {
@@ -1072,6 +1251,69 @@ export const adminService = {
     });
   },
 
+  async uploadMovieTrailerSmart(
+    movieId: number,
+    file: File,
+    onProgress?: (status: {
+      percent: number;
+      phase: "uploading" | "finalizing" | "done";
+      bytesUploaded: number;
+      totalBytes: number;
+      currentChunk: number;
+      totalChunks: number;
+      speedKBps: number;
+      etaSeconds: number | null;
+      message: string;
+    }) => void,
+    apiBase?: string
+  ): Promise<{ id: number; videoUrl: string; status: string }> {
+    return uploadTrailerSmart({
+      kind: "movie",
+      id: movieId,
+      file,
+      onProgress,
+      apiBase,
+    });
+  },
+
+  async uploadSeriesTrailerSmart(
+    episodeId: number,
+    file: File,
+    onProgress?: (status: {
+      percent: number;
+      phase: "uploading" | "finalizing" | "done";
+      bytesUploaded: number;
+      totalBytes: number;
+      currentChunk: number;
+      totalChunks: number;
+      speedKBps: number;
+      etaSeconds: number | null;
+      message: string;
+    }) => void,
+    apiBase?: string
+  ): Promise<{ id: number; videoUrl: string; status: string }> {
+    return uploadTrailerSmart({
+      kind: "episode",
+      id: episodeId,
+      file,
+      onProgress,
+      apiBase,
+    });
+  },
+  async uploadMovieTrailerTemp(file: File): Promise<{ videoUrl: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
+    const response = await fetch(`${base}/admin/media/movies/trailer`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    if (!response.ok) throw new Error("Upload failed");
+    const data = await response.json();
+    return { videoUrl: data.videoUrl };
+  },
+
   getActivities(params: {
     scope?: string;
     severity?: string;
@@ -1106,5 +1348,9 @@ export const adminService = {
     const fd = new FormData();
     fd.append("file", file);
     return apiClient.post<{ videoUrl: string }>("/admin/media/videos", fd);
+  },
+
+  cancelSubscription(userId: number): Promise<void> {
+    return apiClient.patch<void>(`/subscriptions/admin/cancel/${userId}`, {});
   },
 };

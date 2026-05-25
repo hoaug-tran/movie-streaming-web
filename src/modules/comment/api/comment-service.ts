@@ -73,7 +73,7 @@ class CommentService {
     }
   }
 
-  // Discovery Methods
+  
   async getTopComments(limit: number = 5): Promise<Comment[]> {
     try {
       return (
